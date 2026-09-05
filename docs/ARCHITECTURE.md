@@ -26,7 +26,7 @@ Shop markup/SCSS: `templates/shop/default/`. Hosts: `shops/angular`, `shops/lept
 Admin markup/SCSS: `templates/admin/default/`. Host: `admin/angular`.
 Kinds (`shop` | `admin`) must not be mixed; see [`../templates/README.md`](../templates/README.md).
 
-Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, `config/packages`). Actix still owns the commerce HTTP surface until a later listen migration.
+Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, `config/packages`). Commerce HTTP binds through Serenade `listen` / `AsyncHttpKernel` (Actix adapter).
 
 ## Crates (today)
 
@@ -37,7 +37,7 @@ Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, 
 | `rustashop-persist` | Facade: `persist-sqlx` (default) or `persist-seaorm` |
 | `rustashop-persist-sqlx` | SQLx migrations, catalog/cart/order repos, migrate binary |
 | `rustashop-persist-seaorm` | SeaORM mirror schema and repos |
-| `rustashop-api` | Actix commerce HTTP, OpenAPI, Swagger UI |
+| `rustashop-api` | Commerce HTTP via Serenade listen (Actix adapter), OpenAPI |
 | `rustashop-mcp` | Axum MCP / agent tools (name marker; not wired yet) |
 | `rustashop-template-shop-default` | Shared storefront HTML/SCSS package |
 
@@ -45,10 +45,10 @@ Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, 
 
 | Surface | Framework | Owns |
 | --- | --- | --- |
-| Commerce API | **Actix-web** | Catalog, cart, checkout, orders; admin REST and WebSocket later |
+| Commerce API | **Serenade HttpKernel** (Actix listen adapter) | Catalog, cart, checkout, orders, admin REST; WebSocket later |
 | MCP / tools | **Axum** | Streamable MCP and narrow agent endpoints |
 
-Both share domain and persist. OpenAPI is generated with **utoipa** on the Actix crate (`/openapi.json`, `/swagger-ui/`). Regenerated file: `openapi/openapi.json` via `make openapi`.
+Both share domain and persist. OpenAPI is generated with **utoipa** (`/openapi.json`). Regenerated file: `openapi/openapi.json` via `make openapi`.
 
 ## Request path (commerce)
 
@@ -56,7 +56,8 @@ Both share domain and persist. OpenAPI is generated with **utoipa** on the Actix
 GET  /v1/products
 POST /v1/carts → lines
 POST /v1/checkout
-  → rustashop-api handlers
+  → serenade_http_actix::listen → AsyncHttpKernel
+  → rustashop-api front controllers
   → serenade-contracts repository traits
   → Sqlx* | SeaOrm* adapters
   → PostgreSQL

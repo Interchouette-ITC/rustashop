@@ -64,16 +64,16 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     configure_app(cfg, &AdminApiPrefix::from_env());
 }
 
-/// Registers leftover Actix commerce routes (`Swagger` UI, install static files).
+/// Registers test-only Actix extras (`Swagger` UI, install static files).
 ///
-/// Serenade-fronted JSON (health, catalog, cart, checkout, admin, openapi, install API) is
-/// registered via [`configure_serenade_front`].
+/// Production binds via Serenade `listen` only. JSON commerce routes use
+/// [`configure_serenade_front`] (or the kernel matcher under listen).
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(swagger_ui());
     install_routes::configure_install_from_env(cfg);
 }
 
-/// Registers Serenade front routes then leftover Actix commerce routes.
+/// Registers Serenade front routes then test-only Actix extras (integration tests).
 pub fn configure_app(cfg: &mut web::ServiceConfig, admin_prefix: &AdminApiPrefix) {
     configure_serenade_front(cfg, admin_prefix.as_str());
     configure_routes(cfg);
@@ -127,6 +127,35 @@ mod tests {
         assert_eq!(body.status, "ok");
         assert_eq!(body.kernel, rustashop::kernel_status());
         insta::assert_json_snapshot!("healthz_body", body);
+    }
+
+    #[actix_web::test]
+    async fn listen_app_serves_healthz_via_default_service() {
+        let app = test::init_service(serenade_http_actix::app(web::Data::new(
+            commerce_http_kernel(CommerceFrontConfig::test_default()),
+        )))
+        .await;
+        let req = test::TestRequest::get().uri("/healthz").to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+        let body: HealthResponse = test::read_body_json(resp).await;
+        assert_eq!(body.status, "ok");
+    }
+
+    #[actix_web::test]
+    async fn listen_app_serves_openapi_json() {
+        let app = test::init_service(serenade_http_actix::app(web::Data::new(
+            commerce_http_kernel(CommerceFrontConfig::test_default()),
+        )))
+        .await;
+        let req = test::TestRequest::get().uri("/openapi.json").to_request();
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+        let body: serde_json::Value = test::read_body_json(resp).await;
+        assert!(body
+            .get("paths")
+            .and_then(|p| p.get("/v1/products"))
+            .is_some());
     }
 
     #[actix_web::test]

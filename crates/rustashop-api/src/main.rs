@@ -1,12 +1,12 @@
-//! Actix HTTP server entry point.
+//! Serenade listen entry point for the commerce HTTP API.
 
-use actix_web::{web, App, HttpServer};
 use rustashop_api::{
-    bind_address, commerce_http_kernel, configure_app, install_artefacts_present, shop_root,
-    AdminApiPrefix, AdminAuthConfig, CommerceFrontConfig, ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV,
+    bind_address, commerce_http_kernel, install_artefacts_present, shop_root, AdminApiPrefix,
+    AdminAuthConfig, CommerceFrontConfig, ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV,
     ADMIN_TOKEN_ENV_ALT, BIND_ENV, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
     INSTALL_OFF_DIR_NAME,
 };
+use serenade_http_actix::{await_bound, bind_server};
 use tracing::{error, info};
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -55,7 +55,7 @@ fn bind_error(bind: &str, error: &std::io::Error) -> std::io::Error {
     std::io::Error::new(error.kind(), format!("cannot bind {bind}: {error}"))
 }
 
-/// Starts the Actix HTTP server on [`bind_address`].
+/// Starts commerce HTTP via Serenade [`bind_server`] / [`await_bound`] (listen helpers).
 ///
 /// # Errors
 ///
@@ -84,15 +84,14 @@ async fn run() -> std::io::Result<()> {
 
     info!("health: http://{bind}/healthz");
     info!("openapi: http://{bind}/openapi.json");
-    info!("swagger: http://{bind}/swagger-ui/");
     if install_artefacts_present(&root) {
         info!(
-            "install: serving /install from {}/{INSTALL_DIR_NAME}/dist (rename to {INSTALL_OFF_DIR_NAME} after success)",
+            "install API: /install/api/* (artefacts under {}/{INSTALL_DIR_NAME}/dist; rename to {INSTALL_OFF_DIR_NAME} after success)",
             root.display()
         );
     } else {
         info!(
-            "install: not mounted ({}/{INSTALL_DIR_NAME}/dist missing; expected if renamed to {INSTALL_OFF_DIR_NAME})",
+            "install API: artefacts absent ({}/{INSTALL_DIR_NAME}/dist missing; expected if renamed to {INSTALL_OFF_DIR_NAME})",
             root.display()
         );
     }
@@ -121,23 +120,15 @@ async fn run() -> std::io::Result<()> {
         info!("admin: custom API prefix active ({ADMIN_API_PREFIX_ENV})");
     }
 
-    let http_kernel = web::Data::new(commerce_http_kernel(CommerceFrontConfig {
-        catalog: Some(catalog.clone()),
-        admin_auth: admin_auth.clone(),
+    let http_kernel = commerce_http_kernel(CommerceFrontConfig {
+        catalog: Some(catalog),
+        admin_auth,
         admin_prefix: admin_prefix.as_str().to_owned(),
-        install_root: Some(root.clone()),
-    }));
-    let server = HttpServer::new(move || {
-        let prefix = admin_prefix.clone();
-        App::new()
-            .app_data(http_kernel.clone())
-            .configure(move |cfg| configure_app(cfg, &prefix))
-    })
-    .bind(&bind)
-    .map_err(|error| bind_error(&bind, &error))?;
-
-    info!("listening on http://{bind}");
-    let result = server.run().await;
+        install_root: Some(root),
+    });
+    let server = bind_server(&bind, http_kernel).map_err(|error| bind_error(&bind, &error))?;
+    info!("listening on http://{bind} (Serenade listen)");
+    let result = await_bound(server).await;
     if let Err(error) = kernel.shutdown() {
         tracing::warn!("serenade kernel shutdown: {error}");
     }
