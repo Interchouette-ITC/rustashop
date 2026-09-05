@@ -120,7 +120,7 @@ async fn run() -> std::io::Result<()> {
         info!("admin: custom API prefix active ({ADMIN_API_PREFIX_ENV})");
     }
 
-    let http_kernel = web::Data::new(commerce_http_kernel());
+    let http_kernel = web::Data::new(commerce_http_kernel(Some(catalog.clone())));
     let server = HttpServer::new(move || {
         let prefix = admin_prefix.clone();
         App::new()

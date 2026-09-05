@@ -91,6 +91,27 @@ impl ResponseError for ApiError {
     }
 }
 
+/// Serenade JSON response for a successful payload.
+#[must_use]
+pub fn json_response(status: u16, body: &impl Serialize) -> serenade_http::Response {
+    let bytes = serde_json::to_vec(body).unwrap_or_else(|_| b"{\"error\":\"encode\"}".to_vec());
+    serenade_http::Response::new(status)
+        .with_header("content-type", "application/json")
+        .with_body(bytes)
+}
+
+/// Serenade JSON response for an [`ApiError`].
+#[must_use]
+pub fn api_error_json_response(error: &ApiError) -> serenade_http::Response {
+    json_response(
+        error.status_code().as_u16(),
+        &ErrorBody {
+            error: error.to_string(),
+            code: error.code(),
+        },
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

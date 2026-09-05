@@ -1,7 +1,7 @@
 //! Integration tests for catalog product HTTP routes.
 
 use actix_web::{test, web, App};
-use rustashop_api::{routes, ProductDetailResponse, ProductListResponse};
+use rustashop_api::{commerce_http_kernel, routes, ProductDetailResponse, ProductListResponse};
 use rustashop_persist::CatalogRepository;
 
 const HOODIE_ID: &str = "22222222-2222-2222-2222-222222222221";
@@ -16,6 +16,7 @@ async fn products_list_and_get_seeded_rows() {
     let catalog = exclusive_seeded_catalog().await;
     let app = test::init_service(
         App::new()
+            .app_data(web::Data::new(commerce_http_kernel(Some(catalog.clone()))))
             .app_data(web::Data::new(catalog))
             .configure(routes),
     )
@@ -48,6 +49,14 @@ async fn products_list_and_get_seeded_rows() {
         .to_request();
     let missing_resp = test::call_service(&app, missing).await;
     assert_eq!(missing_resp.status(), 404);
+
+    let paged = test::TestRequest::get()
+        .uri("/v1/products?limit=1&offset=0")
+        .to_request();
+    let paged_resp = test::call_service(&app, paged).await;
+    assert!(paged_resp.status().is_success());
+    let page: ProductListResponse = test::read_body_json(paged_resp).await;
+    assert_eq!(page.items.len(), 1);
 }
 
 #[cfg(feature = "persist-sqlx")]

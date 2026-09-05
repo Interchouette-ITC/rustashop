@@ -64,12 +64,11 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
 
 /// Registers HTTP routes with an explicit operator API prefix.
 ///
-/// `GET /healthz` is registered separately via [`configure_serenade_front`].
+/// Serenade-fronted routes (`/healthz`, `/v1/products*`) are registered via
+/// [`configure_serenade_front`].
 pub fn configure_routes(cfg: &mut web::ServiceConfig, admin_prefix: &AdminApiPrefix) {
     cfg.service(openapi_json)
         .service(swagger_ui())
-        .service(list_products)
-        .service(get_product)
         .service(create_cart)
         .service(get_cart)
         .service(add_cart_line)
@@ -119,7 +118,7 @@ mod tests {
     async fn healthz_returns_ok_json() {
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(commerce_http_kernel()))
+                .app_data(web::Data::new(commerce_http_kernel(None)))
                 .configure(routes),
         )
         .await;
@@ -138,7 +137,7 @@ mod tests {
     async fn swagger_ui_serves_html() {
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(commerce_http_kernel()))
+                .app_data(web::Data::new(commerce_http_kernel(None)))
                 .configure(routes),
         )
         .await;
@@ -151,7 +150,7 @@ mod tests {
     async fn openapi_json_lists_product_paths() {
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(commerce_http_kernel()))
+                .app_data(web::Data::new(commerce_http_kernel(None)))
                 .configure(routes),
         )
         .await;
@@ -173,7 +172,7 @@ mod tests {
         let prefix = AdminApiPrefix::parse("bk-test1").expect("prefix");
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(commerce_http_kernel()))
+                .app_data(web::Data::new(commerce_http_kernel(None)))
                 .app_data(web::Data::new(AdminAuthConfig::from_token("tok")))
                 .configure(|cfg| configure_app(cfg, &prefix)),
         )
@@ -202,7 +201,7 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("mkdir");
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(commerce_http_kernel()))
+                .app_data(web::Data::new(commerce_http_kernel(None)))
                 .configure(|cfg| {
                     install_routes::configure_install(cfg, &dir);
                     configure_serenade_front(cfg);

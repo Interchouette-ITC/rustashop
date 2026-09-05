@@ -1,7 +1,7 @@
 //! Integration tests for cart HTTP routes.
 
 use actix_web::{test, web, App};
-use rustashop_api::{routes, CartResponse};
+use rustashop_api::{commerce_http_kernel, routes, CartResponse};
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
 
@@ -17,6 +17,7 @@ async fn cart_crud_add_update_remove_and_totals() {
     let catalog = exclusive_seeded_catalog().await;
     let app = test::init_service(
         App::new()
+            .app_data(web::Data::new(commerce_http_kernel(Some(catalog.clone()))))
             .app_data(web::Data::new(catalog))
             .configure(routes),
     )
