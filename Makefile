@@ -23,9 +23,24 @@ COMPOSE := docker compose -f docker/compose.yml --project-directory $(ROOT)
 FORCE ?= 0
 CVE_LITE_CLI := cve-lite-cli@1.33.0
 
+# Published API image (local compose still tags rustashop-api:local).
+HUB_IMAGE ?= interchouette/rustashop
+GHCR_PERSONAL_IMAGE ?= ghcr.io/groussac/rustashop
+GHCR_WORKER_IMAGE ?= ghcr.io/interchouette/rustashop
+GHCR_ORG_IMAGE ?= ghcr.io/interchouette-itc/rustashop
+DOCKERFILE ?= docker/Dockerfile
+DOCKER_BUILDKIT ?= 1
+TAG ?= latest
+APP_VERSION ?= $(shell awk '/^version = /{gsub(/"/, "", $$3); print $$3; exit}' Cargo.toml)
+CI ?= 0
+
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci \
+	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
+	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
+	docker-push-release docker-push-release-hub \
+	docker-push-release-ghcr-personal docker-push-release-ghcr-itc
 
 SEAORM_PACKAGES := -p rustashop-persist -p rustashop-persist-seaorm -p rustashop-api
 SEAORM_FEATURES := --no-default-features --features persist-seaorm
@@ -64,9 +79,13 @@ help:
 	@echo "  make db-migrate-seaorm run SeaORM migrations (needs db-up, DATABASE_URL)"
 	@echo "  make db-seed    load catalog seed (idempotent; never drops data)"
 	@echo "  make db-reset   DROP SCHEMA public + migrate (requires CONFIRM=YES)"
+	@echo "  make docker-build       Build $(HUB_IMAGE):$(TAG) (+ :$(APP_VERSION))"
+	@echo "  make docker-build-dev   Build and tag :dev (Hub + GHCR names)"
+	@echo "  make docker-push-dev    Push :dev (local interactive logins)"
+	@echo "  make docker-push-release  Push :$(APP_VERSION) + :latest (split targets for CI)"
 	@echo "  make clean      cargo clean"
 	@echo ""
-	@echo "Overrides: API_BIND=$(API_BIND) SHOP_ANGULAR_PORT=$(SHOP_ANGULAR_PORT) ADMIN_ANGULAR_PORT=$(ADMIN_ANGULAR_PORT) SHOP_LEPTOS_PORT=$(SHOP_LEPTOS_PORT) RUSTASHOP_API_PROXY FORCE=$(FORCE) CONFIRM="
+	@echo "Overrides: API_BIND=$(API_BIND) SHOP_ANGULAR_PORT=$(SHOP_ANGULAR_PORT) ADMIN_ANGULAR_PORT=$(ADMIN_ANGULAR_PORT) SHOP_LEPTOS_PORT=$(SHOP_LEPTOS_PORT) RUSTASHOP_API_PROXY FORCE=$(FORCE) CONFIRM= HUB_IMAGE=$(HUB_IMAGE) APP_VERSION=$(APP_VERSION)"
 
 check:
 	cd $(ROOT) && $(CARGO) check --workspace
@@ -325,6 +344,81 @@ run-api:
 
 stack-up:
 	cd $(ROOT) && $(COMPOSE) up --build -d
+
+docker-build:
+	cd $(ROOT) && DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build \
+		--network=host \
+		-t $(HUB_IMAGE):$(TAG) \
+		-t $(HUB_IMAGE):$(APP_VERSION) \
+		-f $(DOCKERFILE) \
+		.
+
+docker-build-no-cache:
+	cd $(ROOT) && DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build \
+		--no-cache \
+		--network=host \
+		-t $(HUB_IMAGE):$(TAG) \
+		-t $(HUB_IMAGE):$(APP_VERSION) \
+		-f $(DOCKERFILE) \
+		.
+
+docker-build-dev:
+	cd $(ROOT) && DOCKER_BUILDKIT=$(DOCKER_BUILDKIT) docker build \
+		--network=host \
+		-t rustashop:dev \
+		-t $(HUB_IMAGE):dev \
+		-t $(GHCR_PERSONAL_IMAGE):dev \
+		-t $(GHCR_WORKER_IMAGE):dev \
+		-t $(GHCR_ORG_IMAGE):dev \
+		-f $(DOCKERFILE) \
+		.
+
+docker-push-dev-hub:
+	docker push $(HUB_IMAGE):dev
+
+docker-push-dev-ghcr-personal:
+	docker push $(GHCR_PERSONAL_IMAGE):dev
+
+docker-push-dev-ghcr-itc:
+	docker push $(GHCR_WORKER_IMAGE):dev
+	docker push $(GHCR_ORG_IMAGE):dev
+
+docker-push-dev:
+	@if [ "$(CI)" = "1" ]; then \
+		echo "Use docker-push-dev-hub / docker-push-dev-ghcr-personal / docker-push-dev-ghcr-itc in CI"; \
+		exit 1; \
+	fi
+	@echo "Logging in to Docker Hub..."; \
+	docker login || { echo "Docker Hub login failed"; exit 1; }
+	$(MAKE) docker-push-dev-hub
+	@echo "Logging in to GHCR (personal)..."; \
+	docker login ghcr.io || { echo "Skipping personal GHCR"; exit 0; }
+	$(MAKE) docker-push-dev-ghcr-personal
+	@echo "Logging in to GHCR (Interchouette / ITC)..."; \
+	docker login ghcr.io || { echo "Skipping ITC GHCR"; exit 0; }
+	$(MAKE) docker-push-dev-ghcr-itc
+
+docker-push-release-hub:
+	docker push $(HUB_IMAGE):$(APP_VERSION)
+	docker push $(HUB_IMAGE):latest
+
+docker-push-release-ghcr-personal:
+	docker tag $(HUB_IMAGE):$(APP_VERSION) $(GHCR_PERSONAL_IMAGE):$(APP_VERSION)
+	docker tag $(HUB_IMAGE):latest $(GHCR_PERSONAL_IMAGE):latest
+	docker push $(GHCR_PERSONAL_IMAGE):$(APP_VERSION)
+	docker push $(GHCR_PERSONAL_IMAGE):latest
+
+docker-push-release-ghcr-itc:
+	docker tag $(HUB_IMAGE):$(APP_VERSION) $(GHCR_WORKER_IMAGE):$(APP_VERSION)
+	docker tag $(HUB_IMAGE):latest $(GHCR_WORKER_IMAGE):latest
+	docker tag $(HUB_IMAGE):$(APP_VERSION) $(GHCR_ORG_IMAGE):$(APP_VERSION)
+	docker tag $(HUB_IMAGE):latest $(GHCR_ORG_IMAGE):latest
+	docker push $(GHCR_WORKER_IMAGE):$(APP_VERSION)
+	docker push $(GHCR_WORKER_IMAGE):latest
+	docker push $(GHCR_ORG_IMAGE):$(APP_VERSION)
+	docker push $(GHCR_ORG_IMAGE):latest
+
+docker-push-release: docker-push-release-hub docker-push-release-ghcr-personal docker-push-release-ghcr-itc
 
 db-up:
 	cd $(ROOT) && $(COMPOSE) up -d postgres

@@ -40,6 +40,7 @@ services:
     environment:
       DATABASE_URL: postgres://rustashop:rustashop@postgres:5432/rustashop
       RUSTASHOP_BIND: 0.0.0.0:8080
+      RUSTASHOP_ROOT: /app
     ports:
       - "8080:8080"
     depends_on:

@@ -17,9 +17,19 @@ Operator creates Render services; **no Render Blueprint / service YAML is mainta
 | `rustashop.eu`                | Redirect → `rustashop.ai` (for now)                                 |
 | `rustashop.fr`                | Redirect → `rustashop.ai` (for now)                                 |
 
+## Images
+
+| Pull (preferred) | Role |
+| --- | --- |
+| `interchouette/rustashop:dev` | Tip / rolling API (+ migrate binary in the same image) |
+| `interchouette/rustashop:X.Y.Z` | Release matching workspace `Cargo.toml` / GitHub Release `vX.Y.Z` |
+| `ghcr.io/interchouette-itc/rustashop:dev` | Same tip on org GHCR |
+
+Local compose continues to build `rustashop-api:local` via `make stack-up`. See [`docker/README.md`](../docker/README.md).
+
 ## Deploy order (intent)
 
-1. Ship a **dev image** and attach it to `rustashop.interchouette.net` (Render service owned by the operator; MCP/ops may assist image publish elsewhere).
+1. Ship a **dev image** and attach it to `rustashop.interchouette.net` (Render service owned by the operator; pull `interchouette/rustashop:dev`).
 2. Point marketing at `rustashop.ai`.
 3. Stand up `rustashop.io` / `rustashop.dev` when product and demo builds exist.
 4. `rustashop.app` follows the mobile client.
@@ -35,4 +45,4 @@ Operator creates Render services; **no Render Blueprint / service YAML is mainta
 | App (`app`)                         | Ionic                            |
 | Tip (`interchouette.net` subdomain) | Dev API / preview                |
 
-Exact Compose/image names land with the ops epic when Docker exists. Do not invent Render service files here.
+Do not invent Render service files here.

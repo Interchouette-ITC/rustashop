@@ -26,9 +26,11 @@ WORKDIR /app
 COPY --from=builder /src/target/release/rustashop-api /app/rustashop-api
 COPY --from=builder /src/target/release/rustashop-migrate /app/rustashop-migrate
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY config /app/config
 
 ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 ENV RUSTASHOP_BIND=0.0.0.0:8080
+ENV RUSTASHOP_ROOT=/app
 
 EXPOSE 8080
 
