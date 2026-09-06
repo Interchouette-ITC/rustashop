@@ -64,5 +64,3 @@ make docker-push-release   # :version + :latest (local; CI uses split targets)
 | `DOCKER_USERNAME` / `DOCKER_PASSWORD` | Docker Hub (`interchouette`) |
 | `GHCR_USERNAME` / `GHCR_PAT` | Personal GHCR |
 | `GHCR_USERNAME_ITC` / `GHCR_PAT_ITC` | Worker + org GHCR |
-
-Hub Overview text is synced from [`DOCKERHUB.md`](DOCKERHUB.md).
