@@ -123,8 +123,8 @@ impl Cart {
 }
 
 #[derive(Serialize)]
-struct AddLineBody<'a> {
-    variant_id: &'a str,
+struct AddLineBody<'body> {
+    variant_id: &'body str,
     quantity: i32,
 }
 

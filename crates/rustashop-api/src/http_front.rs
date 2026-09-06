@@ -109,13 +109,13 @@ pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
     })
 }
 
-struct DispatchInput<'a> {
-    query: Option<&'a str>,
-    id: Option<&'a str>,
-    line_id: Option<&'a str>,
-    body: &'a [u8],
-    idempotency: Option<&'a str>,
-    bearer: Option<&'a str>,
+struct DispatchInput<'req> {
+    query: Option<&'req str>,
+    id: Option<&'req str>,
+    line_id: Option<&'req str>,
+    body: &'req [u8],
+    idempotency: Option<&'req str>,
+    bearer: Option<&'req str>,
 }
 
 async fn dispatch_route(
