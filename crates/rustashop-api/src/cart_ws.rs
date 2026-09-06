@@ -1,11 +1,11 @@
 //! Actix WebSocket endpoint for cart session push.
 
 use actix_web::{web, HttpRequest, HttpResponse};
-use actix_ws::Message;
 use rustashop_persist::CatalogRepository;
 use serde::Deserialize;
 use tracing::debug;
 
+use crate::cart_ws_session::run_cart_ws_session;
 use crate::realtime::CartHub;
 
 /// Query string for cart socket auth (`?token=`).
@@ -75,37 +75,16 @@ pub async fn cart_ws(
     Ok(response)
 }
 
-#[allow(clippy::future_not_send)]
-async fn run_cart_ws_session(
-    mut session: actix_ws::Session,
-    mut msg_stream: actix_ws::MessageStream,
-    mut events: tokio::sync::broadcast::Receiver<String>,
-) {
-    loop {
-        tokio::select! {
-            msg = msg_stream.recv() => {
-                match msg {
-                    Some(Ok(Message::Ping(bytes))) => {
-                        if session.pong(&bytes).await.is_err() {
-                            break;
-                        }
-                    }
-                    Some(Ok(Message::Close(_)) | Err(_)) | None => break,
-                    Some(Ok(_)) => {}
-                }
-            }
-            event = events.recv() => {
-                match event {
-                    Ok(payload) => {
-                        if session.text(payload).await.is_err() {
-                            break;
-                        }
-                    }
-                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
-                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {}
-                }
-            }
-        }
+#[cfg(test)]
+mod tests {
+    use super::auth_failure_response;
+
+    #[test]
+    fn auth_failure_maps_known_statuses() {
+        assert_eq!(auth_failure_response(401).status(), 401);
+        assert_eq!(auth_failure_response(403).status(), 403);
+        assert_eq!(auth_failure_response(404).status(), 404);
+        assert_eq!(auth_failure_response(500).status(), 500);
+        assert_eq!(auth_failure_response(418).status(), 500);
     }
-    let _ = session.close(None).await;
 }

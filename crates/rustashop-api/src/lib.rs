@@ -5,6 +5,7 @@ mod admin_orders;
 mod admin_prefix;
 mod admin_products;
 mod cart_ws;
+mod cart_ws_session;
 mod carts;
 mod checkout;
 mod error;
