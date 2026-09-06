@@ -4,7 +4,7 @@ use actix_ws::Message;
 
 /// Drains client frames and forwards hub payloads until the socket closes.
 #[allow(clippy::future_not_send)]
-pub(crate) async fn run_cart_ws_session(
+pub async fn run_cart_ws_session(
     mut session: actix_ws::Session,
     mut msg_stream: actix_ws::MessageStream,
     mut events: tokio::sync::broadcast::Receiver<String>,
