@@ -13,6 +13,7 @@ coverage:
 ignore:
   - "crates/rustashop-api/src/bin"
   - "crates/rustashop-api/src/main.rs"
+  - "crates/rustashop-api/src/cart_ws_session.rs"
   - "crates/rustashop-persist-sqlx/src/bin"
   - "crates/rustashop-persist-seaorm/src/bin"
   - "shops/angular/generated"

@@ -1,12 +1,12 @@
 //! Serenade listen entry point for the commerce HTTP API.
 
 use rustashop_api::{
-    bind_address, commerce_http_kernel, install_artefacts_present, shop_root, AdminApiPrefix,
-    AdminAuthConfig, CommerceFrontConfig, ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV,
-    ADMIN_TOKEN_ENV_ALT, BIND_ENV, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
+    bind_address, bind_commerce_server, commerce_http_kernel, install_artefacts_present, shop_root,
+    AdminApiPrefix, AdminAuthConfig, CartHub, CommerceFrontConfig, ADMIN_API_PREFIX_ENV,
+    ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, BIND_ENV, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
     INSTALL_OFF_DIR_NAME,
 };
-use serenade_http_actix::{await_bound, bind_server};
+use serenade_http_actix::await_bound;
 use tracing::{error, info};
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -101,6 +101,7 @@ async fn run() -> std::io::Result<()> {
         .await
         .map_err(std::io::Error::other)?;
     info!("catalog repository ready");
+    let hub = CartHub::new();
     let admin_auth = AdminAuthConfig::from_env();
     let admin_prefix = AdminApiPrefix::from_env();
     if admin_auth.is_configured() {
@@ -121,14 +122,16 @@ async fn run() -> std::io::Result<()> {
     }
 
     let http_kernel = commerce_http_kernel(CommerceFrontConfig {
-        catalog: Some(catalog),
+        catalog: Some(catalog.clone()),
         admin_auth,
         admin_prefix: admin_prefix.as_str().to_owned(),
         install_root: Some(root),
+        cart_hub: Some(hub.clone()),
     });
-    let server = bind_server(&bind, http_kernel).map_err(|error| bind_error(&bind, &error))?;
-    info!("listening on http://{bind} (Serenade listen)");
-    let result = await_bound(server).await;
+    let bound = bind_commerce_server(&bind, http_kernel, hub, catalog)
+        .map_err(|error| bind_error(&bind, &error))?;
+    info!("listening on http://{bind} (Serenade listen + cart WS)");
+    let result = await_bound(bound.server).await;
     if let Err(error) = kernel.shutdown() {
         tracing::warn!("serenade kernel shutdown: {error}");
     }

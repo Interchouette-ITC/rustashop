@@ -24,6 +24,7 @@ use crate::health::health_json_body;
 use crate::install_routes::{install_complete_response, install_status_response};
 use crate::openapi::openapi_json_response;
 use crate::products::{get_product_response, list_products_response, ListProductsQuery};
+use crate::realtime::CartHub;
 
 const HEALTHZ_ROUTE: &str = "healthz";
 const LIST_PRODUCTS_ROUTE: &str = "list_products";
@@ -53,6 +54,8 @@ pub struct CommerceFrontConfig {
     pub admin_prefix: String,
     /// Shop root used for install API disk checks.
     pub install_root: Option<PathBuf>,
+    /// Optional cart WebSocket hub for mutation push.
+    pub cart_hub: Option<CartHub>,
 }
 
 impl CommerceFrontConfig {
@@ -64,6 +67,7 @@ impl CommerceFrontConfig {
             admin_auth: AdminAuthConfig::from_token(""),
             admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
             install_root: None,
+            cart_hub: None,
         }
     }
 }
@@ -125,14 +129,28 @@ async fn dispatch_route(
             list_products_via_catalog(config.catalog.as_ref(), input.query).await
         }
         GET_PRODUCT_ROUTE => get_product_via_catalog(config.catalog.as_ref(), input.id).await,
-        CREATE_CART_ROUTE => create_cart_via_catalog(config.catalog.as_ref(), input.body).await,
+        CREATE_CART_ROUTE => {
+            create_cart_via_catalog(
+                config.catalog.as_ref(),
+                config.cart_hub.as_ref(),
+                input.body,
+            )
+            .await
+        }
         GET_CART_ROUTE => get_cart_via_catalog(config.catalog.as_ref(), input.id).await,
         ADD_CART_LINE_ROUTE => {
-            add_cart_line_via_catalog(config.catalog.as_ref(), input.id, input.body).await
+            add_cart_line_via_catalog(
+                config.catalog.as_ref(),
+                config.cart_hub.as_ref(),
+                input.id,
+                input.body,
+            )
+            .await
         }
         UPDATE_CART_LINE_ROUTE => {
             update_cart_line_via_catalog(
                 config.catalog.as_ref(),
+                config.cart_hub.as_ref(),
                 input.id,
                 input.line_id,
                 input.body,
@@ -140,7 +158,13 @@ async fn dispatch_route(
             .await
         }
         DELETE_CART_LINE_ROUTE => {
-            delete_cart_line_via_catalog(config.catalog.as_ref(), input.id, input.line_id).await
+            delete_cart_line_via_catalog(
+                config.catalog.as_ref(),
+                config.cart_hub.as_ref(),
+                input.id,
+                input.line_id,
+            )
+            .await
         }
         PLACE_ORDER_ROUTE => {
             place_order_via_catalog(config.catalog.as_ref(), input.body, input.idempotency).await
@@ -205,11 +229,15 @@ async fn get_product_via_catalog(
     get_product_response(catalog, product_id).await
 }
 
-async fn create_cart_via_catalog(catalog: Option<&CatalogRepository>, body: &[u8]) -> Response {
+async fn create_cart_via_catalog(
+    catalog: Option<&CatalogRepository>,
+    hub: Option<&CartHub>,
+    body: &[u8],
+) -> Response {
     let Some(catalog) = catalog else {
         return api_error_json_response(&ApiError::Internal);
     };
-    create_cart_response(catalog, body).await
+    create_cart_response(catalog, hub, body).await
 }
 
 async fn get_cart_via_catalog(
@@ -227,6 +255,7 @@ async fn get_cart_via_catalog(
 
 async fn add_cart_line_via_catalog(
     catalog: Option<&CatalogRepository>,
+    hub: Option<&CartHub>,
     cart_id: Option<&str>,
     body: &[u8],
 ) -> Response {
@@ -236,11 +265,12 @@ async fn add_cart_line_via_catalog(
     let Some(cart_id) = cart_id else {
         return api_error_json_response(&ApiError::NotFound);
     };
-    add_cart_line_response(catalog, cart_id, body).await
+    add_cart_line_response(catalog, hub, cart_id, body).await
 }
 
 async fn update_cart_line_via_catalog(
     catalog: Option<&CatalogRepository>,
+    hub: Option<&CartHub>,
     cart_id: Option<&str>,
     line_id: Option<&str>,
     body: &[u8],
@@ -254,11 +284,12 @@ async fn update_cart_line_via_catalog(
     let Some(line_id) = line_id else {
         return api_error_json_response(&ApiError::NotFound);
     };
-    update_cart_line_response(catalog, cart_id, line_id, body).await
+    update_cart_line_response(catalog, hub, cart_id, line_id, body).await
 }
 
 async fn delete_cart_line_via_catalog(
     catalog: Option<&CatalogRepository>,
+    hub: Option<&CartHub>,
     cart_id: Option<&str>,
     line_id: Option<&str>,
 ) -> Response {
@@ -271,7 +302,7 @@ async fn delete_cart_line_via_catalog(
     let Some(line_id) = line_id else {
         return api_error_json_response(&ApiError::NotFound);
     };
-    delete_cart_line_response(catalog, cart_id, line_id).await
+    delete_cart_line_response(catalog, hub, cart_id, line_id).await
 }
 
 async fn place_order_via_catalog(
@@ -785,17 +816,19 @@ mod tests {
     async fn cart_helpers_require_path_params() {
         assert_eq!(get_cart_via_catalog(None, None).await.status(), 500);
         assert_eq!(
-            add_cart_line_via_catalog(None, None, b"{}").await.status(),
-            500
-        );
-        assert_eq!(
-            update_cart_line_via_catalog(None, None, None, b"{}")
+            add_cart_line_via_catalog(None, None, None, b"{}")
                 .await
                 .status(),
             500
         );
         assert_eq!(
-            delete_cart_line_via_catalog(None, None, None)
+            update_cart_line_via_catalog(None, None, None, None, b"{}")
+                .await
+                .status(),
+            500
+        );
+        assert_eq!(
+            delete_cart_line_via_catalog(None, None, None, None)
                 .await
                 .status(),
             500
@@ -823,31 +856,31 @@ mod tests {
             404
         );
         assert_eq!(
-            add_cart_line_via_catalog(Some(&catalog), None, b"{}")
+            add_cart_line_via_catalog(Some(&catalog), None, None, b"{}")
                 .await
                 .status(),
             404
         );
         assert_eq!(
-            update_cart_line_via_catalog(Some(&catalog), None, Some("l"), b"{}")
+            update_cart_line_via_catalog(Some(&catalog), None, None, Some("l"), b"{}")
                 .await
                 .status(),
             404
         );
         assert_eq!(
-            update_cart_line_via_catalog(Some(&catalog), Some("c"), None, b"{}")
+            update_cart_line_via_catalog(Some(&catalog), None, Some("c"), None, b"{}")
                 .await
                 .status(),
             404
         );
         assert_eq!(
-            delete_cart_line_via_catalog(Some(&catalog), None, Some("l"))
+            delete_cart_line_via_catalog(Some(&catalog), None, None, Some("l"))
                 .await
                 .status(),
             404
         );
         assert_eq!(
-            delete_cart_line_via_catalog(Some(&catalog), Some("c"), None)
+            delete_cart_line_via_catalog(Some(&catalog), None, Some("c"), None)
                 .await
                 .status(),
             404

@@ -34,6 +34,7 @@ serenade-http = { git = "https://github.com/Interchouette-ITC/Serenade.git", bra
 serenade-http-actix = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 actix-web = "4"
 actix-files = "0.6"
+actix-ws = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.9", default-features = false, features = [
@@ -57,7 +58,10 @@ sea-orm-migration = { version = "2.0.2", default-features = false, features = [
     "with-uuid",
 ] }
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
+tokio-tungstenite = { version = "0.26", default-features = false, features = [
+    "connect",
+] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "ansi"] }
 utoipa = { version = "5", features = ["actix_extras"] }

@@ -45,7 +45,7 @@ Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, 
 
 | Surface | Framework | Owns |
 | --- | --- | --- |
-| Commerce API | **Serenade HttpKernel** (Actix listen adapter) | Catalog, cart, checkout, orders, admin REST; WebSocket later |
+| Commerce API | **Serenade HttpKernel** (Actix listen adapter) + cart WebSocket | Catalog, cart, checkout, orders, admin REST; `GET /v1/carts/{id}/ws` push |
 | MCP / tools | **Axum** | Streamable MCP and narrow agent endpoints |
 
 Both share domain and persist. OpenAPI is generated with **utoipa** (`/openapi.json`). Regenerated file: `openapi/openapi.json` via `make openapi`.
@@ -56,7 +56,8 @@ Both share domain and persist. OpenAPI is generated with **utoipa** (`/openapi.j
 GET  /v1/products
 POST /v1/carts → lines
 POST /v1/checkout
-  → serenade_http_actix::listen → AsyncHttpKernel
+  → serenade_http_actix / bind_commerce_server → AsyncHttpKernel
+  → (mutations) CartHub → GET /v1/carts/{id}/ws
   → rustashop-api front controllers
   → serenade-contracts repository traits
   → Sqlx* | SeaOrm* adapters
