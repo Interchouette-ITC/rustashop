@@ -109,13 +109,13 @@
 <a href=#109 id=109 data-nosnippet>109</a>    })
 <a href=#110 id=110 data-nosnippet>110</a>}
 <a href=#111 id=111 data-nosnippet>111</a>
-<a href=#112 id=112 data-nosnippet>112</a><span class="kw">struct </span>DispatchInput&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#113 id=113 data-nosnippet>113</a>    query: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
-<a href=#114 id=114 data-nosnippet>114</a>    id: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
-<a href=#115 id=115 data-nosnippet>115</a>    line_id: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
-<a href=#116 id=116 data-nosnippet>116</a>    body: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u8],
-<a href=#117 id=117 data-nosnippet>117</a>    idempotency: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
-<a href=#118 id=118 data-nosnippet>118</a>    bearer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
+<a href=#112 id=112 data-nosnippet>112</a><span class="kw">struct </span>DispatchInput&lt;<span class="lifetime">'req</span>&gt; {
+<a href=#113 id=113 data-nosnippet>113</a>    query: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'req </span>str&gt;,
+<a href=#114 id=114 data-nosnippet>114</a>    id: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'req </span>str&gt;,
+<a href=#115 id=115 data-nosnippet>115</a>    line_id: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'req </span>str&gt;,
+<a href=#116 id=116 data-nosnippet>116</a>    body: <span class="kw-2">&amp;</span><span class="lifetime">'req </span>[u8],
+<a href=#117 id=117 data-nosnippet>117</a>    idempotency: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'req </span>str&gt;,
+<a href=#118 id=118 data-nosnippet>118</a>    bearer: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'req </span>str&gt;,
 <a href=#119 id=119 data-nosnippet>119</a>}
 <a href=#120 id=120 data-nosnippet>120</a>
 <a href=#121 id=121 data-nosnippet>121</a><span class="kw">async fn </span>dispatch_route(
