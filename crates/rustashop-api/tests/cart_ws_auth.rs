@@ -85,7 +85,38 @@ async fn cart_ws_rejects_wrong_token() {
     assert_eq!(bad_resp.status(), 403);
 }
 
+#[actix_web::test]
+async fn cart_ws_returns_500_when_catalog_errors() {
+    let Ok(_) = std::env::var("DATABASE_URL") else {
+        eprintln!("skip: DATABASE_URL is not set");
+        return;
+    };
+    let (catalog, pool) = exclusive_seeded_catalog_with_pool().await;
+    let hub = CartHub::new();
+    let kernel = commerce_http_kernel(CommerceFrontConfig {
+        catalog: Some(catalog.clone()),
+        cart_hub: Some(hub.clone()),
+        ..CommerceFrontConfig::test_default()
+    });
+    pool.close().await;
+    let app = test::init_service(commerce_app(
+        web::Data::new(kernel),
+        web::Data::new(hub),
+        web::Data::new(catalog),
+    ))
+    .await;
+    let req = test::TestRequest::get()
+        .uri("/v1/carts/11111111-1111-1111-1111-111111111111/ws?token=x")
+        .to_request();
+    let resp = test::call_service(&app, req).await;
+    assert_eq!(resp.status(), 500);
+}
+
 async fn exclusive_seeded_catalog() -> CatalogRepository {
+    exclusive_seeded_catalog_with_pool().await.0
+}
+
+async fn exclusive_seeded_catalog_with_pool() -> (CatalogRepository, sqlx::PgPool) {
     use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
     use sqlx::postgres::PgPoolOptions;
 
@@ -110,5 +141,6 @@ async fn exclusive_seeded_catalog() -> CatalogRepository {
         .expect("create");
     migrate(&pool).await.expect("migrate");
     seed_catalog(&pool).await.expect("seed");
-    SqlxCatalogRepository::new(pool)
+    let catalog = SqlxCatalogRepository::new(pool.clone());
+    (catalog, pool)
 }
