@@ -1,4 +1,4 @@
-//! Admin order list and status PATCH (JSON via Serenade front; `OpenAPI` stubs stay here).
+//! Admin order list and status PATCH (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
 use rustashop_domain::OrderState;
 use rustashop_persist::CatalogRepository;

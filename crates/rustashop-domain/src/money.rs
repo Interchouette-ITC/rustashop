@@ -47,7 +47,7 @@ impl std::fmt::Display for Currency {
 }
 
 /// Formats as `{major}.{frac:02} {currency}` assuming two decimal minor units
-/// (cents). Matches EUR/USD-style currencies used by the storefront MVP.
+/// (cents). Matches EUR/USD-style currencies used by the storefront.
 impl std::fmt::Display for Money {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let negative = self.amount_minor < 0;

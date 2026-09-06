@@ -69,7 +69,7 @@ differ by stack; **template markup is shared** under `templates/<id>/`
 
 - Same API types (OpenAPI codegen)
 - Same WS event names
-- Same MVP flows (browse → cart → checkout)
+- Same browse → cart → checkout flows
 
 Default template package: `templates/shop/default` (`@rustashop/template-shop-default`).
 Hosts keep controllers only; build adapters land in each shop’s `generated/`
@@ -80,12 +80,12 @@ Hosts keep controllers only; build adapters land in each shop’s `generated/`
 Track B is **Leptos as the web host** (CSR wasm today) with **rangular** Host
 controllers and the same `templates/<id>/` files as Angular. Make target:
 `make shop-leptos-rangular`. Path: `shops/leptos-rangular`. It is not
-“rangular alone”: Leptos is the renderer we want to grow for shop **and**, later,
+“rangular alone”: Leptos is the renderer we want to grow for shop **and**, when forms and native hosts are ready,
 back-office.
 
 ## Admin (pluggable)
 
-The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may plug in (Angular, React, Vue, Leptos+rangular, …). rustashop ships an **Angular sample** for MVP speed; that is not a stack lock. Long-term intent: Leptos+rangular admin once forms (rangular #22) and optionally GPUI (#37) are ready.
+The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may plug in (Angular, React, Vue, Leptos+rangular, …). rustashop ships an **Angular sample** as the default operator SPA; that is not a stack lock. Leptos+rangular admin follows once forms (rangular #22) and optionally GPUI (#37) are ready.
 
 ## Make targets (shops)
 
@@ -115,11 +115,11 @@ Upstream rangular work splits into **two blockers** with different blast radius:
 
 Suggested order:
 
-1. **Commerce API** MVP (landed through cart/checkout)
+1. **Commerce API** (landed through cart/checkout)
 2. **Angular shop** (#21 scaffold, #22 pages) - stable SPA path
 3. **rangular #22** (forms) - unlocks Leptos+rangular checkout **and** future BO
 4. **Leptos+rangular shop** browse + cart (#23, #24)
-5. **Admin API** + pluggable SPA sample (#6); Angular sample first, Leptos+rangular BO later
+5. **Admin API** + pluggable SPA sample (#6); Angular sample first, Leptos+rangular BO when ready
 6. **rangular #37** (GPUI) - native admin/desktop
 
 ## Non-goals (early)

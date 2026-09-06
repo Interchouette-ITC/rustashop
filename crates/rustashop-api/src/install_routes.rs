@@ -204,7 +204,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::await_holding_lock)]
     fn complete_success_wipe_and_invalid_prefix() {
         let _guard = crate::install_env::INSTALL_PROCESS_ENV_LOCK
             .lock()
@@ -262,7 +261,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::await_holding_lock)]
     fn complete_maps_io_error_to_500() {
         let _guard = crate::install_env::INSTALL_PROCESS_ENV_LOCK
             .lock()
@@ -290,6 +288,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir);
     }
 
+    // Process env must stay stable across Actix test awaits; hold the lock for the whole test.
     #[actix_web::test]
     #[allow(clippy::await_holding_lock)]
     async fn configure_install_from_env_registers_static_when_dist_present() {

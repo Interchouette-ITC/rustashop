@@ -1,4 +1,4 @@
-//! Catalog product handlers (JSON via Serenade front; `OpenAPI` stubs stay here).
+//! Catalog product handlers (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
 use rustashop_domain::{Product, ProductVariant};
 use rustashop_persist::CatalogRepository;

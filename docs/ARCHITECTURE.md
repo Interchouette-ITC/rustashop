@@ -6,7 +6,7 @@ rustashop is a Rust commerce product. The [Serenade](https://github.com/Intercho
 
 ```text
 Clients (Angular | Leptos+rangular)
-        │  OpenAPI (+ WebSocket later)
+        │  OpenAPI + cart WebSocket
         ▼
 rustashop-api (Actix)     rustashop-mcp (Axum name marker)
         │

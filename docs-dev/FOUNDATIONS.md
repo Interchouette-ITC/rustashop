@@ -1,6 +1,6 @@
 # rustashop foundations
 
-This document frames the **technical identity** of rustashop for a modern, Wasm-aware commerce kernel. It does not replace the MVP checklist in the product README (`docs/README.md`). It names the axes we want the product to grow into so architecture discussions stay durable.
+This document frames the **technical identity** of rustashop for a modern, Wasm-aware commerce kernel. It complements the shipped commerce checklist in the product README (`docs/README.md`). It names the axes the product grows into so architecture discussions stay durable.
 
 ## Product identity (short)
 
@@ -18,7 +18,7 @@ GraphQL and columnar/analytics tools may appear later as **API or reporting choi
 
 ## HTTP stack (house pattern)
 
-Sibling products use a **split stack**: a full **Actix-web** kernel for the product API, and a lighter **Axum** surface for MCP and agent tools. rustashop follows the same cocktail.
+A **split stack**: a full **Actix-web** kernel for the product API, and a lighter **Axum** surface for MCP and agent tools.
 
 | Surface             | Framework                                               | Owns                                                                 |
 | ------------------- | ------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -28,7 +28,7 @@ Sibling products use a **split stack**: a full **Actix-web** kernel for the prod
 
 The MCP layer **reuses domain capabilities** from the kernel (HTTP internal calls and/or shared `domain` crates). It does not reimplement catalog, cart, or checkout.
 
-Early crate layout: `domain`, `persist`, **`api`** (Actix), **`mcp`** (Axum), later `realtime`, `extensions`, `sandbox`.
+Crate layout today: `domain`, `persist`, **`api`** (Actix), **`mcp`** (Axum). Room remains for `realtime`, `extensions`, and `sandbox` crates when those surfaces land.
 
 ## Two contracts, one domain
 
@@ -65,23 +65,23 @@ Meteor’s habit was: live sync is the default, not an afterthought. rustashop a
 
 Detail: [REALTIME.md](REALTIME.md).
 
-## Roadmap axes (alongside MVP)
+## Growth axes (next to the shipped commerce surface)
 
-Ship the README vertical slice. In parallel (or immediately after the HTTP skeleton), design and stub these axes so they are not retrofit surprises:
+Catalog, cart, checkout, and orders already ship over OpenAPI (and cart WebSocket). Design these axes as first-class surfaces so they are not retrofit surprises:
 
 1. **Realtime gateway** - WebSocket surface + event schema next to OpenAPI.
 2. **Extension ABI v0** - one or two WIT hooks with a host harness and a fixture component.
 3. **Sandbox lane** - Wasmer-backed execution for scripts/agents with audit log (Angular admin drives it).
-4. **Polyglot acceptance** - PHP legacy adapters and, later, first-class connector stories (including native Rust↔Python options such as PyO3 for _in-process connectors_ where sandboxing is the wrong tool).
+4. **Polyglot acceptance** - PHP legacy adapters and first-class connector stories (including native Rust↔Python options such as PyO3 for _in-process connectors_ where sandboxing is the wrong tool).
 5. **Module isolation tests** - CI that loads a guest, denies DB, asserts capability boundaries.
 6. **AI-native tools** - discovery, shopping/catalog/support agents, MCP, autonomous jobs on the same domain ([AI-NATIVE.md](AI-NATIVE.md)).
 7. **Deploy surfaces** - `:dev` tip then `.ai` / `.io` / `.dev` / `.app` ([DOMAINS.md](DOMAINS.md)).
 
-These axes are product foundation, not a distraction from catalog/cart/checkout. Early crate layout (`domain`, `persist`, **`api`** on Actix, **`mcp`** on Axum, later `realtime`, `extensions`, `sandbox`) should leave room for them.
+These axes are product foundation, not a distraction from catalog/cart/checkout. Crate layout (`domain`, `persist`, **`api`** on Actix, **`mcp`** on Axum, then `realtime`, `extensions`, `sandbox` when needed) should leave room for them.
 
 ## Explicit non-goals for early foundations
 
-- Making “everything runs in Wasmer” the definition of MVP.
+- Making “everything runs in Wasmer” the definition of the commerce product.
 - Syncing the entire catalog over WebSocket as a CRDT experiment.
 - Replacing payment provider webhooks with WebSockets.
 - Letting sandboxed guests capture cards or commit inventory alone.

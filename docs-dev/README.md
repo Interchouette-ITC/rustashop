@@ -1,8 +1,8 @@
 # Developer foundations (`docs-dev`)
 
-Internal orientation for rustashop before and during early implementation. These notes capture **product and technical identity**: how we want the system to feel and which axes we invest in next to the MVP vertical slice in the [README](../docs/README.md).
+Internal orientation for rustashop: **product and technical identity**, and the axes that sit next to the commerce surface documented in the [README](../docs/README.md) (catalog, cart, checkout, orders, both UIs, OpenAPI, compose).
 
-Public contributor docs (`docs/ARCHITECTURE.md`, `docs/CONTRIBUTING.md`, …) still belong under the existing docs epics once the Cargo tree exists. **`docs-dev` is the living foundation set** so roadmap debates are not trapped in chat.
+Public contributor docs (`docs/ARCHITECTURE.md`, `docs/CONTRIBUTING.md`, …) live under `docs/`. **`docs-dev` is the living foundation set** so architecture debates are not trapped in chat.
 
 ## Documents
 
@@ -18,9 +18,9 @@ Public contributor docs (`docs/ARCHITECTURE.md`, `docs/CONTRIBUTING.md`, …) st
 | [EXTENSIONS.md](EXTENSIONS.md)         | WIT plugin ABI, host capabilities, OpenAPI vs WIT                                        |
 | [WASMER-SANDBOX.md](WASMER-SANDBOX.md) | Wasmer SDK: polyglot guests, agents, PHP legacy, playgrounds, connectors                 |
 
-## How this relates to the MVP
+## How this relates to the shipped commerce surface
 
-The README MVP (catalog, cart, checkout, orders, both UIs, OpenAPI, compose) stays the **first proof**. Foundations here say what we **design toward** so early crate and API choices do not paint us into a pure REST monolith with plugins bolted on later.
+The README surface (catalog, cart, checkout, orders, both UIs, OpenAPI, compose) is the **current proof**. Foundations here say what we **design toward** so crate and API choices leave room for realtime, extensions, sandbox, and AI tools without becoming a pure REST monolith with plugins bolted on.
 
 HTTP: **Actix-web** for the commerce kernel; **Axum** for MCP and agent tool surfaces ([FOUNDATIONS.md](FOUNDATIONS.md)).
 
