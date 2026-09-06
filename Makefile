@@ -25,7 +25,7 @@ CVE_LITE_CLI := cve-lite-cli@1.33.0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci
 
 SEAORM_PACKAGES := -p rustashop-persist -p rustashop-persist-seaorm -p rustashop-api
 SEAORM_FEATURES := --no-default-features --features persist-seaorm
@@ -43,6 +43,7 @@ help:
 	@echo "  make doc        rustdoc → docs/api-rust/ (-D warnings)"
 	@echo "  make doc-open   build docs and open docs/api-rust/index.html"
 	@echo "  make openapi    write $(OPENAPI_OUT) from utoipa"
+	@echo "  make openapi-check  regenerate OpenAPI and fail if $(OPENAPI_OUT) drifts"
 	@echo "  make shop-angular  serve Angular shop ($(SHOP_ANGULAR_DIR), port $(SHOP_ANGULAR_PORT); FORCE=1 reinstalls; RUSTASHOP_BASE_HREF=/)"
 	@echo "  make admin-angular serve Angular admin ($(ADMIN_ANGULAR_DIR), port $(ADMIN_ANGULAR_PORT); FORCE=1 reinstalls)"
 	@echo "  make shop-leptos-rangular  serve Leptos+rangular shop ($(SHOP_LEPTOS_DIR), port $(SHOP_LEPTOS_PORT))"
@@ -76,7 +77,7 @@ test:
 	cd $(ROOT) && $(CARGO) test $(SEAORM_PACKAGES) $(SEAORM_FEATURES)
 
 ## Local mirror of core CI jobs. Run before every PR create/update (see .cursor/rules/rustashop-ci-before-pr.mdc).
-ci: lint test doc audit deny
+ci: lint test doc openapi-check audit deny
 
 ## Requires `cargo install cargo-llvm-cov`. Writes `coverage/lcov.info`.
 ## Uses the stable toolchain so llvm-cov finds instrumented objects.
@@ -233,6 +234,17 @@ doc-clean:
 
 openapi:
 	cd $(ROOT) && $(CARGO) run -p rustashop-api --bin rustashop-openapi -- $(OPENAPI_OUT)
+
+## Regenerate OpenAPI into a temp file and fail if it differs from the committed dump.
+openapi-check:
+	@tmpdir=$$(mktemp -d) && \
+	trap 'rm -rf "$$tmpdir"' EXIT && \
+	cd $(ROOT) && $(CARGO) run -p rustashop-api --bin rustashop-openapi -- "$$tmpdir/openapi.json" && \
+	if ! diff -u $(OPENAPI_OUT) "$$tmpdir/openapi.json"; then \
+		echo "OpenAPI dump drifted. Run \`make openapi\` and commit $(OPENAPI_OUT)."; \
+		exit 1; \
+	fi && \
+	echo "OpenAPI dump matches utoipa ($(OPENAPI_OUT))."
 
 shop-angular:
 	@if ss -tln | grep -qE ':$(SHOP_ANGULAR_PORT)\\b'; then \

@@ -40,7 +40,9 @@ make coverage-js   # Vitest lcov for shop, admin, install
 | `make test` | workspace tests, then SeaORM feature tests |
 | `make coverage` | Rust `cargo llvm-cov` → `coverage/lcov.info` |
 | `make coverage-js` | Vitest coverage for shop, admin, install |
-| `make doc` | rustdoc (`-D warnings`) || `make openapi` | write `openapi/openapi.json` from utoipa |
+| `make openapi` | write `openapi/openapi.json` from utoipa |
+| `make openapi-check` | regenerate OpenAPI and fail if the committed dump drifted |
+| `make doc` | rustdoc (`-D warnings`) |
 | `make shop-angular` | serve Angular shop (`shops/angular`, port 4242) |
 | `make admin-angular` | serve Angular admin (`admin/angular`, port 4250) |
 | `make shop-leptos-rangular` | serve Leptos+rangular shop (`shops/leptos-rangular`, port 4181) |
@@ -63,7 +65,7 @@ Default DSN: `postgres://rustashop:rustashop@127.0.0.1:5432/rustashop`.
 
 Do not add `#[allow(clippy::too_many_arguments)]`, `too_many_lines`, or `dead_code`. Fix with structs, helpers, or by wiring/removing unused items.
 
-Before opening or updating a PR, run the full local gate (`make ci`: lint, test, doc, audit, deny). Integration tests need Postgres (`make db-up`).
+Before opening or updating a PR, run the full local gate (`make ci`: lint, test, doc, openapi-check, audit, deny). Integration tests need Postgres (`make db-up`).
 
 ## Rust test DX
 
@@ -91,7 +93,7 @@ cargo check -p rustashop-persist -p rustashop-api --no-default-features --featur
 
 - **Product architecture:** [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - **Foundations** (Wasm, realtime, AI, domains): [`docs-dev/`](../docs-dev/)
-- **OpenAPI:** live at `/openapi.json` and `/swagger-ui/`; committed dump via `make openapi`
+- **OpenAPI:** live at `/openapi.json` and `/swagger-ui/`; committed dump via `make openapi` (CI runs `make openapi-check`)
 - **Code of Conduct:** [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 - **Security policy:** [`SECURITY.md`](SECURITY.md)
 - No plan jargon or host-absolute paths in shipped text

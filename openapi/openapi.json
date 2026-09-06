@@ -18,7 +18,7 @@
         "tags": [
           "crate::health"
         ],
-        "summary": "`GET /healthz` handler.",
+        "summary": "`GET /healthz` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "healthz",
         "responses": {
           "200": {
@@ -37,7 +37,7 @@
     "/openapi.json": {
       "get": {
         "tags": [],
-        "summary": "`GET /openapi.json` handler.",
+        "summary": "`GET /openapi.json` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "openapi_json",
         "responses": {
           "200": {
@@ -51,7 +51,7 @@
         "tags": [
           "crate::carts"
         ],
-        "summary": "Creates an empty cart.",
+        "summary": "`POST /v1/carts` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "create_cart",
         "requestBody": {
           "content": {
@@ -92,7 +92,7 @@
         "tags": [
           "crate::carts"
         ],
-        "summary": "Returns one cart by id.",
+        "summary": "`GET /v1/carts/{id}` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "get_cart",
         "parameters": [
           {
@@ -134,7 +134,7 @@
         "tags": [
           "crate::carts"
         ],
-        "summary": "Adds a line (merges quantity when the variant is already present).",
+        "summary": "`POST /v1/carts/{id}/lines` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "add_cart_line",
         "parameters": [
           {
@@ -196,7 +196,7 @@
         "tags": [
           "crate::carts"
         ],
-        "summary": "Removes a line.",
+        "summary": "`DELETE /v1/carts/{id}/lines/{line_id}` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "delete_cart_line",
         "parameters": [
           {
@@ -245,7 +245,7 @@
         "tags": [
           "crate::carts"
         ],
-        "summary": "Updates a line quantity.",
+        "summary": "`PATCH /v1/carts/{id}/lines/{line_id}` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "update_cart_line",
         "parameters": [
           {
@@ -316,7 +316,7 @@
         "tags": [
           "crate::checkout"
         ],
-        "summary": "Converts a cart into a placed order.",
+        "summary": "`POST /v1/checkout` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "place_order",
         "parameters": [
           {
@@ -391,7 +391,7 @@
         "tags": [
           "crate::products"
         ],
-        "summary": "Lists enabled products.",
+        "summary": "`GET /v1/products` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "list_products",
         "parameters": [
           {
@@ -400,10 +400,7 @@
             "description": "Maximum rows (capped).",
             "required": false,
             "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "int32",
               "minimum": 0
             }
@@ -414,10 +411,7 @@
             "description": "Rows to skip.",
             "required": false,
             "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "int32",
               "minimum": 0
             }
@@ -442,7 +436,7 @@
         "tags": [
           "crate::products"
         ],
-        "summary": "Returns one product by id, with variants.",
+        "summary": "`GET /v1/products/{id}` `OpenAPI` path (served by the Serenade HTTP front controller).",
         "operationId": "get_product",
         "parameters": [
           {
@@ -484,7 +478,7 @@
         "tags": [
           "crate::admin_orders"
         ],
-        "summary": "`GET /v1/{admin_api_prefix}/orders` - list orders (bearer required).",
+        "summary": "`GET /v1/{admin_api_prefix}/orders` `OpenAPI` path (Serenade front).",
         "operationId": "list_admin_orders",
         "parameters": [
           {
@@ -493,10 +487,7 @@
             "description": "Maximum rows (capped).",
             "required": false,
             "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "int32",
               "minimum": 0
             }
@@ -507,10 +498,7 @@
             "description": "Rows to skip.",
             "required": false,
             "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "int32",
               "minimum": 0
             }
@@ -550,7 +538,7 @@
         "tags": [
           "crate::admin_orders"
         ],
-        "summary": "`PATCH /v1/{admin_api_prefix}/orders/{id}` - update fulfillment status (bearer required).",
+        "summary": "`PATCH /v1/{admin_api_prefix}/orders/{id}` `OpenAPI` path (Serenade front).",
         "operationId": "patch_admin_order",
         "parameters": [
           {
@@ -627,7 +615,7 @@
         "tags": [
           "crate::admin_products"
         ],
-        "summary": "`GET /v1/{admin_api_prefix}/products` - list products including disabled (bearer required).",
+        "summary": "`GET /v1/{admin_api_prefix}/products` `OpenAPI` path (Serenade front).",
         "operationId": "list_admin_products",
         "parameters": [
           {
@@ -636,10 +624,7 @@
             "description": "Maximum rows (capped).",
             "required": false,
             "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "int32",
               "minimum": 0
             }
@@ -650,10 +635,7 @@
             "description": "Rows to skip.",
             "required": false,
             "schema": {
-              "type": [
-                "integer",
-                "null"
-              ],
+              "type": "integer",
               "format": "int32",
               "minimum": 0
             }
@@ -856,7 +838,7 @@
         "properties": {
           "kernel": {
             "type": "string",
-            "description": "Serenade kernel integration marker from the `rustashop` crate."
+            "description": "Serenade kernel integration marker from the `rustashop` crate (`serenade` after boot)."
           },
           "status": {
             "type": "string",
