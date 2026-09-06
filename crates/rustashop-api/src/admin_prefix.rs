@@ -173,7 +173,7 @@ mod tests {
 
     #[actix_web::test]
     async fn configure_admin_routes_is_noop() {
-        use actix_web::{test, App};
+        use actix_web::{App, test};
         let prefix = AdminApiPrefix::parse("opsfolder1").expect("prefix");
         let app =
             test::init_service(App::new().configure(|cfg| configure_admin_routes(cfg, &prefix)))

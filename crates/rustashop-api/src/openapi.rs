@@ -10,7 +10,7 @@ use crate::carts::{
     UpdateCartLineRequest,
 };
 use crate::checkout::{CheckoutRequest, OrderLineResponse, OrderResponse};
-use crate::error::{json_response, ErrorBody};
+use crate::error::{ErrorBody, json_response};
 use crate::health::HealthResponse;
 use crate::products::{
     ProductDetailResponse, ProductListResponse, ProductResponse, ProductVariantResponse,

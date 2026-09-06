@@ -11,7 +11,7 @@ use sqlx::postgres::PgPool;
 
 pub use catalog::SqlxCatalogRepository;
 pub use param::{ensure_param, ensure_param_opt};
-pub use raw_sql::{assert_raw_sql_allowed, execute_fragment, raw_sql_allowed, ALLOW_RAW_SQL_ENV};
+pub use raw_sql::{ALLOW_RAW_SQL_ENV, assert_raw_sql_allowed, execute_fragment, raw_sql_allowed};
 
 /// SQL used by [`seed_catalog`] and `make db-seed`.
 pub const CATALOG_SEED_SQL: &str = include_str!("../../../db/seeds/catalog.sql");

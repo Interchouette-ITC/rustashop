@@ -6,9 +6,9 @@ use sea_orm::{ActiveModelTrait, EntityTrait, QueryOrder, QuerySelect, Set};
 use serenade_contracts::{PageRequest, PersistenceError};
 use uuid::Uuid;
 
+use crate::SeaOrmCatalogRepository;
 use crate::checkout::{load_order, load_order_lines, order_from_models};
 use crate::entities::commerce_order;
-use crate::SeaOrmCatalogRepository;
 
 fn internal(error: &DbErr) -> PersistenceError {
     PersistenceError::Internal {

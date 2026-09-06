@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
-    bind_commerce_server, commerce_http_kernel, CartHub, CartResponse, CommerceFrontConfig,
+    CartHub, CartResponse, CommerceFrontConfig, bind_commerce_server, commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
@@ -89,7 +89,7 @@ async fn cart_line_add_pushes_ws_event() {
 }
 
 async fn exclusive_seeded_catalog() -> CatalogRepository {
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");

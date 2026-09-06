@@ -9,10 +9,10 @@ members = [
     "crates/rustashop-mcp",
 ]
 exclude = ["shops/leptos-rangular", "templates/shop/default"]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 license = "OSL-3.0"
 version = "0.1.0"
 authors = ["Interchouette"]

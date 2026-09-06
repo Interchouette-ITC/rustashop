@@ -22,34 +22,34 @@ mod request_param;
 
 use actix_web::web;
 
-pub use admin_auth::{AdminAuthConfig, ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT};
+pub use admin_auth::{ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, AdminAuthConfig};
 pub use admin_orders::{
-    list_admin_orders, patch_admin_order, OrderListResponse, PatchOrderStatusRequest,
+    OrderListResponse, PatchOrderStatusRequest, list_admin_orders, patch_admin_order,
 };
 pub use admin_prefix::{
-    configure_admin_routes, AdminApiPrefix, ADMIN_API_PREFIX_ENV, DEFAULT_ADMIN_API_PREFIX,
+    ADMIN_API_PREFIX_ENV, AdminApiPrefix, DEFAULT_ADMIN_API_PREFIX, configure_admin_routes,
 };
 pub use admin_products::list_admin_products;
 pub use carts::{
-    add_cart_line, create_cart, delete_cart_line, get_cart, update_cart_line, CartLineResponse,
-    CartResponse, MoneyResponse,
+    CartLineResponse, CartResponse, MoneyResponse, add_cart_line, create_cart, delete_cart_line,
+    get_cart, update_cart_line,
 };
-pub use checkout::{place_order, OrderLineResponse, OrderResponse};
-pub use health::{health_json_body, healthz, HealthResponse};
+pub use checkout::{OrderLineResponse, OrderResponse, place_order};
+pub use health::{HealthResponse, health_json_body, healthz};
 pub use http_front::{
-    commerce_http_kernel, configure_serenade_front, serenade_dispatch, CommerceFrontConfig,
+    CommerceFrontConfig, commerce_http_kernel, configure_serenade_front, serenade_dispatch,
 };
 pub use install_env::{
-    run_install_write, InstallEnvError, InstallWriteOptions, InstallWriteResult,
+    InstallEnvError, InstallWriteOptions, InstallWriteResult, run_install_write,
 };
 pub use install_fs::{
-    install_artefacts_present, shop_root, INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, ROOT_ENV,
+    INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, ROOT_ENV, install_artefacts_present, shop_root,
 };
-pub use listen_app::{bind_commerce_server, commerce_app, BoundCommerce};
-pub use openapi::{openapi_json, swagger_ui, ApiDoc};
+pub use listen_app::{BoundCommerce, bind_commerce_server, commerce_app};
+pub use openapi::{ApiDoc, openapi_json, swagger_ui};
 pub use products::{
-    get_product, list_products, ProductDetailResponse, ProductListResponse, ProductResponse,
-    ProductVariantResponse,
+    ProductDetailResponse, ProductListResponse, ProductResponse, ProductVariantResponse,
+    get_product, list_products,
 };
 pub use realtime::{CartHub, CartRealtimeEvent};
 
@@ -87,7 +87,7 @@ pub fn configure_app(cfg: &mut web::ServiceConfig, admin_prefix: &AdminApiPrefix
 
 #[cfg(test)]
 mod bind_tests {
-    use super::{bind_address, BIND_ENV, DEFAULT_BIND};
+    use super::{BIND_ENV, DEFAULT_BIND, bind_address};
 
     #[test]
     fn bind_address_defaults_when_unset() {
@@ -112,7 +112,7 @@ mod bind_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{test, App};
+    use actix_web::{App, test};
 
     #[actix_web::test]
     async fn healthz_returns_ok_json() {
@@ -158,10 +158,11 @@ mod tests {
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
         let body: serde_json::Value = test::read_body_json(resp).await;
-        assert!(body
-            .get("paths")
-            .and_then(|p| p.get("/v1/products"))
-            .is_some());
+        assert!(
+            body.get("paths")
+                .and_then(|p| p.get("/v1/products"))
+                .is_some()
+        );
     }
 
     #[actix_web::test]

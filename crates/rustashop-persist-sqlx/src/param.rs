@@ -4,7 +4,7 @@
 //! repository queries rely on parameterized binds / the query builder, not on
 //! calling this before every bind.
 
-use serenade_contracts::{reject_unsafe_sql_param, PersistenceError};
+use serenade_contracts::{PersistenceError, reject_unsafe_sql_param};
 
 /// Rejects NUL in a string (interop hygiene, not SQL-injection protection).
 ///

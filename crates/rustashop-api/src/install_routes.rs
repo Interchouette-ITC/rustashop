@@ -9,10 +9,10 @@ use serenade_http::Response;
 
 use crate::error::json_response;
 use crate::install_env::{
-    existing_prefix_needs_wipe, run_install_write, InstallEnvError, InstallWriteOptions,
+    InstallEnvError, InstallWriteOptions, existing_prefix_needs_wipe, run_install_write,
 };
 use crate::install_fs::{
-    install_artefacts_present, install_dir, shop_root, INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME,
+    INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, install_artefacts_present, install_dir, shop_root,
 };
 
 #[derive(Debug, Serialize)]
@@ -192,7 +192,7 @@ mod tests {
 
     #[actix_web::test]
     async fn configure_install_skips_without_dist() {
-        use actix_web::{test, App};
+        use actix_web::{App, test};
 
         let dir = tempfile_dir("cfg-skip");
         let app =
@@ -244,10 +244,12 @@ mod tests {
         let body: serde_json::Value = serde_json::from_slice(ok.body()).expect("json");
         assert_eq!(body["admin_prefix"], "newfolderok1");
         assert!(body["admin_token"].as_str().unwrap().len() >= 16);
-        assert!(body["next_step"]
-            .as_str()
-            .unwrap()
-            .contains(INSTALL_OFF_DIR_NAME));
+        assert!(
+            body["next_step"]
+                .as_str()
+                .unwrap()
+                .contains(INSTALL_OFF_DIR_NAME)
+        );
 
         let status = install_status_response(Some(&dir));
         let status_body: serde_json::Value = serde_json::from_slice(status.body()).expect("json");
@@ -292,7 +294,7 @@ mod tests {
     #[actix_web::test]
     #[allow(clippy::await_holding_lock)]
     async fn configure_install_from_env_registers_static_when_dist_present() {
-        use actix_web::{test, App};
+        use actix_web::{App, test};
 
         let _guard = crate::install_env::INSTALL_PROCESS_ENV_LOCK
             .lock()

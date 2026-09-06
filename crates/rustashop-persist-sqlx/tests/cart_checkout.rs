@@ -1,7 +1,7 @@
 //! Cart and checkout repository edge coverage for `SQLx`.
 
 use rustashop_domain::{CartLine, CartRepository, CartStatus, Currency, Money};
-use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
 use serenade_contracts::PersistenceError;
 use sqlx::postgres::PgPool;
 use sqlx::postgres::PgPoolOptions;
@@ -83,24 +83,30 @@ async fn cart_token_save_delete_and_missing_paths() {
     };
     let currency = Currency::new("EUR").expect("EUR");
     let cart = repo.create_cart(&currency).await.expect("create");
-    assert!(CartRepository::find_by_token(&repo, &cart.token)
-        .await
-        .expect("token")
-        .is_some());
-    assert!(CartRepository::find_by_token(&repo, "missing-token")
-        .await
-        .expect("missing")
-        .is_none());
-    assert!(repo
-        .find_cart_by_id("00000000-0000-0000-0000-000000000000")
-        .await
-        .expect("id")
-        .is_none());
-    assert!(repo
-        .find_variant_for_cart("00000000-0000-0000-0000-000000000000")
-        .await
-        .expect("variant")
-        .is_none());
+    assert!(
+        CartRepository::find_by_token(&repo, &cart.token)
+            .await
+            .expect("token")
+            .is_some()
+    );
+    assert!(
+        CartRepository::find_by_token(&repo, "missing-token")
+            .await
+            .expect("missing")
+            .is_none()
+    );
+    assert!(
+        repo.find_cart_by_id("00000000-0000-0000-0000-000000000000")
+            .await
+            .expect("id")
+            .is_none()
+    );
+    assert!(
+        repo.find_variant_for_cart("00000000-0000-0000-0000-000000000000")
+            .await
+            .expect("variant")
+            .is_none()
+    );
 
     let with_line = cart_with_hoodie(&repo).await;
     assert_eq!(with_line.lines.len(), 1);
@@ -110,11 +116,12 @@ async fn cart_token_save_delete_and_missing_paths() {
     CartRepository::delete(&repo, &empty.id)
         .await
         .expect("delete");
-    assert!(repo
-        .find_cart_by_id(&empty.id)
-        .await
-        .expect("after delete")
-        .is_none());
+    assert!(
+        repo.find_cart_by_id(&empty.id)
+            .await
+            .expect("after delete")
+            .is_none()
+    );
 
     let mut ghost = with_line;
     ghost.id = "00000000-0000-0000-0000-000000000099".to_owned();
@@ -213,10 +220,11 @@ async fn order_state_update_and_invalid_ids() {
         .await
         .expect("paid");
     assert_eq!(paid.state, "paid");
-    assert!(repo
-        .update_order_state("not-a-uuid", rustashop_domain::OrderState::Paid)
-        .await
-        .is_err());
+    assert!(
+        repo.update_order_state("not-a-uuid", rustashop_domain::OrderState::Paid)
+            .await
+            .is_err()
+    );
     assert!(matches!(
         repo.update_order_state(
             "00000000-0000-0000-0000-000000000000",

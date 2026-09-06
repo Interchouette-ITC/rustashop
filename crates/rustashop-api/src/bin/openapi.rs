@@ -19,10 +19,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn write_spec(path: &Path, bytes: &[u8]) -> io::Result<()> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)?;
     }
     fs::write(path, bytes)
 }

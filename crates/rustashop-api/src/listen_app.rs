@@ -4,7 +4,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 
 use actix_web::body::MessageBody;
 use actix_web::dev::{ServiceFactory, ServiceRequest, ServiceResponse};
-use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web::{App, Error, HttpRequest, HttpResponse, HttpServer, web};
 use rustashop_persist::CatalogRepository;
 use serenade_http::AsyncHttpKernel;
 use serenade_http_actix::dispatch_async;

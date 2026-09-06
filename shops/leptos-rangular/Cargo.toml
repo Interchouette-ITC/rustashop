@@ -2,7 +2,7 @@
 name = "shop-leptos-rangular"
 description = "rustashop Leptos CSR shop with rangular templates (track B)"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "OSL-3.0"
 publish = false
 

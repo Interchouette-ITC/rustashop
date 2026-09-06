@@ -1,14 +1,14 @@
 //! Serenade listen entry point for the commerce HTTP API.
 
 use rustashop_api::{
-    bind_address, bind_commerce_server, commerce_http_kernel, install_artefacts_present, shop_root,
-    AdminApiPrefix, AdminAuthConfig, CartHub, CommerceFrontConfig, ADMIN_API_PREFIX_ENV,
-    ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, BIND_ENV, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
-    INSTALL_OFF_DIR_NAME,
+    ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, AdminApiPrefix, AdminAuthConfig,
+    BIND_ENV, CartHub, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
+    INSTALL_OFF_DIR_NAME, bind_address, bind_commerce_server, commerce_http_kernel,
+    install_artefacts_present, shop_root,
 };
 use serenade_http_actix::await_bound;
 use tracing::{error, info};
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 
 /// Compile-time persistence backend label for startup logs.
 #[cfg(feature = "persist-sqlx")]

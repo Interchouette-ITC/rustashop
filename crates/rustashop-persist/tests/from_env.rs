@@ -1,6 +1,6 @@
 //! Facade coverage for `migrate_from_env` and `catalog_from_env`.
 
-use rustashop_persist::{catalog_from_env, migrate_from_env, PersistenceFactory};
+use rustashop_persist::{PersistenceFactory, catalog_from_env, migrate_from_env};
 use sqlx::postgres::PgPoolOptions;
 
 const SCHEMA_LOCK: i64 = 874_520;

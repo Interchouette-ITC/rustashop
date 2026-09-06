@@ -4,26 +4,26 @@ use std::path::PathBuf;
 
 use rustashop_persist::CatalogRepository;
 use serenade_http::{
-    box_future, AsyncHttpKernel, Method, Request, Response, Route, RouteCollection, UrlMatcher,
+    AsyncHttpKernel, Method, Request, Response, Route, RouteCollection, UrlMatcher, box_future,
 };
 use serenade_http_actix::{conversion_error, from_actix, to_actix};
 
-use crate::admin_auth::{bearer_from_headers, AdminAuthConfig};
+use crate::admin_auth::{AdminAuthConfig, bearer_from_headers};
 use crate::admin_orders::{
-    list_admin_orders_response, patch_admin_order_response, ListOrdersQuery,
+    ListOrdersQuery, list_admin_orders_response, patch_admin_order_response,
 };
 use crate::admin_prefix::DEFAULT_ADMIN_API_PREFIX;
-use crate::admin_products::{list_admin_products_response, ListAdminProductsQuery};
+use crate::admin_products::{ListAdminProductsQuery, list_admin_products_response};
 use crate::carts::{
     add_cart_line_response, create_cart_response, delete_cart_line_response, get_cart_response,
     update_cart_line_response,
 };
 use crate::checkout::{idempotency_key_from_headers, place_order_response};
-use crate::error::{api_error_json_response, ApiError};
+use crate::error::{ApiError, api_error_json_response};
 use crate::health::health_json_body;
 use crate::install_routes::{install_complete_response, install_status_response};
 use crate::openapi::openapi_json_response;
-use crate::products::{get_product_response, list_products_response, ListProductsQuery};
+use crate::products::{ListProductsQuery, get_product_response, list_products_response};
 use crate::realtime::CartHub;
 
 const HEALTHZ_ROUTE: &str = "healthz";
@@ -572,7 +572,7 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
 mod tests {
     use super::*;
     use actix_web::test as actix_test;
-    use actix_web::{web, App};
+    use actix_web::{App, web};
     use serenade_http::ROUTE_ATTRIBUTE;
 
     use crate::health::HealthResponse;
@@ -677,10 +677,12 @@ mod tests {
         let openapi = actix_test::TestRequest::get()
             .uri("/openapi.json")
             .to_request();
-        assert!(actix_test::call_service(&app, openapi)
-            .await
-            .status()
-            .is_success());
+        assert!(
+            actix_test::call_service(&app, openapi)
+                .await
+                .status()
+                .is_success()
+        );
 
         let denied = actix_test::TestRequest::get()
             .uri("/v1/admin/products")

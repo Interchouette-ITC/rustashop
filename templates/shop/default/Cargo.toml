@@ -2,7 +2,7 @@
 name = "rustashop-template-shop-default"
 description = "Default shop template assets (HTML/SCSS). Path package for shop hosts."
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "OSL-3.0"
 publish = false
 

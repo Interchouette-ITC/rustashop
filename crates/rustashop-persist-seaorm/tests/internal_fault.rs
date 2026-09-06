@@ -1,7 +1,7 @@
 //! Schema-break fault injection for `PersistenceError::Internal` arms (`SeaORM`).
 
 use rustashop_domain::{CategoryRepository, Currency, ProductRepository};
-use rustashop_persist_seaorm::{migrate, seed_catalog, SeaOrmCatalogRepository};
+use rustashop_persist_seaorm::{SeaOrmCatalogRepository, migrate, seed_catalog};
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection};
 use serenade_contracts::{PageRequest, PersistenceError};
 

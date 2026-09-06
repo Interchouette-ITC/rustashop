@@ -2,8 +2,8 @@
 
 use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository};
 use serenade_contracts::{PageRequest, PersistenceError};
-use sqlx::postgres::PgPool;
 use sqlx::FromRow;
+use sqlx::postgres::PgPool;
 
 /// `SQLx` catalog read adapter.
 #[derive(Clone, Debug)]

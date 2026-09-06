@@ -1,6 +1,6 @@
 //! Cover `SeaORM` migration `down()` then restore with `up()`.
 
-use rustashop_persist_seaorm::{migrate, Migrator};
+use rustashop_persist_seaorm::{Migrator, migrate};
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection};
 use sea_orm_migration::MigratorTrait;
 

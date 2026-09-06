@@ -1,7 +1,7 @@
 //! Schema-break fault injection for `PersistenceError::Internal` arms (`SQLx`).
 
 use rustashop_domain::{CategoryRepository, Currency, ProductRepository};
-use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
 use serenade_contracts::{PageRequest, PersistenceError};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 

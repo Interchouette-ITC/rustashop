@@ -7,7 +7,7 @@ use serenade_http::Response;
 use utoipa::IntoParams;
 
 use crate::admin_auth::AdminAuthConfig;
-use crate::error::{api_error_json_response, json_response, ApiError, ErrorBody};
+use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
 use crate::products::{ProductListResponse, ProductResponse};
 
 const DEFAULT_LIMIT: u32 = 20;
@@ -114,7 +114,7 @@ mod tests {
 #[cfg(all(test, feature = "persist-sqlx"))]
 mod admin_products_response_tests {
     use super::*;
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     // Shared with other rustashop-api lib tests that reset `public`.

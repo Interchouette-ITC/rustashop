@@ -1,7 +1,7 @@
 //! Integration tests for the `SQLx` catalog repository.
 
 use rustashop_domain::{CategoryRepository, ProductRepository};
-use rustashop_persist_sqlx::{migrate, SqlxCatalogRepository};
+use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate};
 use serenade_contracts::PageRequest;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 
@@ -92,10 +92,12 @@ async fn sqlx_catalog_lists_and_finds_seeded_rows() {
     let bad_id = "not-a-uuid".to_owned();
     let missing_id = "00000000-0000-0000-0000-000000000000".to_owned();
     assert!(ProductRepository::find_by_id(&repo, &bad_id).await.is_err());
-    assert!(ProductRepository::find_by_id(&repo, &missing_id)
-        .await
-        .expect("miss")
-        .is_none());
+    assert!(
+        ProductRepository::find_by_id(&repo, &missing_id)
+            .await
+            .expect("miss")
+            .is_none()
+    );
 
     let listed = ProductRepository::list(&repo, PageRequest::first(10))
         .await
@@ -133,9 +135,11 @@ async fn sqlx_catalog_category_parent_paths() {
         .expect("apparel by id");
     assert_eq!(category_by_id.slug, "apparel");
     let bad_id = "not-a-uuid".to_owned();
-    assert!(CategoryRepository::find_by_id(&repo, &bad_id)
-        .await
-        .is_err());
+    assert!(
+        CategoryRepository::find_by_id(&repo, &bad_id)
+            .await
+            .is_err()
+    );
 
     let apparel = APPAREL.to_owned();
     let child = CategoryRepository::find_by_slug(&repo, "tees", Some(&apparel))

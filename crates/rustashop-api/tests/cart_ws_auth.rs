@@ -4,7 +4,7 @@
 
 use actix_web::{test, web};
 use rustashop_api::{
-    commerce_app, commerce_http_kernel, CartHub, CartResponse, CommerceFrontConfig,
+    CartHub, CartResponse, CommerceFrontConfig, commerce_app, commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
@@ -117,7 +117,7 @@ async fn exclusive_seeded_catalog() -> CatalogRepository {
 }
 
 async fn exclusive_seeded_catalog_with_pool() -> (CatalogRepository, sqlx::PgPool) {
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
