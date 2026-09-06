@@ -125,4 +125,22 @@ mod tests {
         let hub = CartHub::new();
         hub.publish(&CartRealtimeEvent::updated(sample_cart("orphan")));
     }
+
+    #[test]
+    fn second_subscriber_shares_room() {
+        let hub = CartHub::new();
+        let mut a = hub.subscribe("cart-2");
+        let mut b = hub.subscribe("cart-2");
+        hub.publish(&CartRealtimeEvent::updated(sample_cart("cart-2")));
+        assert!(a.try_recv().is_ok());
+        assert!(b.try_recv().is_ok());
+    }
+
+    #[test]
+    fn debug_lists_room_count() {
+        let hub = CartHub::new();
+        let _ = hub.subscribe("x");
+        let text = format!("{hub:?}");
+        assert!(text.contains("room_count"));
+    }
 }
