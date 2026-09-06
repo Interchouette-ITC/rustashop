@@ -25,13 +25,13 @@ rustashop-domain = { path = "crates/rustashop-domain", version = "0.1.0" }
 rustashop-persist = { path = "crates/rustashop-persist", version = "0.1.0", default-features = false }
 rustashop-persist-sqlx = { path = "crates/rustashop-persist-sqlx", version = "0.1.0" }
 rustashop-persist-seaorm = { path = "crates/rustashop-persist-seaorm", version = "0.1.0" }
-serenade-contracts = { git = "https://github.com/Interchouette/Serenade.git", branch = "refactor/contracts-drop-commerce-repos" }
-serenade-kernel = { git = "https://github.com/Interchouette/Serenade.git", branch = "refactor/contracts-drop-commerce-repos" }
-serenade-bundle = { git = "https://github.com/Interchouette/Serenade.git", branch = "refactor/contracts-drop-commerce-repos" }
-serenade-config = { git = "https://github.com/Interchouette/Serenade.git", branch = "refactor/contracts-drop-commerce-repos" }
-serenade-di = { git = "https://github.com/Interchouette/Serenade.git", branch = "refactor/contracts-drop-commerce-repos" }
-serenade-http = { git = "https://github.com/Interchouette/Serenade.git", branch = "refactor/contracts-drop-commerce-repos" }
-serenade-http-actix = { git = "https://github.com/Interchouette/Serenade.git", branch = "refactor/contracts-drop-commerce-repos" }
+serenade-contracts = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-kernel = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-bundle = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-config = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-di = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-http = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-http-actix = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 actix-web = "4"
 actix-files = "0.6"
 actix-ws = "0.4"
