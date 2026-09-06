@@ -1,7 +1,7 @@
 //! `SQLx` catalog repositories.
 
-use rustashop_domain::{Category, Product};
-use serenade_contracts::{CategoryRepository, PageRequest, PersistenceError, ProductRepository};
+use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository};
+use serenade_contracts::{PageRequest, PersistenceError};
 use sqlx::postgres::PgPool;
 use sqlx::FromRow;
 
@@ -241,7 +241,7 @@ impl CategoryRepository for SqlxCatalogRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serenade_contracts::{CategoryRepository, ProductRepository};
+    use rustashop_domain::{CategoryRepository, ProductRepository};
 
     fn assert_product_repo<T: ProductRepository>() {}
     fn assert_category_repo<T: CategoryRepository>() {}

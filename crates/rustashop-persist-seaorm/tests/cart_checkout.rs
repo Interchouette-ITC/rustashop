@@ -1,9 +1,9 @@
 //! Cart and checkout repository edge coverage for `SeaORM`.
 
-use rustashop_domain::{CartLine, CartStatus, Currency, Money};
+use rustashop_domain::{CartLine, CartRepository, CartStatus, Currency, Money};
 use rustashop_persist_seaorm::{migrate, seed_catalog, SeaOrmCatalogRepository};
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection, TransactionTrait};
-use serenade_contracts::{CartRepository, PersistenceError};
+use serenade_contracts::PersistenceError;
 
 const HOODIE_VARIANT: &str = "33333333-3333-3333-3333-333333333331";
 const MUG_VARIANT: &str = "33333333-3333-3333-3333-333333333332";

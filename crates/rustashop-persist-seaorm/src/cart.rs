@@ -1,12 +1,14 @@
 //! `SeaORM` cart repository and line mutations.
 
-use rustashop_domain::{Cart, CartLine, CartStatus, Currency, Money, ProductVariant};
+use rustashop_domain::{
+    Cart, CartLine, CartRepository, CartStatus, Currency, Money, ProductVariant,
+};
 use sea_orm::entity::prelude::*;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryOrder, Set,
     TransactionTrait,
 };
-use serenade_contracts::{CartRepository, PersistenceError};
+use serenade_contracts::PersistenceError;
 
 use crate::entities::{cart, cart_line, product, product_variant};
 use crate::SeaOrmCatalogRepository;
@@ -259,7 +261,7 @@ impl CartRepository for SeaOrmCatalogRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serenade_contracts::CartRepository;
+    use rustashop_domain::CartRepository;
 
     fn assert_cart_repo<T: CartRepository>() {}
 

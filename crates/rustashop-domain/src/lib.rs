@@ -8,9 +8,11 @@ mod catalog;
 mod error;
 mod money;
 mod order;
+mod repositories;
 
 pub use cart::{Cart, CartLine, CartStatus};
 pub use catalog::{Category, Product, ProductVariant};
 pub use error::DomainError;
 pub use money::{Currency, Money};
 pub use order::{Order, OrderLine, OrderState, PAYMENT_STATUS_PENDING};
+pub use repositories::{CartRepository, CategoryRepository, ProductRepository};

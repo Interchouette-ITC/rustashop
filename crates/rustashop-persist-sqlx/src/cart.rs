@@ -1,7 +1,9 @@
 //! `SQLx` cart repository and line mutations.
 
-use rustashop_domain::{Cart, CartLine, CartStatus, Currency, Money, ProductVariant};
-use serenade_contracts::{CartRepository, PersistenceError};
+use rustashop_domain::{
+    Cart, CartLine, CartRepository, CartStatus, Currency, Money, ProductVariant,
+};
+use serenade_contracts::PersistenceError;
 use sqlx::postgres::PgPool;
 use sqlx::{FromRow, Postgres, Transaction};
 
@@ -276,7 +278,7 @@ impl CartRepository for SqlxCatalogRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serenade_contracts::CartRepository;
+    use rustashop_domain::CartRepository;
 
     fn assert_cart_repo<T: CartRepository>() {}
 

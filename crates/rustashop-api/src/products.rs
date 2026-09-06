@@ -1,9 +1,9 @@
 //! Catalog product handlers (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
-use rustashop_domain::{Product, ProductVariant};
+use rustashop_domain::{Product, ProductRepository, ProductVariant};
 use rustashop_persist::CatalogRepository;
 use serde::{Deserialize, Serialize};
-use serenade_contracts::{PageRequest, ProductRepository};
+use serenade_contracts::PageRequest;
 use serenade_http::Response;
 use utoipa::{IntoParams, ToSchema};
 

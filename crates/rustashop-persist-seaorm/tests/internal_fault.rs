@@ -1,9 +1,9 @@
 //! Schema-break fault injection for `PersistenceError::Internal` arms (`SeaORM`).
 
-use rustashop_domain::Currency;
+use rustashop_domain::{CategoryRepository, Currency, ProductRepository};
 use rustashop_persist_seaorm::{migrate, seed_catalog, SeaOrmCatalogRepository};
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection};
-use serenade_contracts::{CategoryRepository, PageRequest, PersistenceError, ProductRepository};
+use serenade_contracts::{PageRequest, PersistenceError};
 
 /// Same lock key as the `SQLx` fault suite so both adapters serialize on one Postgres.
 const SCHEMA_LOCK: i64 = 874_530;
@@ -91,7 +91,7 @@ async fn assert_reads_are_internal(repo: &SeaOrmCatalogRepository, cart: &rustas
     let currency = Currency::new("EUR").expect("EUR");
     assert_internal(&repo.find_cart_by_id(&cart.id).await.expect_err("find cart"));
     assert_internal(
-        &serenade_contracts::CartRepository::find_by_token(repo, &cart.token)
+        &rustashop_domain::CartRepository::find_by_token(repo, &cart.token)
             .await
             .expect_err("token"),
     );
@@ -271,7 +271,7 @@ async fn cart_load_lines_delete_and_checkout_replay_internals() {
             .expect_err("find load_lines"),
     );
     assert_internal(
-        &serenade_contracts::CartRepository::find_by_token(&repo, &cart.token)
+        &rustashop_domain::CartRepository::find_by_token(&repo, &cart.token)
             .await
             .expect_err("token load_lines"),
     );
@@ -283,7 +283,7 @@ async fn cart_load_lines_delete_and_checkout_replay_internals() {
         .await
         .expect("drop cart");
     assert_internal(
-        &serenade_contracts::CartRepository::delete(&repo, &cart.id)
+        &rustashop_domain::CartRepository::delete(&repo, &cart.id)
             .await
             .expect_err("delete"),
     );

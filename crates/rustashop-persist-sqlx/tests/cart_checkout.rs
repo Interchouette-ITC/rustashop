@@ -1,8 +1,8 @@
 //! Cart and checkout repository edge coverage for `SQLx`.
 
-use rustashop_domain::{CartLine, CartStatus, Currency, Money};
+use rustashop_domain::{CartLine, CartRepository, CartStatus, Currency, Money};
 use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
-use serenade_contracts::{CartRepository, PersistenceError};
+use serenade_contracts::PersistenceError;
 use sqlx::postgres::PgPool;
 use sqlx::postgres::PgPoolOptions;
 

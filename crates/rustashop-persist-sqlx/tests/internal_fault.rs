@@ -1,8 +1,8 @@
 //! Schema-break fault injection for `PersistenceError::Internal` arms (`SQLx`).
 
-use rustashop_domain::Currency;
+use rustashop_domain::{CategoryRepository, Currency, ProductRepository};
 use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
-use serenade_contracts::{CategoryRepository, PageRequest, PersistenceError, ProductRepository};
+use serenade_contracts::{PageRequest, PersistenceError};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 
 const SCHEMA_LOCK: i64 = 874_530;
@@ -98,7 +98,7 @@ async fn assert_reads_are_internal(repo: &SqlxCatalogRepository, cart: &rustasho
     let currency = Currency::new("EUR").expect("EUR");
     assert_internal(&repo.find_cart_by_id(&cart.id).await.expect_err("find cart"));
     assert_internal(
-        &serenade_contracts::CartRepository::find_by_token(repo, &cart.token)
+        &rustashop_domain::CartRepository::find_by_token(repo, &cart.token)
             .await
             .expect_err("token"),
     );
