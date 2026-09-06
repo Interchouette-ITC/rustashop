@@ -76,11 +76,9 @@ impl CartHub {
     ///
     /// # Panics
     ///
-    /// Panics if the hub mutex is poisoned.
+    /// Panics if the hub mutex is poisoned or the event fails to serialize.
     pub fn publish(&self, event: &CartRealtimeEvent) {
-        let Ok(payload) = serde_json::to_string(event) else {
-            return;
-        };
+        let payload = serde_json::to_string(event).expect("cart event serializes");
         let rooms = self.rooms.lock().expect("cart hub mutex");
         if let Some(sender) = rooms.get(&event.cart.id) {
             let _ = sender.send(payload);

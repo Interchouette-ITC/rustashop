@@ -79,6 +79,12 @@ async fn cart_line_add_pushes_ws_event() {
     assert_eq!(parsed["cart"]["id"], cart.id);
     assert_eq!(parsed["cart"]["items_total"]["amount_minor"], 9000);
 
+    ws.send(Message::Ping(vec![b'x'].into()))
+        .await
+        .expect("client ping");
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    ws.close(None).await.expect("client close");
+
     handle.stop(true).await;
 }
 
