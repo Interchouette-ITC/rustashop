@@ -1,4 +1,4 @@
-//! Admin product list (JSON via Serenade front; `OpenAPI` stub stays here).
+//! Admin product list (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
 use rustashop_persist::CatalogRepository;
 use serde::Deserialize;

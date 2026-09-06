@@ -1,4 +1,4 @@
-//! Cart handlers (JSON via Serenade front; `OpenAPI` stubs stay here).
+//! Cart handlers (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
 use rustashop_domain::{Cart, CartLine, Currency};
 use rustashop_persist::CatalogRepository;

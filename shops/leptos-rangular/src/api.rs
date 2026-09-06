@@ -196,3 +196,86 @@ pub async fn add_cart_line(cart_id: &str, variant_id: &str, quantity: i32) -> Re
         .map_err(|err| format!("network: {err}"))?;
     read_json(resp).await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn money_display_formats_minor_units() {
+        let money = Money {
+            amount_minor: 1250,
+            currency: "EUR".into(),
+        };
+        assert_eq!(money.display(), "12.50 EUR");
+        let zero = Money {
+            amount_minor: 5,
+            currency: "USD".into(),
+        };
+        assert_eq!(zero.display(), "0.05 USD");
+    }
+
+    #[test]
+    fn product_listing_flags() {
+        let listed = Product {
+            id: "1".into(),
+            slug: "a".into(),
+            name: "A".into(),
+            description: None,
+            enabled: true,
+        };
+        assert!(listed.is_listed());
+        let detail = ProductDetail {
+            id: "1".into(),
+            slug: "a".into(),
+            name: "A".into(),
+            description: None,
+            enabled: false,
+            variants: vec![],
+        };
+        assert!(!detail.is_listed());
+    }
+
+    #[test]
+    fn cart_and_line_refs() {
+        let line = CartLine {
+            id: "l1".into(),
+            variant_id: "v1".into(),
+            quantity: 2,
+            unit_price: Money {
+                amount_minor: 100,
+                currency: "EUR".into(),
+            },
+            line_total: Money {
+                amount_minor: 200,
+                currency: "EUR".into(),
+            },
+            product_name: "P".into(),
+            variant_sku: "SKU".into(),
+        };
+        assert_eq!(line.variant_ref(), "v1");
+        let cart = Cart {
+            id: "c1".into(),
+            status: "open".into(),
+            currency: "EUR".into(),
+            lines: vec![line],
+            items_total: Money {
+                amount_minor: 200,
+                currency: "EUR".into(),
+            },
+        };
+        assert_eq!(cart.currency_code(), "EUR");
+        let variant = ProductVariant {
+            id: "v1".into(),
+            product_id: "p1".into(),
+            sku: "SKU".into(),
+            name: None,
+            price: Money {
+                amount_minor: 100,
+                currency: "EUR".into(),
+            },
+            stock_quantity: 3,
+        };
+        assert_eq!(variant.parent_product_id(), "p1");
+    }
+}

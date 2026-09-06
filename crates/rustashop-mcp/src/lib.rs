@@ -1,7 +1,7 @@
-//! Axum MCP and agent HTTP tools.
+//! Axum MCP and agent HTTP name marker.
 //!
-//! Workspace member and crate name marker. No MCP routes or tool handlers yet.
-//! Re-exports the application kernel status for shared diagnostics.
+//! Workspace member that reserves the crate name for future MCP tool routes.
+//! Today it only re-exports the application kernel status for shared diagnostics.
 
 /// Crate name marker for workspace and diagnostics checks.
 pub const MCP_CRATE: &str = "rustashop-mcp";

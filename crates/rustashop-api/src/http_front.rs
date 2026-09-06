@@ -1,4 +1,4 @@
-//! Serenade HTTP front controller (commerce routes migrate onto this over time).
+//! Serenade HTTP front controller for commerce JSON and cart WebSocket routes.
 
 use std::path::PathBuf;
 

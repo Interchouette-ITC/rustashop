@@ -1,4 +1,4 @@
-//! Checkout handler (JSON via Serenade front; `OpenAPI` stub stays here).
+//! Checkout handler (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
 use rustashop_domain::Order;
 use rustashop_persist::CatalogRepository;

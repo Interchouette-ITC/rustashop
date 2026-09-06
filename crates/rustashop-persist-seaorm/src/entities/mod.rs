@@ -1,4 +1,4 @@
-//! `SeaORM` entity models for the MVP commerce schema.
+//! `SeaORM` entity models for the commerce schema.
 
 #![allow(missing_docs, clippy::empty_enums)]
 pub mod cart;

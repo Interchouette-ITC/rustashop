@@ -11,7 +11,7 @@ pub const INIT_SQL: &str = include_str!(concat!(
     "/../rustashop-persist-sqlx/migrations/001_init.sql"
 ));
 
-/// `SeaORM` migrator for the MVP schema.
+/// `SeaORM` migrator for the commerce schema.
 pub struct Migrator;
 
 #[async_trait::async_trait]
