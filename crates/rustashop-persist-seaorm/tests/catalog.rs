@@ -1,8 +1,9 @@
 //! Integration tests for the `SeaORM` catalog repository.
 
+use rustashop_domain::{CategoryRepository, ProductRepository};
 use rustashop_persist_seaorm::{migrate, SeaOrmCatalogRepository};
 use sea_orm::{ConnectOptions, ConnectionTrait, Database, DatabaseConnection};
-use serenade_contracts::{CategoryRepository, PageRequest, PersistenceError, ProductRepository};
+use serenade_contracts::{PageRequest, PersistenceError};
 
 const SCHEMA_LOCK: i64 = 874_512;
 const HOODIE_PRODUCT: &str = "22222222-2222-2222-2222-222222222221";

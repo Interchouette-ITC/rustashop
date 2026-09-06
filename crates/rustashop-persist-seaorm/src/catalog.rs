@@ -1,9 +1,9 @@
 //! `SeaORM` catalog repositories.
 
-use rustashop_domain::{Category, Product};
+use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository};
 use sea_orm::entity::prelude::*;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
-use serenade_contracts::{CategoryRepository, PageRequest, PersistenceError, ProductRepository};
+use serenade_contracts::{PageRequest, PersistenceError};
 
 use crate::entities::{category, product};
 
@@ -201,7 +201,7 @@ impl CategoryRepository for SeaOrmCatalogRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serenade_contracts::{CategoryRepository, ProductRepository};
+    use rustashop_domain::{CategoryRepository, ProductRepository};
 
     fn assert_product_repo<T: ProductRepository>() {}
     fn assert_category_repo<T: CategoryRepository>() {}

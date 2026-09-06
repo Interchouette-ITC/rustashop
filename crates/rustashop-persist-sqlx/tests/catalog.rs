@@ -1,7 +1,8 @@
 //! Integration tests for the `SQLx` catalog repository.
 
+use rustashop_domain::{CategoryRepository, ProductRepository};
 use rustashop_persist_sqlx::{migrate, SqlxCatalogRepository};
-use serenade_contracts::{CategoryRepository, PageRequest, ProductRepository};
+use serenade_contracts::PageRequest;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 
 const SCHEMA_LOCK: i64 = 874_512;

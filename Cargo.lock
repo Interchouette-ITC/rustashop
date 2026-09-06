@@ -3326,6 +3326,7 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "serenade-contracts",
  "thiserror 2.0.20",
 ]
 
@@ -3754,7 +3755,7 @@ dependencies = [
 [[package]]
 name = "serenade-bundle"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "serenade-config",
  "serenade-console",
@@ -3768,7 +3769,7 @@ dependencies = [
 [[package]]
 name = "serenade-config"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "dotenvy",
  "serde_json",
@@ -3781,7 +3782,7 @@ dependencies = [
 [[package]]
 name = "serenade-console"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "clap",
  "crossterm 0.28.1",
@@ -3795,7 +3796,7 @@ dependencies = [
 [[package]]
 name = "serenade-contracts"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "serde",
  "thiserror 2.0.20",
@@ -3804,7 +3805,7 @@ dependencies = [
 [[package]]
 name = "serenade-di"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "serde",
  "thiserror 2.0.20",
@@ -3813,7 +3814,7 @@ dependencies = [
 [[package]]
 name = "serenade-event"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "serde",
  "serenade-di",
@@ -3823,7 +3824,7 @@ dependencies = [
 [[package]]
 name = "serenade-http"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "thiserror 2.0.20",
 ]
@@ -3831,7 +3832,7 @@ dependencies = [
 [[package]]
 name = "serenade-http-actix"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "actix-web",
  "serenade-http",
@@ -3840,7 +3841,7 @@ dependencies = [
 [[package]]
 name = "serenade-kernel"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#8566210737d83c05a58af86b18f0736a8ae6b51f"
+source = "git+https://github.com/Interchouette/Serenade.git?branch=refactor%2Fcontracts-drop-commerce-repos#e6fcb77437d5d6111e3b98b4216e94a3cbddae08"
 dependencies = [
  "serde",
  "thiserror 2.0.20",
