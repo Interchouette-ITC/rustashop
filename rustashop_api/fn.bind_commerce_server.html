@@ -2,7 +2,7 @@
     addr: impl <a class="trait" href="https://doc.rust-lang.org/1.98.1/std/net/socket_addr/trait.ToSocketAddrs.html" title="trait std::net::socket_addr::ToSocketAddrs">ToSocketAddrs</a>,
     kernel: AsyncHttpKernel,
     hub: <a class="struct" href="struct.CartHub.html" title="struct rustashop_api::CartHub">CartHub</a>,
-    catalog: <a class="struct" href="../rustashop_persist_sqlx/catalog/struct.SqlxCatalogRepository.html" title="struct rustashop_persist_sqlx::catalog::SqlxCatalogRepository">CatalogRepository</a>,
+    catalog: CatalogRepository,
 ) -&gt; <a class="type" href="https://doc.rust-lang.org/1.98.1/core/io/error/type.Result.html" title="type core::io::error::Result">Result</a>&lt;<a class="struct" href="struct.BoundCommerce.html" title="struct rustashop_api::BoundCommerce">BoundCommerce</a>&gt;</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Binds <code>addr</code> with commerce HTTP + cart WebSocket (does not await).</p>
 <h2 id="errors"><a class="doc-anchor" href="#errors">§</a>Errors</h2>
 <p>Propagates bind errors.</p>
