@@ -16,6 +16,7 @@ const MAX_LIMIT: u32 = 100;
 
 /// Query string for `GET /v1/products`.
 #[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListProductsQuery {
     /// Maximum rows (capped).
     pub limit: Option<u32>,

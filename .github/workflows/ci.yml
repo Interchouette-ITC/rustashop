@@ -121,6 +121,24 @@ jobs:
           clean: true
           commit-message: "Deploy documentation for ${{ github.sha }}"
 
+  openapi:
+    name: openapi dump
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Markdown-only
+        if: needs.changes.outputs.code != 'true'
+        run: echo "markdown-only; skipping openapi"
+      - uses: dtolnay/rust-toolchain@stable
+        if: needs.changes.outputs.code == 'true'
+      - uses: Swatinem/rust-cache@v2
+        if: needs.changes.outputs.code == 'true'
+      - name: OpenAPI check
+        if: needs.changes.outputs.code == 'true'
+        run: make openapi-check
+
   shop-angular:
     name: shop-angular
     needs: changes

@@ -15,6 +15,7 @@ const MAX_LIMIT: u32 = 100;
 
 /// Query string for admin product list.
 #[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListAdminProductsQuery {
     /// Maximum rows (capped).
     pub limit: Option<u32>,
