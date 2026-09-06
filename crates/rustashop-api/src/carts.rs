@@ -7,6 +7,7 @@ use serenade_http::Response;
 use utoipa::ToSchema;
 
 use crate::error::{api_error_json_response, json_response, ApiError, ErrorBody};
+use crate::realtime::{CartHub, CartRealtimeEvent};
 use crate::request_param::{ensure_request_param, ensure_request_param_opt};
 
 /// Body for `POST /v1/carts`.
@@ -124,9 +125,18 @@ fn parse_json_body<T: for<'de> Deserialize<'de>>(body: &[u8]) -> Result<T, ApiEr
     serde_json::from_slice(body).map_err(|error| ApiError::Unprocessable(error.to_string()))
 }
 
-fn respond_cart(status: u16, result: Result<CartResponse, ApiError>) -> Response {
+fn respond_cart(
+    status: u16,
+    hub: Option<&CartHub>,
+    result: Result<CartResponse, ApiError>,
+) -> Response {
     match result {
-        Ok(body) => json_response(status, &body),
+        Ok(body) => {
+            if let Some(hub) = hub {
+                hub.publish(&CartRealtimeEvent::updated(body.clone()));
+            }
+            json_response(status, &body)
+        }
         Err(error) => api_error_json_response(&error),
     }
 }
@@ -153,7 +163,11 @@ async fn save_then_reload(
 }
 
 /// Creates an empty cart as a Serenade JSON [`Response`].
-pub async fn create_cart_response(catalog: &CatalogRepository, body: &[u8]) -> Response {
+pub async fn create_cart_response(
+    catalog: &CatalogRepository,
+    hub: Option<&CartHub>,
+    body: &[u8],
+) -> Response {
     let request = match parse_json_body::<CreateCartRequest>(body) {
         Ok(request) => request,
         Err(error) => return api_error_json_response(&error),
@@ -167,7 +181,7 @@ pub async fn create_cart_response(catalog: &CatalogRepository, body: &[u8]) -> R
         Err(error) => return api_error_json_response(&ApiError::from_domain(&error)),
     };
     match catalog.create_cart(&currency).await {
-        Ok(cart) => respond_cart(201, CartResponse::try_from_cart(cart)),
+        Ok(cart) => respond_cart(201, hub, CartResponse::try_from_cart(cart)),
         Err(error) => api_error_json_response(&ApiError::from_persist(&error)),
     }
 }
@@ -177,12 +191,17 @@ pub async fn get_cart_response(catalog: &CatalogRepository, id: &str) -> Respons
     if let Err(error) = ensure_request_param(id) {
         return api_error_json_response(&error);
     }
-    respond_cart(200, reload_cart(catalog, id).await)
+    // Reads do not push realtime events.
+    match reload_cart(catalog, id).await {
+        Ok(body) => json_response(200, &body),
+        Err(error) => api_error_json_response(&error),
+    }
 }
 
 /// Adds a line (merges quantity when the variant is already present).
 pub async fn add_cart_line_response(
     catalog: &CatalogRepository,
+    hub: Option<&CartHub>,
     cart_id: &str,
     body: &[u8],
 ) -> Response {
@@ -219,12 +238,13 @@ pub async fn add_cart_line_response(
     if let Err(error) = cart.upsert_line(line) {
         return api_error_json_response(&ApiError::from_domain(&error));
     }
-    respond_cart(200, save_then_reload(catalog, &cart, cart_id).await)
+    respond_cart(200, hub, save_then_reload(catalog, &cart, cart_id).await)
 }
 
 /// Updates a line quantity.
 pub async fn update_cart_line_response(
     catalog: &CatalogRepository,
+    hub: Option<&CartHub>,
     cart_id: &str,
     line_id: &str,
     body: &[u8],
@@ -247,12 +267,13 @@ pub async fn update_cart_line_response(
     if let Err(error) = cart.update_line_quantity(line_id, request.quantity) {
         return api_error_json_response(&ApiError::from_domain(&error));
     }
-    respond_cart(200, save_then_reload(catalog, &cart, cart_id).await)
+    respond_cart(200, hub, save_then_reload(catalog, &cart, cart_id).await)
 }
 
 /// Removes a line.
 pub async fn delete_cart_line_response(
     catalog: &CatalogRepository,
+    hub: Option<&CartHub>,
     cart_id: &str,
     line_id: &str,
 ) -> Response {
@@ -270,7 +291,7 @@ pub async fn delete_cart_line_response(
     if let Err(error) = cart.remove_line(line_id) {
         return api_error_json_response(&ApiError::from_domain(&error));
     }
-    respond_cart(200, save_then_reload(catalog, &cart, cart_id).await)
+    respond_cart(200, hub, save_then_reload(catalog, &cart, cart_id).await)
 }
 
 /// `POST /v1/carts` `OpenAPI` path (served by the Serenade HTTP front controller).
@@ -363,7 +384,7 @@ mod stub_tests {
 
     #[test]
     fn respond_cart_maps_errors() {
-        let response = respond_cart(201, Err(ApiError::NotFound));
+        let response = respond_cart(201, None, Err(ApiError::NotFound));
         assert_eq!(response.status(), 404);
     }
 
@@ -435,17 +456,19 @@ mod cart_response_tests {
         let (catalog, _pool) = seeded().await;
 
         assert_eq!(
-            create_cart_response(&catalog, b"not-json").await.status(),
-            422
-        );
-        assert_eq!(
-            create_cart_response(&catalog, br#"{"currency":"a\u0000b"}"#)
+            create_cart_response(&catalog, None, b"not-json")
                 .await
                 .status(),
             422
         );
         assert_eq!(
-            create_cart_response(&catalog, br#"{"currency":"EURO"}"#)
+            create_cart_response(&catalog, None, br#"{"currency":"a\u0000b"}"#)
+                .await
+                .status(),
+            422
+        );
+        assert_eq!(
+            create_cart_response(&catalog, None, br#"{"currency":"EURO"}"#)
                 .await
                 .status(),
             422
@@ -456,12 +479,12 @@ mod cart_response_tests {
             404
         );
 
-        let created = create_cart_response(&catalog, br#"{"currency":"EUR"}"#).await;
+        let created = create_cart_response(&catalog, None, br#"{"currency":"EUR"}"#).await;
         assert_eq!(created.status(), 201);
         let cart: CartResponse = serde_json::from_slice(created.body()).expect("cart");
 
         assert_eq!(
-            add_cart_line_response(&catalog, &cart.id, b"{")
+            add_cart_line_response(&catalog, None, &cart.id, b"{")
                 .await
                 .status(),
             422
@@ -469,6 +492,7 @@ mod cart_response_tests {
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 "a\0b",
                 format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":1}}"#).as_bytes(),
             )
@@ -479,6 +503,7 @@ mod cart_response_tests {
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 br#"{"variant_id":"a\u0000b","quantity":1}"#,
             )
@@ -489,6 +514,7 @@ mod cart_response_tests {
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 MISSING_CART,
                 format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":1}}"#).as_bytes(),
             )
@@ -499,6 +525,7 @@ mod cart_response_tests {
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 br#"{"variant_id":"99999999-9999-9999-9999-999999999999","quantity":1}"#,
             )
@@ -509,6 +536,7 @@ mod cart_response_tests {
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":0}}"#).as_bytes(),
             )
@@ -521,12 +549,13 @@ mod cart_response_tests {
     #[tokio::test]
     async fn covers_line_update_delete_validation() {
         let (catalog, _pool) = seeded().await;
-        let created = create_cart_response(&catalog, br#"{"currency":"EUR"}"#).await;
+        let created = create_cart_response(&catalog, None, br#"{"currency":"EUR"}"#).await;
         let cart: CartResponse = serde_json::from_slice(created.body()).expect("cart");
 
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":2000000000}}"#).as_bytes(),
             )
@@ -537,6 +566,7 @@ mod cart_response_tests {
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":2000000000}}"#).as_bytes(),
             )
@@ -548,6 +578,7 @@ mod cart_response_tests {
         let with_line: CartResponse = serde_json::from_slice(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 format!(r#"{{"variant_id":"{MUG_VARIANT}","quantity":1}}"#).as_bytes(),
             )
@@ -564,49 +595,49 @@ mod cart_response_tests {
             .clone();
 
         assert_eq!(
-            update_cart_line_response(&catalog, "a\0b", &line_id, br#"{"quantity":2}"#)
+            update_cart_line_response(&catalog, None, "a\0b", &line_id, br#"{"quantity":2}"#)
                 .await
                 .status(),
             422
         );
         assert_eq!(
-            update_cart_line_response(&catalog, &cart.id, "a\0b", br#"{"quantity":2}"#)
+            update_cart_line_response(&catalog, None, &cart.id, "a\0b", br#"{"quantity":2}"#)
                 .await
                 .status(),
             422
         );
         assert_eq!(
-            update_cart_line_response(&catalog, &cart.id, &line_id, b"x")
+            update_cart_line_response(&catalog, None, &cart.id, &line_id, b"x")
                 .await
                 .status(),
             422
         );
         assert_eq!(
-            update_cart_line_response(&catalog, MISSING_CART, &line_id, br#"{"quantity":2}"#)
+            update_cart_line_response(&catalog, None, MISSING_CART, &line_id, br#"{"quantity":2}"#)
                 .await
                 .status(),
             404
         );
         assert_eq!(
-            update_cart_line_response(&catalog, &cart.id, "no-line", br#"{"quantity":2}"#)
+            update_cart_line_response(&catalog, None, &cart.id, "no-line", br#"{"quantity":2}"#)
                 .await
                 .status(),
             404
         );
         assert_eq!(
-            delete_cart_line_response(&catalog, "a\0b", &line_id)
+            delete_cart_line_response(&catalog, None, "a\0b", &line_id)
                 .await
                 .status(),
             422
         );
         assert_eq!(
-            delete_cart_line_response(&catalog, &cart.id, "a\0b")
+            delete_cart_line_response(&catalog, None, &cart.id, "a\0b")
                 .await
                 .status(),
             422
         );
         assert_eq!(
-            delete_cart_line_response(&catalog, MISSING_CART, &line_id)
+            delete_cart_line_response(&catalog, None, MISSING_CART, &line_id)
                 .await
                 .status(),
             404
@@ -616,10 +647,11 @@ mod cart_response_tests {
     #[tokio::test]
     async fn covers_save_and_closed_pool_errors() {
         let (catalog, pool) = seeded().await;
-        let created = create_cart_response(&catalog, br#"{"currency":"EUR"}"#).await;
+        let created = create_cart_response(&catalog, None, br#"{"currency":"EUR"}"#).await;
         let cart: CartResponse = serde_json::from_slice(created.body()).expect("cart");
         let added = add_cart_line_response(
             &catalog,
+            None,
             &cart.id,
             format!(r#"{{"variant_id":"{MUG_VARIANT}","quantity":1}}"#).as_bytes(),
         )
@@ -644,7 +676,7 @@ mod cart_response_tests {
         .await
         .expect("trigger");
         assert_eq!(
-            update_cart_line_response(&catalog, &cart.id, &line_id, br#"{"quantity":3}"#)
+            update_cart_line_response(&catalog, None, &cart.id, &line_id, br#"{"quantity":3}"#)
                 .await
                 .status(),
             500
@@ -657,6 +689,7 @@ mod cart_response_tests {
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":1}}"#).as_bytes(),
             )
@@ -666,10 +699,14 @@ mod cart_response_tests {
         );
 
         pool.close().await;
-        assert_eq!(create_cart_response(&catalog, br"{}").await.status(), 500);
+        assert_eq!(
+            create_cart_response(&catalog, None, br"{}").await.status(),
+            500
+        );
         assert_eq!(
             add_cart_line_response(
                 &catalog,
+                None,
                 &cart.id,
                 format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":1}}"#).as_bytes(),
             )
@@ -678,13 +715,13 @@ mod cart_response_tests {
             500
         );
         assert_eq!(
-            update_cart_line_response(&catalog, &cart.id, &line_id, br#"{"quantity":1}"#)
+            update_cart_line_response(&catalog, None, &cart.id, &line_id, br#"{"quantity":1}"#)
                 .await
                 .status(),
             500
         );
         assert_eq!(
-            delete_cart_line_response(&catalog, &cart.id, &line_id)
+            delete_cart_line_response(&catalog, None, &cart.id, &line_id)
                 .await
                 .status(),
             500

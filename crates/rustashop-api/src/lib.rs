@@ -4,6 +4,7 @@ mod admin_auth;
 mod admin_orders;
 mod admin_prefix;
 mod admin_products;
+mod cart_ws;
 mod carts;
 mod checkout;
 mod error;
@@ -12,8 +13,10 @@ mod http_front;
 mod install_env;
 mod install_fs;
 mod install_routes;
+mod listen_app;
 mod openapi;
 mod products;
+mod realtime;
 mod request_param;
 
 use actix_web::web;
@@ -41,11 +44,13 @@ pub use install_env::{
 pub use install_fs::{
     install_artefacts_present, shop_root, INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, ROOT_ENV,
 };
+pub use listen_app::{bind_commerce_server, commerce_app, BoundCommerce};
 pub use openapi::{openapi_json, swagger_ui, ApiDoc};
 pub use products::{
     get_product, list_products, ProductDetailResponse, ProductListResponse, ProductResponse,
     ProductVariantResponse,
 };
+pub use realtime::{CartHub, CartRealtimeEvent};
 
 /// Default bind address when `RUSTASHOP_BIND` is unset.
 pub const DEFAULT_BIND: &str = "127.0.0.1:8080";
