@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["PYTHON_PACKAGE_URL"],"fn":["apply_validated_adjustments","invoke_python_quote","quote_fixture_source","validate_adjustments"],"struct":["Adjustment","CartLine","CartSnapshot","Money"]};
+window.SIDEBAR_ITEMS = {"constant":["PYTHON_PACKAGE_URL"],"fn":["apply_validated_adjustments","invoke_python_quote","invoke_rust_wasi_quote","quote_fixture_source","rust_quote_wasm_path","validate_adjustments"],"struct":["Adjustment","CartLine","CartSnapshot","Money"]};
