@@ -80,7 +80,7 @@ Catalog → cart → checkout → order on the same stack. Messenger/events via 
 | Lane | Intent |
 | --- | --- |
 | Realtime | WebSocket gateway aligned with OpenAPI mutations |
-| Extensions | WIT / Component Model host hooks |
+| Extensions | WIT / Component Model hooks on **wasmtime** ([ADR 0002](../docs-dev/adr/0002-wit-plugin-engine.md)) |
 | Sandbox | Wasmer (or similar) for untrusted / polyglot scripts |
 
 Wasm roles (UI wasm vs plugins vs sandbox): [`docs-dev/WASM-LAYERS.md`](../docs-dev/WASM-LAYERS.md). Foundations: [`docs-dev/FOUNDATIONS.md`](../docs-dev/FOUNDATIONS.md).
