@@ -36,7 +36,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci extensions-fixture \
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -51,6 +51,7 @@ help:
 	@echo "  make check      cargo check --workspace, then SeaORM features"
 	@echo "  make test       cargo test --workspace, then SeaORM feature tests"
 	@echo "  make extensions-fixture  rebuild pricing-adjust component wasm (needs wasm-tools)"
+	@echo "  make sandbox-quote-rust-fixture  rebuild Rust WASI quote.wasm for Wasmer sandbox"
 	@echo "  make coverage   cargo llvm-cov → coverage/lcov.info (needs DATABASE_URL for integration)"
 	@echo "  make coverage-js Vitest coverage for shop, admin, and install → coverage/*-lcov.info"
 	@echo "  make lint       fmt check + SQL safety + clippy + Angular shop/admin lint (when node_modules present)"
@@ -103,6 +104,12 @@ extensions-fixture:
 		wasm-tools component new \
 			target/wasm32-unknown-unknown/release/rustashop_pricing_adjust_fixture.wasm \
 			-o pricing_adjust.component.wasm
+
+## Rebuild the checked-in Rust WASI Wasmer quote fixture (issue #163).
+sandbox-quote-rust-fixture:
+	cd $(ROOT)/extensions/fixtures/wasmer-quote-rust && \
+		$(CARGO) build --target wasm32-wasip1 --release && \
+		cp target/wasm32-wasip1/release/quote.wasm quote.wasm
 
 ## Local mirror of core CI jobs. Run before every PR create/update (see .cursor/rules/rustashop-ci-before-pr.mdc).
 ci: lint test doc openapi-check audit deny

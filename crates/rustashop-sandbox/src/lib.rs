@@ -9,7 +9,10 @@ mod host;
 mod types;
 mod validate;
 
-pub use host::{PYTHON_PACKAGE_URL, invoke_python_quote, quote_fixture_source};
+pub use host::{
+    PYTHON_PACKAGE_URL, invoke_python_quote, invoke_rust_wasi_quote, quote_fixture_source,
+    rust_quote_wasm_path,
+};
 pub use types::{Adjustment, CartLine, CartSnapshot, Money};
 pub use validate::{apply_validated_adjustments, validate_adjustments};
 
@@ -64,6 +67,16 @@ mod tests {
         let raw = invoke_python_quote(&cart, quote_fixture_source())
             .await
             .expect("wasmer python quote");
+        let applied = apply_validated_adjustments(&cart, raw).expect("validate");
+        assert_eq!(applied, []);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn rust_wasi_quote_skips_small_carts() {
+        let cart = sample_cart_small();
+        let raw = invoke_rust_wasi_quote(&cart)
+            .await
+            .expect("rust wasi quote");
         let applied = apply_validated_adjustments(&cart, raw).expect("validate");
         assert_eq!(applied, []);
     }

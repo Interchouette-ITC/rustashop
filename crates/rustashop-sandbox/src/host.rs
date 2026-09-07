@@ -1,6 +1,6 @@
-//! Wasmer WASIX host that runs the fixed Python `quote` fixture.
+//! Wasmer WASIX host for polyglot `quote(cart) → adjustments` guests.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -8,8 +8,11 @@ use anyhow::{Context, Result, bail};
 use shared_buffer::OwnedBuffer;
 use tokio::runtime::Handle;
 use virtual_fs::{AsyncReadExt, AsyncSeekExt, StaticFile};
+use wasmer::Module;
 use wasmer_package::utils::from_bytes;
+use wasmer_types::ModuleHash;
 use wasmer_wasix::PluggableRuntime;
+use wasmer_wasix::Runtime;
 use wasmer_wasix::bin_factory::BinaryPackage;
 use wasmer_wasix::runners::wasi::{RuntimeOrEngine, WasiRunner};
 use wasmer_wasix::runtime::module_cache::{FileSystemCache, ModuleCache, SharedCache};
@@ -29,6 +32,13 @@ pub const fn quote_fixture_source() -> &'static str {
     include_str!("../../../extensions/fixtures/wasmer-quote/quote.py")
 }
 
+/// Path to the checked-in Rust WASI `quote` guest wasm.
+#[must_use]
+pub fn rust_quote_wasm_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../extensions/fixtures/wasmer-quote-rust/quote.wasm")
+}
+
 /// Runs the Python `quote` guest inside Wasmer and parses JSON adjustments.
 ///
 /// Downloads (and caches) the Wasmer Python package on first use. No Docker.
@@ -42,6 +52,32 @@ pub async fn invoke_python_quote(
     python_source: &str,
 ) -> Result<Vec<Adjustment>> {
     invoke_python_quote_with_cache(cart, python_source, &wasmer_cache_root()).await
+}
+
+/// Runs the checked-in Rust WASI `quote` guest and parses JSON adjustments.
+///
+/// # Errors
+///
+/// Returns an error when the wasm cannot be loaded, the guest fails, or stdout
+/// is not valid adjustment JSON.
+pub async fn invoke_rust_wasi_quote(cart: &CartSnapshot) -> Result<Vec<Adjustment>> {
+    invoke_rust_wasi_quote_at(cart, &rust_quote_wasm_path()).await
+}
+
+async fn invoke_rust_wasi_quote_at(
+    cart: &CartSnapshot,
+    wasm_path: &Path,
+) -> Result<Vec<Adjustment>> {
+    let wasm_bytes = std::fs::read(wasm_path)
+        .with_context(|| format!("read Rust quote wasm {}", wasm_path.display()))?;
+    let cart_bytes = serde_json::to_vec(cart).context("serialize cart")?;
+    let (out_buf, err_buf, run_result) =
+        run_wasi_module_stdio("quote", &wasm_bytes, &cart_bytes, &wasmer_cache_root()).await?;
+    parse_guest_adjustments(
+        run_result.map_err(|error| anyhow::anyhow!("{error:#}")),
+        &out_buf,
+        &err_buf,
+    )
 }
 
 async fn invoke_python_quote_with_cache(
@@ -97,6 +133,57 @@ async fn invoke_python_quote_with_cache(
     )
 }
 
+async fn run_wasi_module_stdio(
+    program_name: &str,
+    wasm_bytes: &[u8],
+    stdin_bytes: &[u8],
+    cache_root: &Path,
+) -> Result<(Vec<u8>, Vec<u8>, Result<(), anyhow::Error>)> {
+    let (runtime, tasks) = build_runtime(cache_root)?;
+    let engine = runtime.engine();
+    let module = Module::new(&engine, wasm_bytes).context("compile WASI quote module")?;
+    let module_hash = ModuleHash::new(wasm_bytes);
+
+    let stdin = StaticFile::new(OwnedBuffer::from_bytes(stdin_bytes.to_vec()));
+    let mut stdout = virtual_fs::ArcFile::new(Box::<virtual_fs::BufferFile>::default());
+    let mut stderr = virtual_fs::ArcFile::new(Box::<virtual_fs::BufferFile>::default());
+    let stdout_guest = stdout.clone();
+    let stderr_guest = stderr.clone();
+    let program = program_name.to_owned();
+
+    let join = tokio::task::spawn_blocking(move || {
+        let _guard = tasks.runtime_handle().enter();
+        WasiRunner::new()
+            .with_stdin(Box::new(stdin) as Box<_>)
+            .with_stdout(Box::new(stdout_guest) as Box<_>)
+            .with_stderr(Box::new(stderr_guest) as Box<_>)
+            .run_wasm(
+                RuntimeOrEngine::Engine(engine),
+                &program,
+                module,
+                module_hash,
+            )
+    });
+
+    let run_result = join
+        .await
+        .context("join wasmer wasi task")?
+        .map_err(|error| anyhow::anyhow!("{error:#}"));
+    stdout.rewind().await.context("rewind stdout")?;
+    stderr.rewind().await.context("rewind stderr")?;
+    let mut out_buf = Vec::new();
+    let mut err_buf = Vec::new();
+    stdout
+        .read_to_end(&mut out_buf)
+        .await
+        .context("read stdout")?;
+    stderr
+        .read_to_end(&mut err_buf)
+        .await
+        .context("read stderr")?;
+    Ok((out_buf, err_buf, run_result))
+}
+
 /// Interprets guest exit + stdout/stderr into adjustment JSON.
 fn parse_guest_adjustments(
     run_result: Result<(), anyhow::Error>,
@@ -105,7 +192,7 @@ fn parse_guest_adjustments(
 ) -> Result<Vec<Adjustment>> {
     if let Err(error) = run_result {
         bail!(
-            "Wasmer Python guest failed: {error:#}; stderr: {}; stdout: {}",
+            "Wasmer guest failed: {error:#}; stderr: {}; stdout: {}",
             String::from_utf8_lossy(err_buf),
             String::from_utf8_lossy(out_buf)
         );
@@ -113,7 +200,7 @@ fn parse_guest_adjustments(
 
     if out_buf.is_empty() && !err_buf.is_empty() {
         bail!(
-            "Python guest produced no stdout; stderr: {}",
+            "guest produced no stdout; stderr: {}",
             String::from_utf8_lossy(err_buf)
         );
     }
@@ -295,5 +382,27 @@ mod host_tests {
         assert!(cached.is_file());
         let again = load_python_webc(tmp.path()).await.expect("read cache");
         assert_eq!(body.len(), again.len());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn rust_wasi_quote_volume_discount() {
+        let cart = CartSnapshot {
+            currency: "EUR".into(),
+            lines: vec![CartLine {
+                sku: "HOODIE-M".into(),
+                quantity: 2,
+                unit_price: Money {
+                    amount_minor: 5000,
+                    currency: "EUR".into(),
+                },
+            }],
+        };
+        let raw = invoke_rust_wasi_quote(&cart)
+            .await
+            .expect("rust wasi quote");
+        let applied = crate::apply_validated_adjustments(&cart, raw).expect("validate");
+        assert_eq!(applied.len(), 1);
+        assert_eq!(applied[0].label, "volume-discount");
+        assert_eq!(applied[0].amount_minor, -1000);
     }
 }
