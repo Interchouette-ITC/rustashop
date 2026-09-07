@@ -91,4 +91,4 @@ Some integrations want **in-process native bindings** (for example Rust host ↔
 | Trust  | First-party                              | Untrusted                         |
 | Use    | Official connectors, shared memory paths | Scripts, experiments, legacy glue |
 
-Document connector work under extensions/integrations issues; enforce sandbox for anything executable that is not first-party.
+Document connector work under extensions/integrations issues; enforce sandbox for anything executable that is not first-party. Policy ADR: [0003](adr/0003-pyo3-vs-wasmer-sandbox.md).

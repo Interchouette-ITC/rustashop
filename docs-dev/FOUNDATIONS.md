@@ -88,4 +88,4 @@ These axes are product foundation, not a distraction from catalog/cart/checkout.
 
 ## Related GitHub work
 
-Track delivery under epics labeled `area:wasm`, `area:realtime`, `area:extensions`, and `area:ai`. HTTP stack decision: [#47](https://github.com/Interchouette-ITC/rustashop/issues/47). ADRs: [0001 Diesel](adr/0001-diesel-persistence.md), [0002 WIT plugin engine](adr/0002-wit-plugin-engine.md).
+Track delivery under epics labeled `area:wasm`, `area:realtime`, `area:extensions`, and `area:ai`. HTTP stack decision: [#47](https://github.com/Interchouette-ITC/rustashop/issues/47). ADRs: [0001 Diesel](adr/0001-diesel-persistence.md), [0002 WIT plugin engine](adr/0002-wit-plugin-engine.md), [0003 PyO3 vs Wasmer](adr/0003-pyo3-vs-wasmer-sandbox.md).

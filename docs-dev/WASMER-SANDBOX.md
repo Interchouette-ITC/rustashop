@@ -120,10 +120,12 @@ The PHP migration fixture proves cutover glue only:
 
 Official connectors may later use **PyO3** (or similar) for trusted in-process Python. That path coexists with Wasmer:
 
-- **Wasmer** - untrusted / merchant / agent / legacy scripts
+- **Wasmer** - untrusted / merchant / agent / legacy scripts (default for agent tools unless marked first-party)
 - **PyO3** - first-party connector performance and shared types
 
 Do not expose PyO3 as the way merchants upload arbitrary `.py` files.
+
+Policy ADR: [0003](adr/0003-pyo3-vs-wasmer-sandbox.md).
 
 ## References
 
