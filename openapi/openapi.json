@@ -977,7 +977,7 @@
           },
           "job_type": {
             "type": "string",
-            "description": "Job type (`quote` only in this slice)."
+            "description": "Job type (`quote` only)."
           },
           "lines": {
             "type": "array",
