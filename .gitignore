@@ -6,6 +6,8 @@ shops/**/target/
 .env.*
 !.env.example
 coverage/
+# Wasmer package / compiled-module cache (rustashop-sandbox)
+/.wasmer/
 install/node_modules/
 install/dist/
 install/coverage/

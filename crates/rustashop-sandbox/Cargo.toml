@@ -1,0 +1,32 @@
+[package]
+name = "rustashop-sandbox"
+description = "Wasmer polyglot sandbox host (Python quote fixture)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1"
+bytes = "1"
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+shared-buffer = "0.1"
+tokio = { workspace = true }
+virtual-fs = { version = "0.704.0", default-features = false }
+wasmer = { version = "7.4.0", default-features = false, features = [
+    "cranelift",
+    "sys",
+] }
+wasmer-package = { version = "0.704.0", default-features = false }
+wasmer-wasix = { version = "0.704.0", default-features = false, features = [
+    "sys-default",
+] }
+
+[lints]
+workspace = true

@@ -28,7 +28,7 @@ A **split stack**: a full **Actix-web** kernel for the product API, and a lighte
 
 The MCP layer **reuses domain capabilities** from the kernel (HTTP internal calls and/or shared `domain` crates). It does not reimplement catalog, cart, or checkout.
 
-Crate layout today: `domain`, `persist`, **`api`** (Actix), **`mcp`** (Axum). Room remains for `realtime`, `extensions`, and `sandbox` crates when those surfaces land.
+Crate layout today: `domain`, `persist`, **`api`** (Actix), **`mcp`** (Axum), **`extensions`** (WIT), **`sandbox`** (Wasmer). Room remains for a dedicated `realtime` crate when that surface grows.
 
 ## Two contracts, one domain
 
@@ -77,7 +77,7 @@ Catalog, cart, checkout, and orders already ship over OpenAPI (and cart WebSocke
 6. **AI-native tools** - discovery, shopping/catalog/support agents, MCP, autonomous jobs on the same domain ([AI-NATIVE.md](AI-NATIVE.md)).
 7. **Deploy surfaces** - `:dev` tip then `.ai` / `.io` / `.dev` / `.app` ([DOMAINS.md](DOMAINS.md)).
 
-These axes are product foundation, not a distraction from catalog/cart/checkout. Crate layout (`domain`, `persist`, **`api`** on Actix, **`mcp`** on Axum, then `realtime`, `extensions`, `sandbox` when needed) should leave room for them.
+These axes are product foundation, not a distraction from catalog/cart/checkout. Crate layout (`domain`, `persist`, **`api`** on Actix, **`mcp`** on Axum, **`extensions`**, **`sandbox`**, then `realtime` when needed) should leave room for them.
 
 ## Explicit non-goals for early foundations
 

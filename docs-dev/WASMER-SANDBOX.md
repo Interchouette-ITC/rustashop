@@ -79,6 +79,20 @@ Sandboxes must not:
 
 Rust authorizes; Wasm executes within a jail; audit logs are mandatory.
 
+## In tree today
+
+| Piece | Location |
+| --- | --- |
+| Host crate | [`crates/rustashop-sandbox`](../crates/rustashop-sandbox) (Wasmer WASIX + pinned `python/python@0.1.0`) |
+| Python fixture | [`extensions/fixtures/wasmer-quote/quote.py`](../extensions/fixtures/wasmer-quote/quote.py) |
+| Cache | `.wasmer/` (gitignored); override with `RUSTASHOP_WASMER_CACHE` |
+
+```bash
+cargo test -p rustashop-sandbox
+```
+
+Upstream `wasmer-sdk` (unpublished package-first facade) is not a Cargo dependency yet; this crate uses the published Wasmer WASIX runner APIs as the equivalent host surface.
+
 ## Suggested delivery slices
 
 | Slice                   | Outcome                                                                                      |

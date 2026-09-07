@@ -7,6 +7,7 @@ members = [
     "crates/rustashop-persist-seaorm",
     "crates/rustashop-persist-diesel",
     "crates/rustashop-extensions",
+    "crates/rustashop-sandbox",
     "crates/rustashop-api",
     "crates/rustashop-mcp",
 ]
@@ -23,7 +24,7 @@ license = "OSL-3.0"
 version = "0.1.0"
 authors = ["Interchouette"]
 repository = "https://github.com/Interchouette-ITC/rustashop"
-rust-version = "1.94"
+rust-version = "1.95"
 
 [workspace.dependencies]
 rustashop = { path = "crates/rustashop", version = "0.1.0" }

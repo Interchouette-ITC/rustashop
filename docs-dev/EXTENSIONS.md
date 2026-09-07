@@ -75,8 +75,11 @@ For `pricing-adjust`, see `cargo test -p rustashop-extensions --test isolation` 
 | Signed/versioned commerce extension  | Ad-hoc or merchant/agent code in Python/Node/PHP |
 | Tight WIT world                      | Broader runtime + stricter outer jail            |
 | Ships with the shop’s extension list | Jobs, migrations, playgrounds, agent tools       |
+| `rustashop-extensions` + wasmtime    | `rustashop-sandbox` + Wasmer WASIX Python package |
 
 A future path may compile some sandboxed workflows _into_ components; early on, keep the APIs separate so trust levels stay clear.
+
+Sandbox harness (issue [#38](https://github.com/Interchouette-ITC/rustashop/issues/38)): `cargo test -p rustashop-sandbox`.
 
 ## Native connectors (PyO3 and friends)
 
