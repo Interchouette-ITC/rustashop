@@ -88,6 +88,7 @@ Rust authorizes; Wasm executes within a jail; audit logs are mandatory.
 | Rust WASI fixture | [`extensions/fixtures/wasmer-quote-rust/`](../extensions/fixtures/wasmer-quote-rust/) (`quote.wasm`, rebuild with `make sandbox-quote-rust-fixture`) |
 | JS fixture | [`extensions/fixtures/wasmer-quote/quote.js`](../extensions/fixtures/wasmer-quote/quote.js) (pinned `syrusakbary/quickjs`) |
 | PHP fixture | [`extensions/fixtures/wasmer-quote/quote.php`](../extensions/fixtures/wasmer-quote/quote.php) (pinned `php/php-32`) |
+| PHP migration guest | [`extensions/fixtures/wasmer-php-migration/`](../extensions/fixtures/wasmer-php-migration/) (`actionCartUpdateQuantityBefore` → `cart.line_quantity_proposed`) |
 | Cache | `.wasmer/` (gitignored); override with `RUSTASHOP_WASMER_CACHE` |
 
 ```bash
@@ -95,6 +96,15 @@ cargo test -p rustashop-sandbox
 ```
 
 Upstream `wasmer-sdk` (unpublished package-first facade) is not a Cargo dependency yet; this crate uses the published Wasmer WASIX runner APIs as the equivalent host surface.
+
+### Migration guest limits
+
+The PHP migration fixture proves cutover glue only:
+
+- One PrestaShop-inspired hook family (`actionCartUpdateQuantityBefore`)
+- Guest returns a **domain event draft**; the Rust host validates and remains the authority that commits cart state
+- No PHP-FPM, no legacy DB writes, no network from the guest by default
+- Not a general PrestaShop runtime; richer hooks stay later slices under #37 / #40
 
 ## Suggested delivery slices
 

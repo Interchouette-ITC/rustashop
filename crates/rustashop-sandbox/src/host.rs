@@ -56,6 +56,14 @@ pub fn quote_php_fixture_source() -> String {
     ))
 }
 
+/// PHP `-r` body for the cart-update migration fixture (opening tag stripped).
+#[must_use]
+pub fn php_migration_hook_source() -> String {
+    strip_php_opening_tag(include_str!(
+        "../../../extensions/fixtures/wasmer-php-migration/action_cart_update_quantity_before.php"
+    ))
+}
+
 /// Path to the checked-in Rust WASI `quote` guest wasm.
 #[must_use]
 pub fn rust_quote_wasm_path() -> PathBuf {
@@ -115,6 +123,28 @@ pub async fn invoke_js_quote(cart: &CartSnapshot, js_source: &str) -> Result<Vec
 pub async fn invoke_php_quote(cart: &CartSnapshot, php_source: &str) -> Result<Vec<Adjustment>> {
     invoke_package_quote(
         cart,
+        &wasmer_cache_root(),
+        PHP_PACKAGE_URL,
+        PHP_WEBC_CACHE_NAME,
+        "php",
+        vec!["-r".into(), php_source.to_owned()],
+    )
+    .await
+}
+
+/// Runs the PHP migration guest for one legacy hook → domain event draft.
+///
+/// # Errors
+///
+/// Returns an error when the package cannot be loaded, the guest fails, or
+/// stdout is not a valid [`crate::types::DomainEventDraft`].
+pub async fn invoke_php_migration_hook(
+    input: &crate::types::LegacyHookInput,
+    php_source: &str,
+) -> Result<crate::types::DomainEventDraft> {
+    let stdin = serde_json::to_vec(input).context("serialize legacy hook input")?;
+    invoke_package_json(
+        &stdin,
         &wasmer_cache_root(),
         PHP_PACKAGE_URL,
         PHP_WEBC_CACHE_NAME,
