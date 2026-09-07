@@ -635,6 +635,9 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
     let admin_products = format!("/v1/{admin_prefix}/products");
     let admin_orders = format!("/v1/{admin_prefix}/orders");
     let admin_order = format!("/v1/{admin_prefix}/orders/{{id}}");
+    let sandbox_jobs = format!("/v1/{admin_prefix}/sandbox/jobs");
+    let sandbox_job = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}");
+    let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
     cfg.route("/healthz", actix_web::web::get().to(serenade_dispatch))
         .route("/v1/products", actix_web::web::get().to(serenade_dispatch))
         .route(
@@ -663,6 +666,9 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
         .route(&admin_products, actix_web::web::get().to(serenade_dispatch))
         .route(&admin_orders, actix_web::web::get().to(serenade_dispatch))
         .route(&admin_order, actix_web::web::patch().to(serenade_dispatch))
+        .route(&sandbox_jobs, actix_web::web::post().to(serenade_dispatch))
+        .route(&sandbox_job, actix_web::web::get().to(serenade_dispatch))
+        .route(&sandbox_audit, actix_web::web::get().to(serenade_dispatch))
         .route(
             "/install/api/status",
             actix_web::web::get().to(serenade_dispatch),

@@ -111,12 +111,16 @@ mod tests {
     #[test]
     fn publish_reaches_subscriber() {
         let hub = SandboxJobHub::new();
+        assert!(format!("{hub:?}").contains("room_count"));
         let mut rx = hub.subscribe("job-1");
+        let mut rx2 = hub.subscribe("job-1");
         hub.publish(&SandboxJobEvent::log("job-1", "hello"));
         let raw = rx.try_recv().expect("event");
         let parsed: serde_json::Value = serde_json::from_str(&raw).expect("json");
         assert_eq!(parsed["type"], "job.log");
         assert_eq!(parsed["message"], "hello");
+        assert!(rx2.try_recv().is_ok());
+        hub.publish(&SandboxJobEvent::log("nobody", "ignored"));
     }
 
     #[test]

@@ -57,7 +57,7 @@ pub use products::{
 pub use realtime::{CartHub, CartRealtimeEvent};
 pub use sandbox_jobs::{
     CreateSandboxJobRequest, SandboxAuditRecord, SandboxJobRegistry, SandboxJobResponse,
-    create_sandbox_job, get_sandbox_job, list_sandbox_audit,
+    SandboxJobStatus, create_sandbox_job, get_sandbox_job, list_sandbox_audit,
 };
 pub use sandbox_realtime::SandboxJobHub;
 

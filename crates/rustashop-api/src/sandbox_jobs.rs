@@ -42,7 +42,7 @@ pub struct SandboxJobLine {
 }
 
 /// Job status returned to the admin UI.
-#[derive(Debug, Clone, Copy, Serialize, ToSchema, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum SandboxJobStatus {
     /// Runner still working.
@@ -54,7 +54,7 @@ pub enum SandboxJobStatus {
 }
 
 /// Public job view.
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SandboxJobResponse {
     /// Job id.
     pub id: String,
@@ -73,7 +73,7 @@ pub struct SandboxJobResponse {
 }
 
 /// Adjustment JSON for admin.
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct SandboxAdjustmentResponse {
     /// Label.
     pub label: String,
@@ -457,11 +457,101 @@ mod tests {
         let registry = SandboxJobRegistry::new();
         let job = registry.start_job(JOB_TYPE_QUOTE, "hash", "admin-bearer");
         assert_eq!(job.status, SandboxJobStatus::Running);
+        assert!(format!("{registry:?}").contains("job_count"));
         registry.finish_job(&job.id, SandboxJobStatus::Succeeded, Some(vec![]), None);
         let done = registry.get(&job.id).expect("job");
         assert_eq!(done.status, SandboxJobStatus::Succeeded);
         let audit = registry.list_audit(10);
         assert_eq!(audit.len(), 1);
         assert_eq!(audit[0].status, "succeeded");
+    }
+
+    #[test]
+    fn registry_finish_failed_and_unknown_job() {
+        let registry = SandboxJobRegistry::new();
+        let job = registry.start_job(JOB_TYPE_QUOTE, "hash", "admin-bearer");
+        registry.finish_job(&job.id, SandboxJobStatus::Failed, None, Some("boom".into()));
+        let done = registry.get(&job.id).expect("job");
+        assert_eq!(done.status, SandboxJobStatus::Failed);
+        assert_eq!(done.error.as_deref(), Some("boom"));
+        assert_eq!(registry.list_audit(1)[0].status, "failed");
+        registry.finish_job("missing", SandboxJobStatus::Running, None, None);
+        assert!(registry.get("missing").is_none());
+    }
+
+    #[test]
+    fn create_get_list_response_auth_and_validation() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+
+        assert_eq!(
+            create_sandbox_job_response(&auth, None, &registry, &hub, b"{}").status(),
+            401
+        );
+        assert_eq!(
+            create_sandbox_job_response(&auth, Some("tok"), &registry, &hub, b"not-json").status(),
+            422
+        );
+        assert_eq!(
+            create_sandbox_job_response(
+                &auth,
+                Some("tok"),
+                &registry,
+                &hub,
+                br#"{"job_type":"other","currency":"EUR","lines":[{"sku":"a","quantity":1,"unit_price_minor":1}]}"#
+            )
+            .status(),
+            422
+        );
+        assert_eq!(
+            get_sandbox_job_response(&auth, None, &registry, "x").status(),
+            401
+        );
+        assert_eq!(
+            get_sandbox_job_response(&auth, Some("tok"), &registry, "x").status(),
+            404
+        );
+        assert_eq!(
+            list_sandbox_audit_response(&auth, None, &registry).status(),
+            401
+        );
+        assert_eq!(
+            list_sandbox_audit_response(&auth, Some("tok"), &registry).status(),
+            200
+        );
+    }
+
+    #[tokio::test]
+    async fn create_quote_job_spawns_runner() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+
+        let body = br#"{"job_type":"quote","currency":"EUR","lines":[{"sku":"HOODIE-M","quantity":2,"unit_price_minor":5000}]}"#;
+        let response = create_sandbox_job_response(&auth, Some("tok"), &registry, &hub, body);
+        assert_eq!(response.status(), 202);
+        let job: SandboxJobResponse = serde_json::from_slice(response.body()).expect("job json");
+        let mut events = hub.subscribe(&job.id);
+        let mut finished = false;
+        for _ in 0..120 {
+            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+            while let Ok(raw) = events.try_recv() {
+                let value: serde_json::Value = serde_json::from_str(&raw).expect("json");
+                if value["type"] == "job.finished" {
+                    finished = true;
+                }
+            }
+            if let Some(done) = registry.get(&job.id)
+                && done.status != SandboxJobStatus::Running
+            {
+                assert_eq!(done.status, SandboxJobStatus::Succeeded);
+                break;
+            }
+        }
+        let done = registry.get(&job.id).expect("job");
+        assert_eq!(done.status, SandboxJobStatus::Succeeded);
+        // Hub events may race if the guest finishes before subscribe; registry is the source of truth.
+        let _ = finished;
     }
 }
