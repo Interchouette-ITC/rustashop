@@ -269,11 +269,12 @@ mod host_tests {
     #[test]
     fn wasmer_cache_root_reads_override() {
         assert_eq!(
-            wasmer_cache_root_from(Some(std::ffi::OsString::from("/tmp/rustashop-wasmer-test-cache"))),
+            wasmer_cache_root_from(Some(std::ffi::OsString::from(
+                "/tmp/rustashop-wasmer-test-cache"
+            ))),
             PathBuf::from("/tmp/rustashop-wasmer-test-cache")
         );
-        assert!(wasmer_cache_root_from(None)
-            .ends_with(std::path::Path::new(".wasmer")));
+        assert!(wasmer_cache_root_from(None).ends_with(std::path::Path::new(".wasmer")));
     }
 
     #[tokio::test(flavor = "multi_thread")]
