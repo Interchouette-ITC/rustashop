@@ -31,6 +31,11 @@ pub const JS_PACKAGE_URL: &str = "https://wasmer.io/syrusakbary/quickjs";
 
 const JS_WEBC_CACHE_NAME: &str = "syrusakbary-quickjs.webc";
 
+/// Registry URL for the pinned PHP Wasmer package.
+pub const PHP_PACKAGE_URL: &str = "https://wasmer.io/php/php-32";
+
+const PHP_WEBC_CACHE_NAME: &str = "php-php-32.webc";
+
 /// Source of the checked-in Python quote fixture.
 #[must_use]
 pub const fn quote_fixture_source() -> &'static str {
@@ -41,6 +46,14 @@ pub const fn quote_fixture_source() -> &'static str {
 #[must_use]
 pub const fn quote_js_fixture_source() -> &'static str {
     include_str!("../../../extensions/fixtures/wasmer-quote/quote.js")
+}
+
+/// PHP `-r` body for the checked-in quote fixture (opening tag stripped).
+#[must_use]
+pub fn quote_php_fixture_source() -> String {
+    strip_php_opening_tag(include_str!(
+        "../../../extensions/fixtures/wasmer-quote/quote.php"
+    ))
 }
 
 /// Path to the checked-in Rust WASI `quote` guest wasm.
@@ -89,6 +102,34 @@ pub async fn invoke_js_quote(cart: &CartSnapshot, js_source: &str) -> Result<Vec
         vec!["--std".into(), "-e".into(), js_source.to_owned()],
     )
     .await
+}
+
+/// Runs the PHP `quote` guest inside Wasmer and parses JSON adjustments.
+///
+/// `php_source` is the body passed to `php -r` (no opening tag).
+///
+/// # Errors
+///
+/// Returns an error when the package cannot be loaded, the guest fails, or
+/// stdout is not valid adjustment JSON.
+pub async fn invoke_php_quote(cart: &CartSnapshot, php_source: &str) -> Result<Vec<Adjustment>> {
+    invoke_package_quote(
+        cart,
+        &wasmer_cache_root(),
+        PHP_PACKAGE_URL,
+        PHP_WEBC_CACHE_NAME,
+        "php",
+        vec!["-r".into(), php_source.to_owned()],
+    )
+    .await
+}
+
+fn strip_php_opening_tag(source: &str) -> String {
+    let trimmed = source.trim_start();
+    trimmed
+        .strip_prefix("<?php")
+        .map_or(trimmed, str::trim_start)
+        .to_owned()
 }
 
 /// Runs the checked-in Rust WASI `quote` guest and parses JSON adjustments.
@@ -392,6 +433,9 @@ mod host_tests {
         assert!(source.contains("def quote("));
         assert!(source.contains("json.dump"));
         assert!(quote_js_fixture_source().contains("function quote("));
+        let php = quote_php_fixture_source();
+        assert!(php.contains("function quote("));
+        assert!(!php.trim_start().starts_with("<?php"));
     }
 
     #[test]

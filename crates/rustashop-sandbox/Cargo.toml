@@ -1,6 +1,6 @@
 [package]
 name = "rustashop-sandbox"
-description = "Wasmer polyglot sandbox host (Python / Rust WASI / JS quote fixtures)"
+description = "Wasmer polyglot sandbox host (Python / Rust WASI / JS / PHP quote fixtures)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
