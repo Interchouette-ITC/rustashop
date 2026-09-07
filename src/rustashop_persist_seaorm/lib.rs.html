@@ -15,7 +15,7 @@
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">pub use </span>catalog::SeaOrmCatalogRepository;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">pub use </span>migration::Migrator;
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">pub use </span>param::{ensure_param, ensure_param_opt};
-<a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub use </span>raw_sql::{assert_raw_sql_allowed, execute_fragment, raw_sql_allowed, ALLOW_RAW_SQL_ENV};
+<a href=#18 id=18 data-nosnippet>18</a><span class="kw">pub use </span>raw_sql::{ALLOW_RAW_SQL_ENV, assert_raw_sql_allowed, execute_fragment, raw_sql_allowed};
 <a href=#19 id=19 data-nosnippet>19</a>
 <a href=#20 id=20 data-nosnippet>20</a><span class="doccomment">/// SQL used by [`seed_catalog`] and `make db-seed`.
 <a href=#21 id=21 data-nosnippet>21</a></span><span class="kw">pub const </span>CATALOG_SEED_SQL: <span class="kw-2">&amp;</span>str = <span class="macro">include_str!</span>(<span class="string">"../../../db/seeds/catalog.sql"</span>);

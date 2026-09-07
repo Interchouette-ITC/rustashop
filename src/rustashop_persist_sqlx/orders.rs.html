@@ -4,8 +4,8 @@
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>serenade_contracts::{PageRequest, PersistenceError};
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>sqlx::postgres::PgPool;
 <a href=#6 id=6 data-nosnippet>6</a>
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::checkout::{load_order_lines_pool, order_from_rows, OrderRow};
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::SqlxCatalogRepository;
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span><span class="kw">crate</span>::SqlxCatalogRepository;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">crate</span>::checkout::{OrderRow, load_order_lines_pool, order_from_rows};
 <a href=#9 id=9 data-nosnippet>9</a>
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">fn </span>internal(error: <span class="kw-2">&amp;</span>sqlx::Error) -&gt; PersistenceError {
 <a href=#11 id=11 data-nosnippet>11</a>    PersistenceError::Internal {
