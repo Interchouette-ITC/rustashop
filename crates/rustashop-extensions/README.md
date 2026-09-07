@@ -9,4 +9,5 @@ Fixture: [`extensions/fixtures/pricing-adjust`](../../extensions/fixtures/pricin
 ```bash
 make extensions-fixture   # rebuild guest .wasm when WIT/guest changes
 cargo test -p rustashop-extensions
+cargo test -p rustashop-extensions --test isolation
 ```
