@@ -37,6 +37,7 @@ Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, 
 | `rustashop-persist` | Facade: `persist-sqlx` (default) or `persist-seaorm` |
 | `rustashop-persist-sqlx` | SQLx migrations, catalog/cart/order repos, migrate binary |
 | `rustashop-persist-seaorm` | SeaORM mirror schema and repos |
+| `rustashop-persist-diesel` | Experimental Diesel spike (`find_by_id` only; not facade-wired) |
 | `rustashop-api` | Commerce HTTP via Serenade listen (Actix adapter), OpenAPI |
 | `rustashop-mcp` | Axum MCP / agent tools (name marker; not wired yet) |
 | `rustashop-template-shop-default` | Shared storefront HTML/SCSS package |
@@ -70,7 +71,7 @@ Catalog → cart → checkout → order on the same stack. Messenger/events via 
 
 - Postgres in Docker (`docker/compose.yml`); no host Postgres install.
 - Dual backends behind one facade; enable exactly one of `persist-sqlx` / `persist-seaorm`.
-- Diesel is deferred (separate issue).
+- Diesel is an optional spike crate only ([ADR 0001](../docs-dev/adr/0001-diesel-persistence.md)); not selected by the facade.
 - Repository traits come from **`serenade-contracts`**; adapters live here.
 
 ## Related surfaces

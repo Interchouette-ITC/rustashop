@@ -2,6 +2,8 @@
 
 Adapters in `rustashop-persist-sqlx` and `rustashop-persist-seaorm` use **parameterized** queries (SQLx binds) or the SeaORM query builder. That is what stops SQL injection. String concatenation must not build SQL from request or domain data.
 
+The experimental `rustashop-persist-diesel` spike uses Diesel's query DSL the same way (bound parameters). It is **not** part of the default facade; see [ADR 0001](adr/0001-diesel-persistence.md).
+
 ## Layers (Symfony-style)
 
 | Layer | Responsibility |

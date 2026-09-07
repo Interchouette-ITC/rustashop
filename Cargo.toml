@@ -5,6 +5,7 @@ members = [
     "crates/rustashop-persist",
     "crates/rustashop-persist-sqlx",
     "crates/rustashop-persist-seaorm",
+    "crates/rustashop-persist-diesel",
     "crates/rustashop-api",
     "crates/rustashop-mcp",
 ]
