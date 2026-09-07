@@ -6,10 +6,15 @@ members = [
     "crates/rustashop-persist-sqlx",
     "crates/rustashop-persist-seaorm",
     "crates/rustashop-persist-diesel",
+    "crates/rustashop-extensions",
     "crates/rustashop-api",
     "crates/rustashop-mcp",
 ]
-exclude = ["shops/leptos-rangular", "templates/shop/default"]
+exclude = [
+    "shops/leptos-rangular",
+    "templates/shop/default",
+    "extensions/fixtures/pricing-adjust",
+]
 resolver = "3"
 
 [workspace.package]

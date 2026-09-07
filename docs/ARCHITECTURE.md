@@ -38,6 +38,7 @@ Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, 
 | `rustashop-persist-sqlx` | SQLx migrations, catalog/cart/order repos, migrate binary |
 | `rustashop-persist-seaorm` | SeaORM mirror schema and repos |
 | `rustashop-persist-diesel` | Experimental Diesel spike (`find_by_id` only; not facade-wired) |
+| `rustashop-extensions` | WIT Component Model host (`pricing-adjust` invoke) |
 | `rustashop-api` | Commerce HTTP via Serenade listen (Actix adapter), OpenAPI |
 | `rustashop-mcp` | Axum MCP / agent tools (name marker; not wired yet) |
 | `rustashop-template-shop-default` | Shared storefront HTML/SCSS package |

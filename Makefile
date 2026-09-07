@@ -36,7 +36,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci \
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci extensions-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -50,6 +50,7 @@ help:
 	@echo ""
 	@echo "  make check      cargo check --workspace, then SeaORM features"
 	@echo "  make test       cargo test --workspace, then SeaORM feature tests"
+	@echo "  make extensions-fixture  rebuild pricing-adjust component wasm (needs wasm-tools)"
 	@echo "  make coverage   cargo llvm-cov → coverage/lcov.info (needs DATABASE_URL for integration)"
 	@echo "  make coverage-js Vitest coverage for shop, admin, and install → coverage/*-lcov.info"
 	@echo "  make lint       fmt check + SQL safety + clippy + Angular shop/admin lint (when node_modules present)"
@@ -94,6 +95,14 @@ check:
 test:
 	cd $(ROOT) && $(CARGO) test --workspace
 	cd $(ROOT) && $(CARGO) test $(SEAORM_PACKAGES) $(SEAORM_FEATURES)
+
+## Rebuild the checked-in pricing-adjust Component Model fixture (issue #35).
+extensions-fixture:
+	cd $(ROOT)/extensions/fixtures/pricing-adjust && \
+		$(CARGO) build --target wasm32-unknown-unknown --release && \
+		wasm-tools component new \
+			target/wasm32-unknown-unknown/release/rustashop_pricing_adjust_fixture.wasm \
+			-o pricing_adjust.component.wasm
 
 ## Local mirror of core CI jobs. Run before every PR create/update (see .cursor/rules/rustashop-ci-before-pr.mdc).
 ci: lint test doc openapi-check audit deny

@@ -1,0 +1,34 @@
+package rustashop:extensions@0.1.0;
+
+/// World v0 for the `pricing-adjust` hook.
+///
+/// Guests export `adjust`; the host supplies no imports.
+world pricing-adjust {
+    /// Integer minor units plus ISO-ish currency code (for example `EUR`).
+    record money {
+        amount-minor: s64,
+        currency: string,
+    }
+
+    /// One purchasable line in a cart snapshot.
+    record cart-line {
+        sku: string,
+        quantity: u32,
+        unit-price: money,
+    }
+
+    /// Host-provided cart view for pricing hooks (no persistence).
+    record cart-snapshot {
+        currency: string,
+        lines: list<cart-line>,
+    }
+
+    /// Guest-proposed adjustment (negative `amount-minor` = discount).
+    record adjustment {
+        label: string,
+        amount-minor: s64,
+    }
+
+    /// Propose deterministic adjustments for the given cart snapshot.
+    export adjust: func(cart: cart-snapshot) -> list<adjustment>;
+}

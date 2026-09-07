@@ -1,0 +1,20 @@
+[package]
+name = "rustashop-extensions"
+description = "WIT Component Model host harness for commerce extension hooks"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = "1"
+wasmtime = { version = "36", default-features = false, features = [
+    "component-model",
+    "cranelift",
+    "runtime",
+] }
+
+[lints]
+workspace = true

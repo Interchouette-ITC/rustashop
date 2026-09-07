@@ -21,3 +21,8 @@ admin/**/coverage/
 # Generated rustdoc copy (rebuild with `make doc`)
 /docs/api-rust/**
 !/docs/api-rust/README.md
+
+# Extension fixture build tree (checked-in component stays tracked)
+/extensions/fixtures/*/target/
+/extensions/fixtures/*/Cargo.lock
+/extensions/fixtures/*/wasi_snapshot_preview1*.wasm

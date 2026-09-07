@@ -1,0 +1,16 @@
+[package]
+name = "rustashop-pricing-adjust-fixture"
+description = "WIT pricing-adjust guest fixture (Component Model)"
+version = "0.1.0"
+edition = "2024"
+license = "OSL-3.0"
+authors = ["Interchouette"]
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = { version = "0.57", default-features = false, features = ["macros", "realloc"] }
