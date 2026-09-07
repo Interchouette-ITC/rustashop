@@ -9,6 +9,10 @@ yanked = "warn"
 # actix-http 3.x depends on h2 0.3; the fix is only published on h2 >= 0.4.16.
 ignore = [
     { id = "RUSTSEC-2026-0258", reason = "actix-http 3.x pins h2 0.3; patched line is h2 0.4.x only" },
+    # Transitive via wasmer 7 / wasmer-wasix (rustashop-sandbox); no safe upgrade upstream yet.
+    { id = "RUSTSEC-2024-0436", reason = "paste unmaintained; pulled by wasmer-compiler via linker-utils" },
+    { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2 unmaintained; pulled by wasmer-derive" },
+    { id = "RUSTSEC-2025-0141", reason = "bincode unmaintained; pulled by wasmer-wasix stack" },
 ]
 
 [licenses]
@@ -19,6 +23,7 @@ allow = [
     "MIT",
     "BSD-2-Clause",
     "BSD-3-Clause",
+    "0BSD",
     "ISC",
     "Unicode-3.0",
     "Zlib",
@@ -26,8 +31,12 @@ allow = [
     "CDLA-Permissive-2.0",
     "OSL-3.0",
     "BSL-1.0",
+    "MPL-2.0",
 ]
 confidence-threshold = 0.8
+
+# wasmer-config → saffron uses license-file only (BSD-3-Clause text in LICENSE).
+exceptions = [{ crate = "saffron", allow = ["BSD-3-Clause"] }]
 
 [bans]
 multiple-versions = "warn"
