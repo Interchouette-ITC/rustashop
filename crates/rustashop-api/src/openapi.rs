@@ -50,6 +50,9 @@ impl Modify for AdminSecurityAddon {
         crate::admin_orders::list_admin_orders,
         crate::admin_orders::patch_admin_order,
         crate::admin_products::list_admin_products,
+        crate::sandbox_jobs::create_sandbox_job,
+        crate::sandbox_jobs::get_sandbox_job,
+        crate::sandbox_jobs::list_sandbox_audit,
         openapi_json
     ),
     components(schemas(
@@ -69,6 +72,12 @@ impl Modify for AdminSecurityAddon {
         OrderLineResponse,
         OrderListResponse,
         PatchOrderStatusRequest,
+        crate::sandbox_jobs::CreateSandboxJobRequest,
+        crate::sandbox_jobs::SandboxJobLine,
+        crate::sandbox_jobs::SandboxJobResponse,
+        crate::sandbox_jobs::SandboxJobStatus,
+        crate::sandbox_jobs::SandboxAdjustmentResponse,
+        crate::sandbox_jobs::SandboxAuditRecord,
         ErrorBody
     )),
     modifiers(&AdminSecurityAddon)

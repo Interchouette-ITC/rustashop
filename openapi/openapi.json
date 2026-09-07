@@ -669,6 +669,158 @@
           }
         ]
       }
+    },
+    "/v1/{admin_api_prefix}/sandbox/audit": {
+      "get": {
+        "tags": [
+          "crate::sandbox_jobs"
+        ],
+        "summary": "`GET /v1/{admin_api_prefix}/sandbox/audit` `OpenAPI` stub.",
+        "operationId": "list_sandbox_audit",
+        "responses": {
+          "200": {
+            "description": "Audit rows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SandboxAuditRecord"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/{admin_api_prefix}/sandbox/jobs": {
+      "post": {
+        "tags": [
+          "crate::sandbox_jobs"
+        ],
+        "summary": "`POST /v1/{admin_api_prefix}/sandbox/jobs` `OpenAPI` stub.",
+        "operationId": "create_sandbox_job",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSandboxJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Job accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxJobResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/{admin_api_prefix}/sandbox/jobs/{id}": {
+      "get": {
+        "tags": [
+          "crate::sandbox_jobs"
+        ],
+        "summary": "`GET /v1/{admin_api_prefix}/sandbox/jobs/{id}` `OpenAPI` stub.",
+        "operationId": "get_sandbox_job",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxJobResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -807,6 +959,32 @@
               "null"
             ],
             "description": "ISO currency for the cart (default `EUR`)."
+          }
+        }
+      },
+      "CreateSandboxJobRequest": {
+        "type": "object",
+        "description": "Request body for creating a sandbox job.",
+        "required": [
+          "job_type",
+          "currency",
+          "lines"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string",
+            "description": "Cart currency for the quote fixture."
+          },
+          "job_type": {
+            "type": "string",
+            "description": "Job type (`quote` only in this slice)."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SandboxJobLine"
+            },
+            "description": "Cart lines for the guest snapshot."
           }
         }
       },
@@ -1146,6 +1324,150 @@
             "description": "Available stock quantity."
           }
         }
+      },
+      "SandboxAdjustmentResponse": {
+        "type": "object",
+        "description": "Adjustment JSON for admin.",
+        "required": [
+          "label",
+          "amount_minor",
+          "currency"
+        ],
+        "properties": {
+          "amount_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Signed minor units."
+          },
+          "currency": {
+            "type": "string",
+            "description": "Currency."
+          },
+          "label": {
+            "type": "string",
+            "description": "Label."
+          }
+        }
+      },
+      "SandboxAuditRecord": {
+        "type": "object",
+        "description": "One audit row (process-local until a persist table lands).",
+        "required": [
+          "job_id",
+          "actor",
+          "job_type",
+          "source_hash",
+          "status",
+          "created_at_unix"
+        ],
+        "properties": {
+          "actor": {
+            "type": "string",
+            "description": "Actor label (`admin-bearer` when authorized)."
+          },
+          "created_at_unix": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unix seconds when the job was created.",
+            "minimum": 0
+          },
+          "job_id": {
+            "type": "string",
+            "description": "Job id."
+          },
+          "job_type": {
+            "type": "string",
+            "description": "Job type."
+          },
+          "source_hash": {
+            "type": "string",
+            "description": "Source fingerprint."
+          },
+          "status": {
+            "type": "string",
+            "description": "Final status string."
+          }
+        }
+      },
+      "SandboxJobLine": {
+        "type": "object",
+        "description": "One cart line in the create-job body.",
+        "required": [
+          "sku",
+          "quantity",
+          "unit_price_minor"
+        ],
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantity.",
+            "minimum": 0
+          },
+          "sku": {
+            "type": "string",
+            "description": "SKU."
+          },
+          "unit_price_minor": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Unit price in minor units."
+          }
+        }
+      },
+      "SandboxJobResponse": {
+        "type": "object",
+        "description": "Public job view.",
+        "required": [
+          "id",
+          "job_type",
+          "status",
+          "source_hash"
+        ],
+        "properties": {
+          "adjustments": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/SandboxAdjustmentResponse"
+            },
+            "description": "Host-validated adjustments when succeeded."
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Error message when failed."
+          },
+          "id": {
+            "type": "string",
+            "description": "Job id."
+          },
+          "job_type": {
+            "type": "string",
+            "description": "Job type."
+          },
+          "source_hash": {
+            "type": "string",
+            "description": "Fingerprint of the fixture source used."
+          },
+          "status": {
+            "$ref": "#/components/schemas/SandboxJobStatus",
+            "description": "Lifecycle status."
+          }
+        }
+      },
+      "SandboxJobStatus": {
+        "type": "string",
+        "description": "Job status returned to the admin UI.",
+        "enum": [
+          "running",
+          "succeeded",
+          "failed"
+        ]
       },
       "UpdateCartLineRequest": {
         "type": "object",

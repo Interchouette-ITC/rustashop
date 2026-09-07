@@ -17,6 +17,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('../components/products_page/products_page').then((m) => m.ProductsPage),
       },
+      {
+        path: 'sandbox',
+        loadComponent: () =>
+          import('../components/sandbox_page/sandbox_page').then((m) => m.SandboxPage),
+      },
       { path: '**', redirectTo: '' },
     ],
   },

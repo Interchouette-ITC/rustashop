@@ -39,6 +39,9 @@ const OPENAPI_ROUTE: &str = "openapi_json";
 const LIST_ADMIN_PRODUCTS_ROUTE: &str = "list_admin_products";
 const LIST_ADMIN_ORDERS_ROUTE: &str = "list_admin_orders";
 const PATCH_ADMIN_ORDER_ROUTE: &str = "patch_admin_order";
+const CREATE_SANDBOX_JOB_ROUTE: &str = "create_sandbox_job";
+const GET_SANDBOX_JOB_ROUTE: &str = "get_sandbox_job";
+const LIST_SANDBOX_AUDIT_ROUTE: &str = "list_sandbox_audit";
 const INSTALL_STATUS_ROUTE: &str = "install_status";
 const INSTALL_COMPLETE_ROUTE: &str = "install_complete";
 const QUERY_STRING_ATTR: &str = "query_string";
@@ -56,6 +59,10 @@ pub struct CommerceFrontConfig {
     pub install_root: Option<PathBuf>,
     /// Optional cart WebSocket hub for mutation push.
     pub cart_hub: Option<CartHub>,
+    /// Optional sandbox job hub for log push.
+    pub sandbox_hub: Option<crate::sandbox_realtime::SandboxJobHub>,
+    /// Optional in-process sandbox job + audit registry.
+    pub sandbox_registry: Option<crate::sandbox_jobs::SandboxJobRegistry>,
 }
 
 impl CommerceFrontConfig {
@@ -68,6 +75,8 @@ impl CommerceFrontConfig {
             admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
             install_root: None,
             cart_hub: None,
+            sandbox_hub: None,
+            sandbox_registry: None,
         }
     }
 }
@@ -198,10 +207,41 @@ async fn dispatch_route(
             )
             .await
         }
+        CREATE_SANDBOX_JOB_ROUTE | GET_SANDBOX_JOB_ROUTE | LIST_SANDBOX_AUDIT_ROUTE => {
+            dispatch_sandbox_route(route_name, config, &input)
+        }
         INSTALL_STATUS_ROUTE => install_status_response(config.install_root.as_deref()),
         INSTALL_COMPLETE_ROUTE => {
             install_complete_response(config.install_root.as_deref(), input.body)
         }
+        _ => Response::new(404).with_body(b"no handler".to_vec()),
+    }
+}
+
+fn dispatch_sandbox_route(
+    route_name: &str,
+    config: &CommerceFrontConfig,
+    input: &DispatchInput<'_>,
+) -> Response {
+    match route_name {
+        CREATE_SANDBOX_JOB_ROUTE => create_sandbox_job_via_registry(
+            &config.admin_auth,
+            input.bearer,
+            config.sandbox_registry.as_ref(),
+            config.sandbox_hub.as_ref(),
+            input.body,
+        ),
+        GET_SANDBOX_JOB_ROUTE => get_sandbox_job_via_registry(
+            &config.admin_auth,
+            input.bearer,
+            config.sandbox_registry.as_ref(),
+            input.id,
+        ),
+        LIST_SANDBOX_AUDIT_ROUTE => list_sandbox_audit_via_registry(
+            &config.admin_auth,
+            input.bearer,
+            config.sandbox_registry.as_ref(),
+        ),
         _ => Response::new(404).with_body(b"no handler".to_vec()),
     }
 }
@@ -377,6 +417,48 @@ async fn patch_admin_order_via_catalog(
     patch_admin_order_response(auth, bearer, catalog, order_id, body).await
 }
 
+fn create_sandbox_job_via_registry(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
+    hub: Option<&crate::sandbox_realtime::SandboxJobHub>,
+    body: &[u8],
+) -> Response {
+    let Some(registry) = registry else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(hub) = hub else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    crate::sandbox_jobs::create_sandbox_job_response(auth, bearer, registry, hub, body)
+}
+
+fn get_sandbox_job_via_registry(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
+    job_id: Option<&str>,
+) -> Response {
+    let Some(registry) = registry else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(job_id) = job_id else {
+        return api_error_json_response(&ApiError::NotFound);
+    };
+    crate::sandbox_jobs::get_sandbox_job_response(auth, bearer, registry, job_id)
+}
+
+fn list_sandbox_audit_via_registry(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
+) -> Response {
+    let Some(registry) = registry else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    crate::sandbox_jobs::list_sandbox_audit_response(auth, bearer, registry)
+}
+
 fn front_matcher(admin_prefix: &str) -> UrlMatcher {
     let mut collection = RouteCollection::new();
     add_storefront_routes(&mut collection);
@@ -482,6 +564,30 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Patch,
         ))
         .expect("patch admin order route");
+    let sandbox_jobs = format!("/v1/{admin_prefix}/sandbox/jobs");
+    collection
+        .add(Route::with_method(
+            CREATE_SANDBOX_JOB_ROUTE,
+            &sandbox_jobs,
+            Method::Post,
+        ))
+        .expect("create sandbox job route");
+    let sandbox_job = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}");
+    collection
+        .add(Route::with_method(
+            GET_SANDBOX_JOB_ROUTE,
+            &sandbox_job,
+            Method::Get,
+        ))
+        .expect("get sandbox job route");
+    let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
+    collection
+        .add(Route::with_method(
+            LIST_SANDBOX_AUDIT_ROUTE,
+            &sandbox_audit,
+            Method::Get,
+        ))
+        .expect("list sandbox audit route");
     collection
         .add(Route::with_method(
             INSTALL_STATUS_ROUTE,
@@ -529,6 +635,9 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
     let admin_products = format!("/v1/{admin_prefix}/products");
     let admin_orders = format!("/v1/{admin_prefix}/orders");
     let admin_order = format!("/v1/{admin_prefix}/orders/{{id}}");
+    let sandbox_jobs = format!("/v1/{admin_prefix}/sandbox/jobs");
+    let sandbox_job = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}");
+    let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
     cfg.route("/healthz", actix_web::web::get().to(serenade_dispatch))
         .route("/v1/products", actix_web::web::get().to(serenade_dispatch))
         .route(
@@ -557,6 +666,9 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
         .route(&admin_products, actix_web::web::get().to(serenade_dispatch))
         .route(&admin_orders, actix_web::web::get().to(serenade_dispatch))
         .route(&admin_order, actix_web::web::patch().to(serenade_dispatch))
+        .route(&sandbox_jobs, actix_web::web::post().to(serenade_dispatch))
+        .route(&sandbox_job, actix_web::web::get().to(serenade_dispatch))
+        .route(&sandbox_audit, actix_web::web::get().to(serenade_dispatch))
         .route(
             "/install/api/status",
             actix_web::web::get().to(serenade_dispatch),

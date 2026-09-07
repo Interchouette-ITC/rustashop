@@ -4,12 +4,28 @@
 
 use actix_web::{test, web};
 use rustashop_api::{
-    CartHub, CartResponse, CommerceFrontConfig, commerce_app, commerce_http_kernel,
+    AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
+    DEFAULT_ADMIN_API_PREFIX, SandboxJobHub, commerce_app, commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
 
 const SCHEMA_LOCK: i64 = 874_515;
+
+fn listen_data(
+    kernel: serenade_http::AsyncHttpKernel,
+    hub: CartHub,
+    catalog: CatalogRepository,
+) -> CommerceListenData {
+    CommerceListenData {
+        kernel: web::Data::new(kernel),
+        cart_hub: web::Data::new(hub),
+        catalog: web::Data::new(catalog),
+        sandbox_hub: web::Data::new(SandboxJobHub::new()),
+        admin_auth: web::Data::new(AdminAuthConfig::from_token("")),
+        admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
+    }
+}
 
 #[actix_web::test]
 async fn cart_ws_rejects_empty_token_and_unknown_cart() {
@@ -24,12 +40,7 @@ async fn cart_ws_rejects_empty_token_and_unknown_cart() {
         cart_hub: Some(hub.clone()),
         ..CommerceFrontConfig::test_default()
     });
-    let app = test::init_service(commerce_app(
-        web::Data::new(kernel),
-        web::Data::new(hub),
-        web::Data::new(catalog),
-    ))
-    .await;
+    let app = test::init_service(commerce_app(listen_data(kernel, hub, catalog))).await;
 
     let empty = test::TestRequest::get()
         .uri("/v1/carts/11111111-1111-1111-1111-111111111111/ws?token=")
@@ -72,11 +83,11 @@ async fn cart_ws_rejects_wrong_token() {
     assert_eq!(create_resp.status(), 201);
     let cart: CartResponse = test::read_body_json(create_resp).await;
 
-    let ws_app = test::init_service(commerce_app(
-        web::Data::new(commerce_http_kernel(config)),
-        web::Data::new(hub),
-        web::Data::new(catalog),
-    ))
+    let ws_app = test::init_service(commerce_app(listen_data(
+        commerce_http_kernel(config),
+        hub,
+        catalog,
+    )))
     .await;
     let bad = test::TestRequest::get()
         .uri(&format!("/v1/carts/{}/ws?token=wrong", cart.id))
@@ -99,12 +110,7 @@ async fn cart_ws_returns_500_when_catalog_errors() {
         ..CommerceFrontConfig::test_default()
     });
     pool.close().await;
-    let app = test::init_service(commerce_app(
-        web::Data::new(kernel),
-        web::Data::new(hub),
-        web::Data::new(catalog),
-    ))
-    .await;
+    let app = test::init_service(commerce_app(listen_data(kernel, hub, catalog))).await;
     let req = test::TestRequest::get()
         .uri("/v1/carts/11111111-1111-1111-1111-111111111111/ws?token=x")
         .to_request();
