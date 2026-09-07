@@ -88,4 +88,4 @@ These axes are product foundation, not a distraction from catalog/cart/checkout.
 
 ## Related GitHub work
 
-Track delivery under epics labeled `area:wasm`, `area:realtime`, `area:extensions`, and `area:ai`. HTTP stack decision: [#47](https://github.com/Interchouette-ITC/rustashop/issues/47). Link new ADRs here when decisions harden.
+Track delivery under epics labeled `area:wasm`, `area:realtime`, `area:extensions`, and `area:ai`. HTTP stack decision: [#47](https://github.com/Interchouette-ITC/rustashop/issues/47). Link new ADRs here when decisions harden ([ADR 0001 Diesel](adr/0001-diesel-persistence.md)).

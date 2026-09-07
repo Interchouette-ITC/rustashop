@@ -87,6 +87,12 @@ Default build uses `persist-sqlx`. SeaORM path:
 cargo check -p rustashop-persist -p rustashop-api --no-default-features --features persist-seaorm
 ```
 
+Experimental Diesel spike (not wired into the persist facade; see ADR 0001):
+
+```bash
+cargo test -p rustashop-persist-diesel
+```
+
 `make lint` and `make test` already cover both.
 
 ## Documentation
