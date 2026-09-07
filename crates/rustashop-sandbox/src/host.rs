@@ -174,15 +174,15 @@ async fn load_python_webc_from(
     cache_root: &std::path::Path,
     package_url: &str,
 ) -> Result<bytes::Bytes> {
-    let cache_path = cache_root.join("downloads").join(PYTHON_WEBC_CACHE_NAME);
+    let downloads = cache_root.join("downloads");
+    let cache_path = downloads.join(PYTHON_WEBC_CACHE_NAME);
     if cache_path.is_file() {
         return Ok(std::fs::read(&cache_path)
             .with_context(|| format!("read cached webc {}", cache_path.display()))?
             .into());
     }
-    if let Some(parent) = cache_path.parent() {
-        std::fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
-    }
+    std::fs::create_dir_all(&downloads)
+        .with_context(|| format!("create {}", downloads.display()))?;
 
     let client = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(30))
