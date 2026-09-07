@@ -8,12 +8,12 @@ mod bundle;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use serenade_bundle::{build_container, BundleError, FrameworkBundle, FrameworkExtension};
+use serenade_bundle::{BundleError, FrameworkBundle, FrameworkExtension, build_container};
 use serenade_config::Config;
 use serenade_di::Container;
 use serenade_kernel::{App, Application, Environment, KernelPhase};
 
-pub use bundle::{RustashopBundle, RustashopExtension, RUSTASHOP_BUNDLE};
+pub use bundle::{RUSTASHOP_BUNDLE, RustashopBundle, RustashopExtension};
 
 /// Diagnostics marker before [`boot_kernel`] succeeds in this process.
 pub const SERENADE_KERNEL_PENDING: &str = "serenade-pending";
@@ -185,11 +185,13 @@ mod tests {
         assert!(names.contains(&FRAMEWORK_BUNDLE));
         assert!(names.contains(&RUSTASHOP_BUNDLE));
         assert!(kernel.config().parameters().contains_key("rustashop.name"));
-        assert!(kernel
-            .container()
-            .parameters()
-            .get("rustashop.name")
-            .is_ok());
+        assert!(
+            kernel
+                .container()
+                .parameters()
+                .get("rustashop.name")
+                .is_ok()
+        );
         assert_eq!(packages_dir(&dir), dir.join(PACKAGES_DIR));
         assert_eq!(kernel_status(), SERENADE_KERNEL_BOOTED);
         kernel.shutdown().expect("shutdown");

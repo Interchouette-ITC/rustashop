@@ -7,7 +7,7 @@ use serenade_http::Response;
 use utoipa::ToSchema;
 
 use crate::carts::MoneyResponse;
-use crate::error::{api_error_json_response, json_response, ApiError, ErrorBody};
+use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
 use crate::request_param::{ensure_request_param, ensure_request_param_opt};
 
 /// Body for `POST /v1/checkout`.
@@ -180,7 +180,7 @@ mod stub_tests {
 #[cfg(all(test, feature = "persist-sqlx"))]
 mod checkout_response_tests {
     use super::*;
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     // Shared with other rustashop-api lib tests that reset `public`.

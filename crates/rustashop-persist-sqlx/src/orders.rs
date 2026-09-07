@@ -4,8 +4,8 @@ use rustashop_domain::{Order, OrderState};
 use serenade_contracts::{PageRequest, PersistenceError};
 use sqlx::postgres::PgPool;
 
-use crate::checkout::{load_order_lines_pool, order_from_rows, OrderRow};
 use crate::SqlxCatalogRepository;
+use crate::checkout::{OrderRow, load_order_lines_pool, order_from_rows};
 
 fn internal(error: &sqlx::Error) -> PersistenceError {
     PersistenceError::Internal {

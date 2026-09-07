@@ -1,7 +1,7 @@
 //! CLI: write opaque admin segment + token into `.env` (same as `/install` API).
 
 use rustashop_api::{
-    run_install_write, InstallWriteOptions, INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME,
+    INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, InstallWriteOptions, run_install_write,
 };
 
 fn main() {

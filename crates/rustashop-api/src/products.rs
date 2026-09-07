@@ -8,7 +8,7 @@ use serenade_http::Response;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::carts::MoneyResponse;
-use crate::error::{api_error_json_response, json_response, ApiError, ErrorBody};
+use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
 use crate::request_param::ensure_request_param;
 
 const DEFAULT_LIMIT: u32 = 20;
@@ -246,7 +246,7 @@ mod tests {
 #[cfg(all(test, feature = "persist-sqlx"))]
 mod catalog_error_tests {
     use super::*;
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     const HOODIE_ID: &str = "22222222-2222-2222-2222-222222222221";

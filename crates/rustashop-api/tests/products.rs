@@ -1,8 +1,8 @@
 //! Integration tests for catalog product HTTP routes.
 
-use actix_web::{test, web, App};
+use actix_web::{App, test, web};
 use rustashop_api::{
-    commerce_http_kernel, routes, CommerceFrontConfig, ProductDetailResponse, ProductListResponse,
+    CommerceFrontConfig, ProductDetailResponse, ProductListResponse, commerce_http_kernel, routes,
 };
 use rustashop_persist::CatalogRepository;
 
@@ -43,10 +43,12 @@ async fn products_list_and_get_seeded_rows() {
     let hoodie: ProductDetailResponse = test::read_body_json(get_resp).await;
     assert_eq!(hoodie.slug, "hoodie");
     assert_eq!(hoodie.name, "Hoodie");
-    assert!(hoodie
-        .variants
-        .iter()
-        .any(|variant| variant.sku.contains("HOODIE")));
+    assert!(
+        hoodie
+            .variants
+            .iter()
+            .any(|variant| variant.sku.contains("HOODIE"))
+    );
 
     let missing = test::TestRequest::get()
         .uri("/v1/products/00000000-0000-0000-0000-000000000000")
@@ -65,7 +67,7 @@ async fn products_list_and_get_seeded_rows() {
 
 #[cfg(feature = "persist-sqlx")]
 async fn exclusive_seeded_catalog() -> CatalogRepository {
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
@@ -94,7 +96,7 @@ async fn exclusive_seeded_catalog() -> CatalogRepository {
 
 #[cfg(feature = "persist-seaorm")]
 async fn exclusive_seeded_catalog() -> CatalogRepository {
-    use rustashop_persist_seaorm::{migrate, seed_catalog, SeaOrmCatalogRepository};
+    use rustashop_persist_seaorm::{SeaOrmCatalogRepository, migrate, seed_catalog};
     use sea_orm::{ConnectOptions, ConnectionTrait, Database};
 
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");

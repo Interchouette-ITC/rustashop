@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::admin_auth::ADMIN_TOKEN_ENV;
-use crate::admin_prefix::{AdminApiPrefix, ADMIN_API_PREFIX_ENV, DEFAULT_ADMIN_API_PREFIX};
+use crate::admin_prefix::{ADMIN_API_PREFIX_ENV, AdminApiPrefix, DEFAULT_ADMIN_API_PREFIX};
 use crate::install_fs::shop_root;
 
 /// Env path override (defaults to `{root}/.env`).

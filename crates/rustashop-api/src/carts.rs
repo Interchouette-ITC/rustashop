@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use serenade_http::Response;
 use utoipa::ToSchema;
 
-use crate::error::{api_error_json_response, json_response, ApiError, ErrorBody};
+use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
 use crate::realtime::{CartHub, CartRealtimeEvent};
 use crate::request_param::{ensure_request_param, ensure_request_param_opt};
 
@@ -417,7 +417,7 @@ mod stub_tests {
 #[cfg(all(test, feature = "persist-sqlx"))]
 mod cart_response_tests {
     use super::*;
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     const HOODIE_VARIANT: &str = "33333333-3333-3333-3333-333333333331";

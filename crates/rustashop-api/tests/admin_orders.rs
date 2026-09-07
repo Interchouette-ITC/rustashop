@@ -1,9 +1,9 @@
 //! Integration tests for admin order HTTP (#19).
 
-use actix_web::{test, web, App};
+use actix_web::{App, test, web};
 use rustashop_api::{
-    commerce_http_kernel, routes, AdminAuthConfig, CartResponse, CommerceFrontConfig,
-    OrderListResponse, OrderResponse,
+    AdminAuthConfig, CartResponse, CommerceFrontConfig, OrderListResponse, OrderResponse,
+    commerce_http_kernel, routes,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
@@ -96,7 +96,7 @@ async fn admin_orders_require_bearer_and_can_mark_shipped() {
 
 #[cfg(feature = "persist-sqlx")]
 async fn exclusive_seeded_catalog() -> CatalogRepository {
-    use rustashop_persist_sqlx::{migrate, seed_catalog, SqlxCatalogRepository};
+    use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
     use sqlx::postgres::PgPoolOptions;
 
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
@@ -125,7 +125,7 @@ async fn exclusive_seeded_catalog() -> CatalogRepository {
 
 #[cfg(feature = "persist-seaorm")]
 async fn exclusive_seeded_catalog() -> CatalogRepository {
-    use rustashop_persist_seaorm::{migrate, seed_catalog, SeaOrmCatalogRepository};
+    use rustashop_persist_seaorm::{SeaOrmCatalogRepository, migrate, seed_catalog};
     use sea_orm::{ConnectOptions, ConnectionTrait, Database};
 
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");

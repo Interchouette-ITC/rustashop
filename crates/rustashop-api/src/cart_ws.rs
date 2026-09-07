@@ -1,6 +1,6 @@
 //! Actix WebSocket endpoint for cart session push.
 
-use actix_web::{web, HttpRequest, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse, web};
 use rustashop_persist::CatalogRepository;
 use serde::Deserialize;
 use tracing::debug;

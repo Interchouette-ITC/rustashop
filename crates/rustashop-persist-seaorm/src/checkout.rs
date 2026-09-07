@@ -10,9 +10,9 @@ use sea_orm::{
 };
 use serenade_contracts::PersistenceError;
 
+use crate::SeaOrmCatalogRepository;
 use crate::cart::cart_from_models;
 use crate::entities::{cart, cart_line, commerce_order, order_line};
-use crate::SeaOrmCatalogRepository;
 use uuid::Uuid;
 
 fn internal(error: &DbErr) -> PersistenceError {
@@ -86,10 +86,10 @@ impl SeaOrmCatalogRepository {
         cart_id: &str,
         idempotency_key: Option<&str>,
     ) -> Result<Order, PersistenceError> {
-        if let Some(key) = idempotency_key {
-            if let Some(existing) = find_order_by_key(&self.db, key).await? {
-                return Ok(existing);
-            }
+        if let Some(key) = idempotency_key
+            && let Some(existing) = find_order_by_key(&self.db, key).await?
+        {
+            return Ok(existing);
         }
         let txn = self.db.begin().await.map_err(|error| internal(&error))?;
         match checkout_in_txn(&txn, cart_id, idempotency_key).await {
@@ -99,15 +99,15 @@ impl SeaOrmCatalogRepository {
             }
             Err(error) => {
                 txn.rollback().await.ok();
-                if let Some(key) = idempotency_key {
-                    if matches!(
+                if let Some(key) = idempotency_key
+                    && matches!(
                         error,
                         PersistenceError::Conflict {
                             constraint: "idempotency_key"
                         }
-                    ) {
-                        return find_order_by_key(&self.db, key).await?.ok_or(error);
-                    }
+                    )
+                {
+                    return find_order_by_key(&self.db, key).await?.ok_or(error);
                 }
                 Err(error)
             }
@@ -139,10 +139,10 @@ async fn checkout_in_txn<C: ConnectionTrait>(
         .map_err(|error| internal(&error))?;
     let cart = cart_from_models(model, lines)?;
     if cart.status == CartStatus::CheckedOut {
-        if let Some(key) = idempotency_key {
-            if let Some(existing) = find_order_by_key(db, key).await? {
-                return Ok(existing);
-            }
+        if let Some(key) = idempotency_key
+            && let Some(existing) = find_order_by_key(db, key).await?
+        {
+            return Ok(existing);
         }
         return Err(PersistenceError::Conflict {
             constraint: "cart_status",

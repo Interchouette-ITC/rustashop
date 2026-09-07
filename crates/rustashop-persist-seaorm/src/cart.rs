@@ -10,8 +10,8 @@ use sea_orm::{
 };
 use serenade_contracts::PersistenceError;
 
-use crate::entities::{cart, cart_line, product, product_variant};
 use crate::SeaOrmCatalogRepository;
+use crate::entities::{cart, cart_line, product, product_variant};
 use uuid::Uuid;
 
 fn internal(error: &DbErr) -> PersistenceError {

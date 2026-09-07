@@ -154,10 +154,10 @@ impl SqlxCatalogRepository {
         cart_id: &str,
         idempotency_key: Option<&str>,
     ) -> Result<Order, PersistenceError> {
-        if let Some(key) = idempotency_key {
-            if let Some(existing) = find_order_by_key(&self.pool, key).await? {
-                return Ok(existing);
-            }
+        if let Some(key) = idempotency_key
+            && let Some(existing) = find_order_by_key(&self.pool, key).await?
+        {
+            return Ok(existing);
         }
         let mut tx = self.pool.begin().await.map_err(|error| internal(&error))?;
         match checkout_tx(&mut tx, cart_id, idempotency_key).await {
@@ -167,10 +167,10 @@ impl SqlxCatalogRepository {
             }
             Err(error) => {
                 tx.rollback().await.ok();
-                if let Some(key) = idempotency_key {
-                    if is_conflict_unique(&error) {
-                        return find_order_by_key(&self.pool, key).await?.ok_or(error);
-                    }
+                if let Some(key) = idempotency_key
+                    && is_conflict_unique(&error)
+                {
+                    return find_order_by_key(&self.pool, key).await?.ok_or(error);
                 }
                 Err(error)
             }
@@ -217,10 +217,10 @@ async fn checkout_tx(
     .map_err(|error| internal(&error))?;
     let cart = cart_from_rows(row, lines)?;
     if cart.status == CartStatus::CheckedOut {
-        if let Some(key) = idempotency_key {
-            if let Some(existing) = find_order_by_key_tx(tx, key).await? {
-                return Ok(existing);
-            }
+        if let Some(key) = idempotency_key
+            && let Some(existing) = find_order_by_key_tx(tx, key).await?
+        {
+            return Ok(existing);
         }
         return Err(PersistenceError::Conflict {
             constraint: "cart_status",
@@ -429,17 +429,19 @@ mod helper_tests {
 
     #[test]
     fn cart_from_rows_rejects_bad_status() {
-        assert!(cart_from_rows(
-            CartRow {
-                id: "c1".into(),
-                customer_id: None,
-                token: "t".into(),
-                currency: "EUR".into(),
-                status: "nope".into(),
-            },
-            vec![],
-        )
-        .is_err());
+        assert!(
+            cart_from_rows(
+                CartRow {
+                    id: "c1".into(),
+                    customer_id: None,
+                    token: "t".into(),
+                    currency: "EUR".into(),
+                    status: "nope".into(),
+                },
+                vec![],
+            )
+            .is_err()
+        );
     }
 
     #[test]
