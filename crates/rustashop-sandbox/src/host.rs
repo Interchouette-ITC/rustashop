@@ -145,7 +145,11 @@ fn build_runtime(
 }
 
 fn wasmer_cache_root() -> PathBuf {
-    if let Some(path) = std::env::var_os("RUSTASHOP_WASMER_CACHE") {
+    wasmer_cache_root_from(std::env::var_os("RUSTASHOP_WASMER_CACHE"))
+}
+
+fn wasmer_cache_root_from(override_path: Option<std::ffi::OsString>) -> PathBuf {
+    if let Some(path) = override_path {
         return PathBuf::from(path);
     }
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.wasmer")
@@ -163,6 +167,13 @@ fn ensure_webc_payload(body: &[u8]) -> Result<()> {
 }
 
 async fn load_python_webc(cache_root: &std::path::Path) -> Result<bytes::Bytes> {
+    load_python_webc_from(cache_root, PYTHON_PACKAGE_URL).await
+}
+
+async fn load_python_webc_from(
+    cache_root: &std::path::Path,
+    package_url: &str,
+) -> Result<bytes::Bytes> {
     let cache_path = cache_root.join("downloads").join(PYTHON_WEBC_CACHE_NAME);
     if cache_path.is_file() {
         return Ok(std::fs::read(&cache_path)
@@ -179,14 +190,14 @@ async fn load_python_webc(cache_root: &std::path::Path) -> Result<bytes::Bytes> 
         .build()
         .context("build HTTP client for Wasmer package download")?;
     let response = client
-        .get(PYTHON_PACKAGE_URL)
+        .get(package_url)
         .header("Accept", "application/webc")
         .send()
         .await
-        .with_context(|| format!("GET {PYTHON_PACKAGE_URL}"))?;
+        .with_context(|| format!("GET {package_url}"))?;
     if !response.status().is_success() {
         bail!(
-            "download {PYTHON_PACKAGE_URL} failed with HTTP {}",
+            "download {package_url} failed with HTTP {}",
             response.status()
         );
     }
@@ -253,6 +264,25 @@ mod host_tests {
         .await
         .unwrap_err();
         assert!(err.to_string().contains("guest failed"));
+    }
+
+    #[test]
+    fn wasmer_cache_root_reads_override() {
+        assert_eq!(
+            wasmer_cache_root_from(Some(std::ffi::OsString::from("/tmp/rustashop-wasmer-test-cache"))),
+            PathBuf::from("/tmp/rustashop-wasmer-test-cache")
+        );
+        assert!(wasmer_cache_root_from(None)
+            .ends_with(std::path::Path::new(".wasmer")));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_python_webc_maps_http_error() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let err = load_python_webc_from(tmp.path(), "https://httpbingo.org/status/404")
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("failed with HTTP"));
     }
 
     #[tokio::test(flavor = "multi_thread")]
