@@ -11,7 +11,7 @@ This document frames the **technical identity** of rustashop for a modern, Wasm-
 | **AI native**     | Discovery, shopping agents, catalog assist, pricing/promos, support, MCP, and autonomous jobs are product surfaces on that API - not a side app ([AI-NATIVE.md](AI-NATIVE.md))           |
 | **Live state**    | WebSocket (then optionally WebTransport) is first-class for shop and admin live updates; REST/OpenAPI for bootstrap, clear mutations, and inbound provider webhooks                      |
 | **Extensibility** | Stable interfaces: OpenAPI for UIs; WIT / Component Model for plugins; optional sandboxed polyglot scripts for merchants, migrations, and agents                                         |
-| **Persistence**   | A transactional store owned by the host kernel (Postgres on the current roadmap). Analytics engines, embedded scratch databases, and GraphQL (if added) are **not** the system of record |
+| **Persistence**   | A transactional store owned by the host kernel (**Postgres** via Docker compose + SQLx/SeaORM adapters). Analytics engines, embedded scratch databases, and GraphQL (if added) are **not** the system of record |
 | **Surfaces**      | Domains and deploy tips in [DOMAINS.md](DOMAINS.md) (`interchouette.net` tip, `.ai` / `.io` / `.dev` / `.app`, geo redirects)                                                            |
 
 GraphQL and columnar/analytics tools may appear later as **API or reporting choices**. They are independent product questions from “where do orders live.”
@@ -65,19 +65,19 @@ Meteor’s habit was: live sync is the default, not an afterthought. rustashop a
 
 Detail: [REALTIME.md](REALTIME.md).
 
-## Growth axes (next to the shipped commerce surface)
+## Capability axes (alongside commerce)
 
-Catalog, cart, checkout, and orders already ship over OpenAPI (and cart WebSocket). Design these axes as first-class surfaces so they are not retrofit surprises:
+Catalog, cart, checkout, and orders ship over OpenAPI (and cart WebSocket). Related surfaces already in tree or documented:
 
-1. **Realtime gateway** - WebSocket surface + event schema next to OpenAPI.
-2. **Extension ABI v0** - one or two WIT hooks with a host harness and a fixture component.
-3. **Sandbox lane** - Wasmer-backed execution for scripts/agents with audit log (Angular admin drives it).
-4. **Polyglot acceptance** - PHP legacy adapters and first-class connector stories (including native Rust↔Python options such as PyO3 for _in-process connectors_ where sandboxing is the wrong tool).
-5. **Module isolation tests** - CI that loads a guest, denies DB, asserts capability boundaries.
-6. **AI-native tools** - discovery, shopping/catalog/support agents, MCP, autonomous jobs on the same domain ([AI-NATIVE.md](AI-NATIVE.md)).
+1. **Realtime gateway** - cart WebSocket today; sandbox job events on the admin path; schema grows with more live feeds ([REALTIME.md](REALTIME.md)).
+2. **Extension ABI** - WIT `pricing-adjust` host harness in `rustashop-extensions` ([EXTENSIONS.md](EXTENSIONS.md)).
+3. **Sandbox lane** - Wasmer polyglot host + Angular `/sandbox` console ([WASMER-SANDBOX.md](WASMER-SANDBOX.md)).
+4. **Polyglot / connectors** - PHP migration guest shipped; PyO3 reserved for trusted first-party connectors ([ADR 0003](adr/0003-pyo3-vs-wasmer-sandbox.md)).
+5. **Module isolation tests** - guest loads that deny DB and assert capability boundaries (extend in CI as the ABI grows).
+6. **AI-native tools** - backlog on the same domain ([AI-NATIVE.md](AI-NATIVE.md)); MCP crate is a workspace member without HTTP routes yet.
 7. **Deploy surfaces** - `:dev` tip then `.ai` / `.io` / `.dev` / `.app` ([DOMAINS.md](DOMAINS.md)).
 
-These axes are product foundation, not a distraction from catalog/cart/checkout. Crate layout (`domain`, `persist`, **`api`** on Actix, **`mcp`** on Axum, **`extensions`**, **`sandbox`**, then `realtime` when needed) should leave room for them.
+Crate layout (`domain`, `persist`, **`api`** on Actix, **`mcp`** on Axum, **`extensions`**, **`sandbox`**) matches these axes.
 
 ## Explicit non-goals for early foundations
 

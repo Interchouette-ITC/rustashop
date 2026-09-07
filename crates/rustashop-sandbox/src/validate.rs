@@ -1,4 +1,4 @@
-//! Host validation stubs for guest-proposed values.
+//! Host validation for guest-proposed values.
 
 use anyhow::{Result, bail};
 

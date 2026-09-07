@@ -22,7 +22,7 @@ make coverage      # Rust lcov → coverage/lcov.info (needs cargo-llvm-cov)
 make coverage-js   # Vitest lcov for shop, admin, install
 ```
 
-3. One concern per PR. Prefer draft until the slice is complete.
+3. One concern per PR. Finish the concern locally, then open a **ready** PR (use draft only when the branch must be visible before that concern is done).
 4. English only in code, docs, commits, and PR text. In markdown prose, write
    **Serenade** (capital S); crate ids stay lowercase (`serenade-contracts`).
 
