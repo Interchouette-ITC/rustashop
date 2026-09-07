@@ -10,8 +10,8 @@
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">mod </span>validate;
 <a href=#11 id=11 data-nosnippet>11</a>
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">pub use </span>host::{
-<a href=#13 id=13 data-nosnippet>13</a>    PYTHON_PACKAGE_URL, invoke_python_quote, invoke_rust_wasi_quote, quote_fixture_source,
-<a href=#14 id=14 data-nosnippet>14</a>    rust_quote_wasm_path,
+<a href=#13 id=13 data-nosnippet>13</a>    JS_PACKAGE_URL, PYTHON_PACKAGE_URL, invoke_js_quote, invoke_python_quote,
+<a href=#14 id=14 data-nosnippet>14</a>    invoke_rust_wasi_quote, quote_fixture_source, quote_js_fixture_source, rust_quote_wasm_path,
 <a href=#15 id=15 data-nosnippet>15</a>};
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">pub use </span>types::{Adjustment, CartLine, CartSnapshot, Money};
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">pub use </span>validate::{apply_validated_adjustments, validate_adjustments};
@@ -81,26 +81,48 @@
 <a href=#81 id=81 data-nosnippet>81</a>        <span class="macro">assert_eq!</span>(applied, []);
 <a href=#82 id=82 data-nosnippet>82</a>    }
 <a href=#83 id=83 data-nosnippet>83</a>
-<a href=#84 id=84 data-nosnippet>84</a>    <span class="attr">#[test]
-<a href=#85 id=85 data-nosnippet>85</a>    </span><span class="kw">fn </span>validation_rejects_currency_mismatch() {
-<a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>cart = sample_cart_small();
-<a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>bad = <span class="macro">vec!</span>[Adjustment {
-<a href=#88 id=88 data-nosnippet>88</a>            label: <span class="string">"x"</span>.into(),
-<a href=#89 id=89 data-nosnippet>89</a>            amount_minor: -<span class="number">1</span>,
-<a href=#90 id=90 data-nosnippet>90</a>            currency: <span class="string">"USD"</span>.into(),
-<a href=#91 id=91 data-nosnippet>91</a>        }];
-<a href=#92 id=92 data-nosnippet>92</a>        <span class="macro">assert!</span>(validate_adjustments(<span class="kw-2">&amp;</span>cart, <span class="kw-2">&amp;</span>bad).is_err());
-<a href=#93 id=93 data-nosnippet>93</a>    }
-<a href=#94 id=94 data-nosnippet>94</a>
-<a href=#95 id=95 data-nosnippet>95</a>    <span class="attr">#[test]
-<a href=#96 id=96 data-nosnippet>96</a>    </span><span class="kw">fn </span>validation_rejects_empty_label() {
-<a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span>cart = sample_cart_small();
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>bad = <span class="macro">vec!</span>[Adjustment {
-<a href=#99 id=99 data-nosnippet>99</a>            label: String::new(),
-<a href=#100 id=100 data-nosnippet>100</a>            amount_minor: -<span class="number">1</span>,
-<a href=#101 id=101 data-nosnippet>101</a>            currency: <span class="string">"EUR"</span>.into(),
-<a href=#102 id=102 data-nosnippet>102</a>        }];
-<a href=#103 id=103 data-nosnippet>103</a>        <span class="macro">assert!</span>(validate_adjustments(<span class="kw-2">&amp;</span>cart, <span class="kw-2">&amp;</span>bad).is_err());
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="attr">#[tokio::test(flavor = <span class="string">"multi_thread"</span>)]
+<a href=#85 id=85 data-nosnippet>85</a>    </span><span class="kw">async fn </span>js_quote_volume_discount_after_host_validation() {
+<a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>cart = sample_cart_volume();
+<a href=#87 id=87 data-nosnippet>87</a>        <span class="kw">let </span>raw = invoke_js_quote(<span class="kw-2">&amp;</span>cart, quote_js_fixture_source())
+<a href=#88 id=88 data-nosnippet>88</a>            .<span class="kw">await
+<a href=#89 id=89 data-nosnippet>89</a>            </span>.expect(<span class="string">"wasmer js quote"</span>);
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">let </span>applied = apply_validated_adjustments(<span class="kw-2">&amp;</span>cart, raw).expect(<span class="string">"validate"</span>);
+<a href=#91 id=91 data-nosnippet>91</a>        <span class="macro">assert_eq!</span>(applied.len(), <span class="number">1</span>);
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="macro">assert_eq!</span>(applied[<span class="number">0</span>].label, <span class="string">"volume-discount"</span>);
+<a href=#93 id=93 data-nosnippet>93</a>        <span class="macro">assert_eq!</span>(applied[<span class="number">0</span>].amount_minor, -<span class="number">1000</span>);
+<a href=#94 id=94 data-nosnippet>94</a>    }
+<a href=#95 id=95 data-nosnippet>95</a>
+<a href=#96 id=96 data-nosnippet>96</a>    <span class="attr">#[tokio::test(flavor = <span class="string">"multi_thread"</span>)]
+<a href=#97 id=97 data-nosnippet>97</a>    </span><span class="kw">async fn </span>js_quote_skips_small_carts() {
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>cart = sample_cart_small();
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">let </span>raw = invoke_js_quote(<span class="kw-2">&amp;</span>cart, quote_js_fixture_source())
+<a href=#100 id=100 data-nosnippet>100</a>            .<span class="kw">await
+<a href=#101 id=101 data-nosnippet>101</a>            </span>.expect(<span class="string">"wasmer js quote"</span>);
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>applied = apply_validated_adjustments(<span class="kw-2">&amp;</span>cart, raw).expect(<span class="string">"validate"</span>);
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="macro">assert_eq!</span>(applied, []);
 <a href=#104 id=104 data-nosnippet>104</a>    }
-<a href=#105 id=105 data-nosnippet>105</a>}
+<a href=#105 id=105 data-nosnippet>105</a>
+<a href=#106 id=106 data-nosnippet>106</a>    <span class="attr">#[test]
+<a href=#107 id=107 data-nosnippet>107</a>    </span><span class="kw">fn </span>validation_rejects_currency_mismatch() {
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>cart = sample_cart_small();
+<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span>bad = <span class="macro">vec!</span>[Adjustment {
+<a href=#110 id=110 data-nosnippet>110</a>            label: <span class="string">"x"</span>.into(),
+<a href=#111 id=111 data-nosnippet>111</a>            amount_minor: -<span class="number">1</span>,
+<a href=#112 id=112 data-nosnippet>112</a>            currency: <span class="string">"USD"</span>.into(),
+<a href=#113 id=113 data-nosnippet>113</a>        }];
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="macro">assert!</span>(validate_adjustments(<span class="kw-2">&amp;</span>cart, <span class="kw-2">&amp;</span>bad).is_err());
+<a href=#115 id=115 data-nosnippet>115</a>    }
+<a href=#116 id=116 data-nosnippet>116</a>
+<a href=#117 id=117 data-nosnippet>117</a>    <span class="attr">#[test]
+<a href=#118 id=118 data-nosnippet>118</a>    </span><span class="kw">fn </span>validation_rejects_empty_label() {
+<a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">let </span>cart = sample_cart_small();
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="kw">let </span>bad = <span class="macro">vec!</span>[Adjustment {
+<a href=#121 id=121 data-nosnippet>121</a>            label: String::new(),
+<a href=#122 id=122 data-nosnippet>122</a>            amount_minor: -<span class="number">1</span>,
+<a href=#123 id=123 data-nosnippet>123</a>            currency: <span class="string">"EUR"</span>.into(),
+<a href=#124 id=124 data-nosnippet>124</a>        }];
+<a href=#125 id=125 data-nosnippet>125</a>        <span class="macro">assert!</span>(validate_adjustments(<span class="kw-2">&amp;</span>cart, <span class="kw-2">&amp;</span>bad).is_err());
+<a href=#126 id=126 data-nosnippet>126</a>    }
+<a href=#127 id=127 data-nosnippet>127</a>}
 </code></pre></div></section></main></body></html>
