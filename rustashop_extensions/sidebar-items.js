@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["invoke_pricing_adjust"],"struct":["Adjustment","CartLine","CartSnapshot","Money"]};
