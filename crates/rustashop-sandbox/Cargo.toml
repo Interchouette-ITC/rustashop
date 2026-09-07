@@ -1,6 +1,6 @@
 [package]
 name = "rustashop-sandbox"
-description = "Wasmer polyglot sandbox host (Python quote fixture)"
+description = "Wasmer polyglot sandbox host (Python / Rust WASI quote fixtures)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -23,6 +23,7 @@ wasmer = { version = "7.4.0", default-features = false, features = [
     "cranelift",
     "sys",
 ] }
+wasmer-types = "7.4.0"
 wasmer-package = { version = "0.704.0", default-features = false }
 wasmer-wasix = { version = "0.704.0", default-features = false, features = [
     "sys-default",

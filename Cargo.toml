@@ -15,6 +15,7 @@ exclude = [
     "shops/leptos-rangular",
     "templates/shop/default",
     "extensions/fixtures/pricing-adjust",
+    "extensions/fixtures/wasmer-quote-rust",
 ]
 resolver = "3"
 
