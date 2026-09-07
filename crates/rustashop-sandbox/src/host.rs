@@ -41,9 +41,17 @@ pub async fn invoke_python_quote(
     cart: &CartSnapshot,
     python_source: &str,
 ) -> Result<Vec<Adjustment>> {
-    let webc = load_python_webc().await?;
+    invoke_python_quote_with_cache(cart, python_source, &wasmer_cache_root()).await
+}
+
+async fn invoke_python_quote_with_cache(
+    cart: &CartSnapshot,
+    python_source: &str,
+    cache_root: &std::path::Path,
+) -> Result<Vec<Adjustment>> {
+    let webc = load_python_webc(cache_root).await?;
     let container = from_bytes(webc).context("decode Wasmer Python webc")?;
-    let (runtime, tasks) = build_runtime()?;
+    let (runtime, tasks) = build_runtime(cache_root)?;
     let pkg = BinaryPackage::from_webc(&container, &runtime)
         .await
         .context("load BinaryPackage from webc")?;
@@ -82,34 +90,48 @@ pub async fn invoke_python_quote(
         .await
         .context("read stderr")?;
 
+    parse_guest_adjustments(
+        run_result.map_err(|error| anyhow::anyhow!("{error:#}")),
+        &out_buf,
+        &err_buf,
+    )
+}
+
+/// Interprets guest exit + stdout/stderr into adjustment JSON.
+fn parse_guest_adjustments(
+    run_result: Result<(), anyhow::Error>,
+    out_buf: &[u8],
+    err_buf: &[u8],
+) -> Result<Vec<Adjustment>> {
     if let Err(error) = run_result {
         bail!(
             "Wasmer Python guest failed: {error:#}; stderr: {}; stdout: {}",
-            String::from_utf8_lossy(&err_buf),
-            String::from_utf8_lossy(&out_buf)
+            String::from_utf8_lossy(err_buf),
+            String::from_utf8_lossy(out_buf)
         );
     }
 
     if out_buf.is_empty() && !err_buf.is_empty() {
         bail!(
             "Python guest produced no stdout; stderr: {}",
-            String::from_utf8_lossy(&err_buf)
+            String::from_utf8_lossy(err_buf)
         );
     }
 
-    serde_json::from_slice(&out_buf).with_context(|| {
+    serde_json::from_slice(out_buf).with_context(|| {
         format!(
             "parse adjustments JSON from guest stdout `{}` (stderr: {})",
-            String::from_utf8_lossy(&out_buf),
-            String::from_utf8_lossy(&err_buf)
+            String::from_utf8_lossy(out_buf),
+            String::from_utf8_lossy(err_buf)
         )
     })
 }
 
-fn build_runtime() -> Result<(PluggableRuntime, Arc<TokioTaskManager>)> {
+fn build_runtime(
+    cache_root: &std::path::Path,
+) -> Result<(PluggableRuntime, Arc<TokioTaskManager>)> {
     let tasks = Arc::new(TokioTaskManager::new(Handle::current()));
     let mut runtime = PluggableRuntime::new(Arc::clone(&tasks) as Arc<_>);
-    let cache_root = wasmer_cache_root();
     let compiled = cache_root.join("compiled");
     let packages = cache_root.join("packages");
     std::fs::create_dir_all(&compiled).with_context(|| format!("create {}", compiled.display()))?;
@@ -129,10 +151,19 @@ fn wasmer_cache_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.wasmer")
 }
 
-async fn load_python_webc() -> Result<bytes::Bytes> {
-    let cache_path = wasmer_cache_root()
-        .join("downloads")
-        .join(PYTHON_WEBC_CACHE_NAME);
+/// Rejects obviously truncated package downloads.
+fn ensure_webc_payload(body: &[u8]) -> Result<()> {
+    if body.len() < 1024 {
+        bail!(
+            "Wasmer Python download looks too small ({} bytes); check Accept header",
+            body.len()
+        );
+    }
+    Ok(())
+}
+
+async fn load_python_webc(cache_root: &std::path::Path) -> Result<bytes::Bytes> {
+    let cache_path = cache_root.join("downloads").join(PYTHON_WEBC_CACHE_NAME);
     if cache_path.is_file() {
         return Ok(std::fs::read(&cache_path)
             .with_context(|| format!("read cached webc {}", cache_path.display()))?
@@ -163,13 +194,75 @@ async fn load_python_webc() -> Result<bytes::Bytes> {
         .bytes()
         .await
         .context("read Wasmer Python webc body")?;
-    if body.len() < 1024 {
-        bail!(
-            "Wasmer Python download looks too small ({} bytes); check Accept header",
-            body.len()
-        );
-    }
+    ensure_webc_payload(&body)?;
     std::fs::write(&cache_path, &body)
         .with_context(|| format!("cache webc at {}", cache_path.display()))?;
     Ok(body)
+}
+
+#[cfg(test)]
+mod host_tests {
+    use super::*;
+    use crate::types::{CartLine, Money};
+
+    fn sample_cart() -> CartSnapshot {
+        CartSnapshot {
+            currency: "EUR".into(),
+            lines: vec![CartLine {
+                sku: "TEE".into(),
+                quantity: 1,
+                unit_price: Money {
+                    amount_minor: 100,
+                    currency: "EUR".into(),
+                },
+            }],
+        }
+    }
+
+    #[test]
+    fn fixture_source_includes_quote_entrypoint() {
+        let source = quote_fixture_source();
+        assert!(source.contains("def quote("));
+        assert!(source.contains("json.dump"));
+    }
+
+    #[test]
+    fn ensure_webc_payload_rejects_tiny_bodies() {
+        assert!(ensure_webc_payload(&[0_u8; 10]).is_err());
+        assert!(ensure_webc_payload(&[0_u8; 2048]).is_ok());
+    }
+
+    #[test]
+    fn parse_guest_adjustments_maps_failure_and_bad_json() {
+        let err = parse_guest_adjustments(Err(anyhow::anyhow!("boom")), b"", b"trace").unwrap_err();
+        assert!(err.to_string().contains("guest failed"));
+
+        let empty = parse_guest_adjustments(Ok(()), b"", b"oops").unwrap_err();
+        assert!(empty.to_string().contains("no stdout"));
+
+        let bad = parse_guest_adjustments(Ok(()), b"not-json", b"").unwrap_err();
+        assert!(bad.to_string().contains("parse adjustments"));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn python_guest_exit_failure_is_mapped() {
+        let err = invoke_python_quote(
+            &sample_cart(),
+            "import sys\nsys.stderr.write('nope')\nsys.exit(1)\n",
+        )
+        .await
+        .unwrap_err();
+        assert!(err.to_string().contains("guest failed"));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn load_python_webc_downloads_when_cache_missing() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let body = load_python_webc(tmp.path()).await.expect("download webc");
+        ensure_webc_payload(&body).expect("payload size");
+        let cached = tmp.path().join("downloads").join(PYTHON_WEBC_CACHE_NAME);
+        assert!(cached.is_file());
+        let again = load_python_webc(tmp.path()).await.expect("read cache");
+        assert_eq!(body.len(), again.len());
+    }
 }

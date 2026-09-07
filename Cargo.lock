@@ -5495,6 +5495,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shared-buffer",
+ "tempfile",
  "tokio",
  "virtual-fs",
  "wasmer",
