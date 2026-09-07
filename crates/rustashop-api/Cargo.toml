@@ -42,6 +42,7 @@ getrandom = "0.3"
 rustashop = { workspace = true }
 rustashop-domain = { workspace = true }
 rustashop-persist = { workspace = true }
+rustashop-sandbox = { path = "../rustashop-sandbox" }
 rustashop-persist-sqlx = { workspace = true, optional = true }
 rustashop-persist-seaorm = { workspace = true, optional = true }
 sea-orm = { workspace = true, optional = true }

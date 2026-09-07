@@ -3,8 +3,8 @@
 use rustashop_api::{
     ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, AdminApiPrefix, AdminAuthConfig,
     BIND_ENV, CartHub, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
-    INSTALL_OFF_DIR_NAME, bind_address, bind_commerce_server, commerce_http_kernel,
-    install_artefacts_present, shop_root,
+    INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobRegistry, bind_address, bind_commerce_server,
+    commerce_http_kernel, install_artefacts_present, shop_root,
 };
 use serenade_http_actix::await_bound;
 use tracing::{error, info};
@@ -102,6 +102,8 @@ async fn run() -> std::io::Result<()> {
         .map_err(std::io::Error::other)?;
     info!("catalog repository ready");
     let hub = CartHub::new();
+    let sandbox_hub = SandboxJobHub::new();
+    let sandbox_registry = SandboxJobRegistry::new();
     let admin_auth = AdminAuthConfig::from_env();
     let admin_prefix = AdminApiPrefix::from_env();
     if admin_auth.is_configured() {
@@ -123,14 +125,24 @@ async fn run() -> std::io::Result<()> {
 
     let http_kernel = commerce_http_kernel(CommerceFrontConfig {
         catalog: Some(catalog.clone()),
-        admin_auth,
+        admin_auth: admin_auth.clone(),
         admin_prefix: admin_prefix.as_str().to_owned(),
         install_root: Some(root),
         cart_hub: Some(hub.clone()),
+        sandbox_hub: Some(sandbox_hub.clone()),
+        sandbox_registry: Some(sandbox_registry),
     });
-    let bound = bind_commerce_server(&bind, http_kernel, hub, catalog)
-        .map_err(|error| bind_error(&bind, &error))?;
-    info!("listening on http://{bind} (Serenade listen + cart WS)");
+    let bound = bind_commerce_server(
+        &bind,
+        http_kernel,
+        hub,
+        catalog,
+        sandbox_hub,
+        admin_auth,
+        admin_prefix.as_str(),
+    )
+    .map_err(|error| bind_error(&bind, &error))?;
+    info!("listening on http://{bind} (Serenade listen + cart/sandbox WS)");
     let result = await_bound(bound.server).await;
     if let Err(error) = kernel.shutdown() {
         tracing::warn!("serenade kernel shutdown: {error}");

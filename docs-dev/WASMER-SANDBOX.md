@@ -84,6 +84,7 @@ Rust authorizes; Wasm executes within a jail; audit logs are mandatory.
 | Piece | Location |
 | --- | --- |
 | Host crate | [`crates/rustashop-sandbox`](../crates/rustashop-sandbox) (Wasmer WASIX + pinned `python/python@0.1.0`) |
+| Admin console | Angular `/sandbox` page: create quote job, WS logs, in-process audit (`GET …/sandbox/audit`) |
 | Python fixture | [`extensions/fixtures/wasmer-quote/quote.py`](../extensions/fixtures/wasmer-quote/quote.py) |
 | Rust WASI fixture | [`extensions/fixtures/wasmer-quote-rust/`](../extensions/fixtures/wasmer-quote-rust/) (`quote.wasm`, rebuild with `make sandbox-quote-rust-fixture`) |
 | JS fixture | [`extensions/fixtures/wasmer-quote/quote.js`](../extensions/fixtures/wasmer-quote/quote.js) (pinned `syrusakbary/quickjs`) |

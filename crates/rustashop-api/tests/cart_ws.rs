@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
-    CartHub, CartResponse, CommerceFrontConfig, bind_commerce_server, commerce_http_kernel,
+    AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX,
+    SandboxJobHub, bind_commerce_server, commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
@@ -28,7 +29,16 @@ async fn cart_line_add_pushes_ws_event() {
         cart_hub: Some(hub.clone()),
         ..CommerceFrontConfig::test_default()
     });
-    let bound = bind_commerce_server("127.0.0.1:0", kernel, hub, catalog).expect("bind");
+    let bound = bind_commerce_server(
+        "127.0.0.1:0",
+        kernel,
+        hub,
+        catalog,
+        SandboxJobHub::new(),
+        AdminAuthConfig::from_token(""),
+        DEFAULT_ADMIN_API_PREFIX,
+    )
+    .expect("bind");
     let addr = bound.addrs[0];
     let handle = bound.server.handle();
     tokio::spawn(bound.server);

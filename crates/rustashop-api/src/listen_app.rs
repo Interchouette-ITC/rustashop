@@ -1,4 +1,4 @@
-//! Bind Actix with Serenade kernel default service plus cart WebSocket route.
+//! Bind Actix with Serenade kernel default service plus WebSocket routes.
 
 use std::net::{SocketAddr, ToSocketAddrs};
 
@@ -9,15 +9,33 @@ use rustashop_persist::CatalogRepository;
 use serenade_http::AsyncHttpKernel;
 use serenade_http_actix::dispatch_async;
 
+use crate::admin_auth::AdminAuthConfig;
 use crate::cart_ws::cart_ws;
 use crate::realtime::CartHub;
+use crate::sandbox_realtime::SandboxJobHub;
+use crate::sandbox_ws::sandbox_job_ws;
 
-/// Builds the production Actix app: cart WS route + Serenade kernel catch-all.
+/// Shared Actix app data for commerce listen.
+#[derive(Clone)]
+pub struct CommerceListenData {
+    /// Serenade HTTP kernel.
+    pub kernel: web::Data<AsyncHttpKernel>,
+    /// Cart push hub.
+    pub cart_hub: web::Data<CartHub>,
+    /// Catalog for cart WS auth.
+    pub catalog: web::Data<CatalogRepository>,
+    /// Sandbox job push hub.
+    pub sandbox_hub: web::Data<SandboxJobHub>,
+    /// Admin bearer for sandbox WS.
+    pub admin_auth: web::Data<AdminAuthConfig>,
+    /// Operator API path segment (sandbox WS path).
+    pub admin_prefix: String,
+}
+
+/// Builds the production Actix app: WS routes + Serenade kernel catch-all.
 #[must_use]
 pub fn commerce_app(
-    kernel: web::Data<AsyncHttpKernel>,
-    hub: web::Data<CartHub>,
-    catalog: web::Data<CatalogRepository>,
+    data: CommerceListenData,
 ) -> App<
     impl ServiceFactory<
         ServiceRequest,
@@ -27,11 +45,15 @@ pub fn commerce_app(
         InitError = (),
     >,
 > {
+    let sandbox_ws_path = format!("/v1/{}/sandbox/jobs/{{id}}/ws", data.admin_prefix);
     App::new()
-        .app_data(kernel)
-        .app_data(hub)
-        .app_data(catalog)
+        .app_data(data.kernel)
+        .app_data(data.cart_hub)
+        .app_data(data.catalog)
+        .app_data(data.sandbox_hub)
+        .app_data(data.admin_auth)
         .route("/v1/carts/{id}/ws", web::get().to(cart_ws))
+        .route(&sandbox_ws_path, web::get().to(sandbox_job_ws))
         .default_service(web::to(kernel_service))
 }
 
@@ -43,7 +65,7 @@ pub struct BoundCommerce {
     pub addrs: Vec<SocketAddr>,
 }
 
-/// Binds `addr` with commerce HTTP + cart WebSocket (does not await).
+/// Binds `addr` with commerce HTTP + WebSocket routes (does not await).
 ///
 /// # Errors
 ///
@@ -51,14 +73,21 @@ pub struct BoundCommerce {
 pub fn bind_commerce_server(
     addr: impl ToSocketAddrs,
     kernel: AsyncHttpKernel,
-    hub: CartHub,
+    cart_hub: CartHub,
     catalog: CatalogRepository,
+    sandbox_hub: SandboxJobHub,
+    admin_auth: AdminAuthConfig,
+    admin_prefix: impl Into<String>,
 ) -> std::io::Result<BoundCommerce> {
-    let kernel = web::Data::new(kernel);
-    let hub = web::Data::new(hub);
-    let catalog = web::Data::new(catalog);
-    let http = HttpServer::new(move || commerce_app(kernel.clone(), hub.clone(), catalog.clone()))
-        .bind(addr)?;
+    let data = CommerceListenData {
+        kernel: web::Data::new(kernel),
+        cart_hub: web::Data::new(cart_hub),
+        catalog: web::Data::new(catalog),
+        sandbox_hub: web::Data::new(sandbox_hub),
+        admin_auth: web::Data::new(admin_auth),
+        admin_prefix: admin_prefix.into(),
+    };
+    let http = HttpServer::new(move || commerce_app(data.clone())).bind(addr)?;
     let addrs = http.addrs();
     Ok(BoundCommerce {
         server: http.run(),

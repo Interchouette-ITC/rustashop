@@ -1,0 +1,82 @@
+<section aria-labelledby="sandbox-heading">
+  <h1 id="sandbox-heading" class="admin__title">Sandbox</h1>
+  <p class="admin__tagline">
+    Run the fixed Python quote guest via Wasmer. Logs stream over WebSocket; audit stays in-process.
+  </p>
+
+  @if (error()) {
+    <p class="admin__error" role="alert">{{ error() }}</p>
+  }
+
+  @if (!hasToken()) {
+    <p class="admin__tagline">Set an admin bearer token in the bar (RUSTASHOP_ADMIN_API_TOKEN value).</p>
+  } @else {
+    <div class="admin__panel">
+      <p class="admin__tagline">Sample cart: 2× HOODIE-M @ 50.00 EUR (triggers volume discount).</p>
+      <button
+        type="button"
+        class="btn btn-primary btn-sm"
+        (click)="runQuote()"
+        [disabled]="busy()"
+      >
+        Run quote job
+      </button>
+    </div>
+
+    @if (job()) {
+      <div class="admin__panel mt-3">
+        <h2 class="admin__title">Job</h2>
+        <p>
+          <code>{{ job()!.id }}</code> · {{ job()!.status }} · hash
+          <code>{{ job()!.source_hash }}</code>
+        </p>
+        @if (job()?.adjustments; as adjustments) {
+          <ul>
+            @for (adj of adjustments; track adj.label) {
+              <li>{{ adj.label }}: {{ adj.amount_minor }} {{ adj.currency }}</li>
+            }
+          </ul>
+        }
+        @if (job()?.error) {
+          <p class="admin__error">{{ job()!.error }}</p>
+        }
+      </div>
+    }
+
+    <div class="admin__panel mt-3">
+      <h2 class="admin__title">Logs</h2>
+      <pre class="admin__log">{{ logText() }}</pre>
+    </div>
+
+    <div class="admin__panel mt-3">
+      <h2 class="admin__title">Audit</h2>
+      <button type="button" class="btn btn-outline-secondary btn-sm mb-2" (click)="reloadAudit()" [disabled]="busy()">
+        Refresh audit
+      </button>
+      @if (audit().length === 0) {
+        <p class="admin__empty">No audit rows yet.</p>
+      } @else {
+        <table class="admin__table">
+          <thead>
+            <tr>
+              <th scope="col">Job</th>
+              <th scope="col">Type</th>
+              <th scope="col">Status</th>
+              <th scope="col">Hash</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of audit(); track row.job_id) {
+              <tr>
+                <td><code>{{ row.job_id }}</code></td>
+                <td>{{ row.job_type }}</td>
+                <td>{{ row.status }}</td>
+                <td><code>{{ row.source_hash }}</code></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+</section>

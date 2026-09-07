@@ -19,6 +19,9 @@ mod openapi;
 mod products;
 mod realtime;
 mod request_param;
+mod sandbox_jobs;
+mod sandbox_realtime;
+mod sandbox_ws;
 
 use actix_web::web;
 
@@ -45,13 +48,18 @@ pub use install_env::{
 pub use install_fs::{
     INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, ROOT_ENV, install_artefacts_present, shop_root,
 };
-pub use listen_app::{BoundCommerce, bind_commerce_server, commerce_app};
+pub use listen_app::{BoundCommerce, CommerceListenData, bind_commerce_server, commerce_app};
 pub use openapi::{ApiDoc, openapi_json, swagger_ui};
 pub use products::{
     ProductDetailResponse, ProductListResponse, ProductResponse, ProductVariantResponse,
     get_product, list_products,
 };
 pub use realtime::{CartHub, CartRealtimeEvent};
+pub use sandbox_jobs::{
+    CreateSandboxJobRequest, SandboxAuditRecord, SandboxJobRegistry, SandboxJobResponse,
+    create_sandbox_job, get_sandbox_job, list_sandbox_audit,
+};
+pub use sandbox_realtime::SandboxJobHub;
 
 /// Default bind address when `RUSTASHOP_BIND` is unset.
 pub const DEFAULT_BIND: &str = "127.0.0.1:8080";
