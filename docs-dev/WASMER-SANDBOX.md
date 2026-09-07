@@ -87,6 +87,7 @@ Rust authorizes; Wasm executes within a jail; audit logs are mandatory.
 | Python fixture | [`extensions/fixtures/wasmer-quote/quote.py`](../extensions/fixtures/wasmer-quote/quote.py) |
 | Rust WASI fixture | [`extensions/fixtures/wasmer-quote-rust/`](../extensions/fixtures/wasmer-quote-rust/) (`quote.wasm`, rebuild with `make sandbox-quote-rust-fixture`) |
 | JS fixture | [`extensions/fixtures/wasmer-quote/quote.js`](../extensions/fixtures/wasmer-quote/quote.js) (pinned `syrusakbary/quickjs`) |
+| PHP fixture | [`extensions/fixtures/wasmer-quote/quote.php`](../extensions/fixtures/wasmer-quote/quote.php) (pinned `php/php-32`) |
 | Cache | `.wasmer/` (gitignored); override with `RUSTASHOP_WASMER_CACHE` |
 
 ```bash

@@ -10,8 +10,9 @@ mod types;
 mod validate;
 
 pub use host::{
-    JS_PACKAGE_URL, PYTHON_PACKAGE_URL, invoke_js_quote, invoke_python_quote,
-    invoke_rust_wasi_quote, quote_fixture_source, quote_js_fixture_source, rust_quote_wasm_path,
+    JS_PACKAGE_URL, PHP_PACKAGE_URL, PYTHON_PACKAGE_URL, invoke_js_quote, invoke_php_quote,
+    invoke_python_quote, invoke_rust_wasi_quote, quote_fixture_source, quote_js_fixture_source,
+    quote_php_fixture_source, rust_quote_wasm_path,
 };
 pub use types::{Adjustment, CartLine, CartSnapshot, Money};
 pub use validate::{apply_validated_adjustments, validate_adjustments};
@@ -99,6 +100,28 @@ mod tests {
         let raw = invoke_js_quote(&cart, quote_js_fixture_source())
             .await
             .expect("wasmer js quote");
+        let applied = apply_validated_adjustments(&cart, raw).expect("validate");
+        assert_eq!(applied, []);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn php_quote_volume_discount_after_host_validation() {
+        let cart = sample_cart_volume();
+        let raw = invoke_php_quote(&cart, &quote_php_fixture_source())
+            .await
+            .expect("wasmer php quote");
+        let applied = apply_validated_adjustments(&cart, raw).expect("validate");
+        assert_eq!(applied.len(), 1);
+        assert_eq!(applied[0].label, "volume-discount");
+        assert_eq!(applied[0].amount_minor, -1000);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn php_quote_skips_small_carts() {
+        let cart = sample_cart_small();
+        let raw = invoke_php_quote(&cart, &quote_php_fixture_source())
+            .await
+            .expect("wasmer php quote");
         let applied = apply_validated_adjustments(&cart, raw).expect("validate");
         assert_eq!(applied, []);
     }
