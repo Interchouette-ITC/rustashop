@@ -10,12 +10,16 @@ mod types;
 mod validate;
 
 pub use host::{
-    JS_PACKAGE_URL, PHP_PACKAGE_URL, PYTHON_PACKAGE_URL, invoke_js_quote, invoke_php_quote,
-    invoke_python_quote, invoke_rust_wasi_quote, quote_fixture_source, quote_js_fixture_source,
+    JS_PACKAGE_URL, PHP_PACKAGE_URL, PYTHON_PACKAGE_URL, invoke_js_quote,
+    invoke_php_migration_hook, invoke_php_quote, invoke_python_quote, invoke_rust_wasi_quote,
+    php_migration_hook_source, quote_fixture_source, quote_js_fixture_source,
     quote_php_fixture_source, rust_quote_wasm_path,
 };
-pub use types::{Adjustment, CartLine, CartSnapshot, Money};
-pub use validate::{apply_validated_adjustments, validate_adjustments};
+pub use types::{Adjustment, CartLine, CartSnapshot, DomainEventDraft, LegacyHookInput, Money};
+pub use validate::{
+    CART_LINE_QUANTITY_PROPOSED, CART_UPDATE_QUANTITY_HOOK, accept_validated_domain_event,
+    apply_validated_adjustments, validate_adjustments, validate_domain_event_draft,
+};
 
 #[cfg(test)]
 mod tests {
@@ -124,6 +128,26 @@ mod tests {
             .expect("wasmer php quote");
         let applied = apply_validated_adjustments(&cart, raw).expect("validate");
         assert_eq!(applied, []);
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn php_migration_cart_update_hook_emits_domain_event_draft() {
+        let input = LegacyHookInput {
+            hook: CART_UPDATE_QUANTITY_HOOK.into(),
+            cart_id: "cart-1".into(),
+            id_product: "42".into(),
+            quantity: 3,
+            operator: "up".into(),
+        };
+        let draft = invoke_php_migration_hook(&input, &php_migration_hook_source())
+            .await
+            .expect("php migration guest");
+        let accepted = accept_validated_domain_event(draft).expect("validate draft");
+        assert_eq!(accepted.event_type, CART_LINE_QUANTITY_PROPOSED);
+        assert_eq!(accepted.cart_id, "cart-1");
+        assert_eq!(accepted.product_id, "42");
+        assert_eq!(accepted.quantity, 3);
+        assert_eq!(accepted.operator, "up");
     }
 
     #[test]

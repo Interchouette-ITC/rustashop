@@ -1,4 +1,4 @@
-//! JSON ABI types for sandbox `quote(cart) -> adjustments`.
+//! JSON ABI types for sandbox guests.
 
 use serde::{Deserialize, Serialize};
 
@@ -40,4 +40,34 @@ pub struct Adjustment {
     pub amount_minor: i64,
     /// Must match the cart currency after host validation.
     pub currency: String,
+}
+
+/// Legacy PrestaShop-style hook payload for the PHP migration guest.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LegacyHookInput {
+    /// Hook name (for example `actionCartUpdateQuantityBefore`).
+    pub hook: String,
+    /// Host cart identifier.
+    pub cart_id: String,
+    /// Legacy product id (stringified).
+    pub id_product: String,
+    /// Requested quantity.
+    pub quantity: u32,
+    /// Operator (`up`, `down`, or `set`).
+    pub operator: String,
+}
+
+/// Domain event draft emitted by a migration guest (host still commits).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DomainEventDraft {
+    /// Stable event type the host recognizes.
+    pub event_type: String,
+    /// Cart identifier.
+    pub cart_id: String,
+    /// Product identifier mapped from the legacy hook.
+    pub product_id: String,
+    /// Proposed quantity.
+    pub quantity: u32,
+    /// Operator mirrored from the hook input.
+    pub operator: String,
 }
