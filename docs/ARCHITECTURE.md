@@ -82,6 +82,7 @@ Catalog → cart → checkout → order on the same stack. Messenger/events via 
 | --- | --- |
 | Realtime | WebSocket gateway aligned with OpenAPI mutations |
 | Extensions | WIT / Component Model hooks on **wasmtime** ([ADR 0002](../docs-dev/adr/0002-wit-plugin-engine.md)) |
+| Sandbox vs native Python | Wasmer for untrusted scripts; PyO3 only for first-party connectors ([ADR 0003](../docs-dev/adr/0003-pyo3-vs-wasmer-sandbox.md)) |
 | Sandbox | Wasmer (or similar) for untrusted / polyglot scripts |
 
 Wasm roles (UI wasm vs plugins vs sandbox): [`docs-dev/WASM-LAYERS.md`](../docs-dev/WASM-LAYERS.md). Foundations: [`docs-dev/FOUNDATIONS.md`](../docs-dev/FOUNDATIONS.md).

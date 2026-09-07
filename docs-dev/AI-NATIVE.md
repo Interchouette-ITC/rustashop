@@ -32,7 +32,8 @@ rustashop
 
 - **Actix-web** hosts the commerce kernel: REST, OpenAPI, WebSocket gateway ([FOUNDATIONS.md](FOUNDATIONS.md)).
 - Domain services expose **stable tool surfaces** (not ad-hoc prompts over SQL).
-- Agent runs are **audited**; untrusted code/scripts go through the [Wasmer sandbox](WASMER-SANDBOX.md) lane.
+- Agent runs are **audited**; untrusted code/scripts go through the [Wasmer sandbox](WASMER-SANDBOX.md) lane (default unless a tool is marked first-party; [ADR 0003](adr/0003-pyo3-vs-wasmer-sandbox.md)).
+- Money, inventory, and payment capture stay **host-authorized**; models propose, humans or strict policies confirm where required.
 - Pricing / inventory **commits** stay host-mediated (same rule as WIT plugins).
 - Realtime gateway carries agent job progress and cart updates ([REALTIME.md](REALTIME.md)).
 - **Axum** hosts the MCP server and other narrow tool HTTP surfaces; it speaks the same capabilities the admin agent uses, backed by the kernel domain.
