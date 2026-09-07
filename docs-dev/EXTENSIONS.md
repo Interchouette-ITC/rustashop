@@ -38,7 +38,7 @@ Rebuild the fixture with `make extensions-fixture` (needs `wasm32-unknown-unknow
 
 Isolation / denied-import tests and golden I/O live in
 `crates/rustashop-extensions/tests/isolation.rs` ([#36](https://github.com/Interchouette-ITC/rustashop/issues/36)).
-Engine ADR (wasmtime vs Wasmer) lands with the remaining epic outcomes on [#34](https://github.com/Interchouette-ITC/rustashop/issues/34).
+Plugin host engine: [ADR 0002](adr/0002-wit-plugin-engine.md) (**wasmtime**).
 
 ## OpenAPI vs WIT
 
@@ -52,7 +52,8 @@ Both describe the **same domain**. They are two doors, not two products.
 
 ## Hosting engines
 
-Prefer a Component Model-capable host for plugins (wasmtime is the usual baseline today). Wasmer may participate where it supports the same WIT worlds or where a plugin is delivered as a Wasmer package; that choice is an ADR when the first harness lands. Do not block the ABI on picking every engine forever.
+**WIT plugins:** **wasmtime** ([ADR 0002](adr/0002-wit-plugin-engine.md)).  
+**Polyglot sandboxes:** Wasmer (or similar) under epic [#37](https://github.com/Interchouette-ITC/rustashop/issues/37) - a separate lane, not a substitute for the plugin host.
 
 ## Isolation tests (required habit)
 
