@@ -24,7 +24,19 @@ Guests **cannot** open the database or talk to payment providers except through 
 | `tax-rule`                  | Taxable breakdown             | Tax lines                     |
 | `payment-webhook-normalize` | Raw provider payload          | Normalized domain event draft |
 
-Start with **one** hook (likely `pricing-adjust`) plus a fixture component in CI.
+Start with **one** hook (`pricing-adjust`) plus a fixture component in CI.
+
+### v0 layout (issue #35)
+
+| Path | Role |
+| --- | --- |
+| [`extensions/wit/v0/world.wit`](../extensions/wit/v0/world.wit) | WIT world `pricing-adjust` (`export adjust`) |
+| [`extensions/fixtures/pricing-adjust`](../extensions/fixtures/pricing-adjust) | Guest fixture + checked-in `pricing_adjust.component.wasm` |
+| [`crates/rustashop-extensions`](../crates/rustashop-extensions) | Host invoke helper + unit tests |
+
+Rebuild the fixture with `make extensions-fixture` (needs `wasm32-unknown-unknown` + `wasm-tools`). Host tests call `invoke_pricing_adjust` and assert deterministic discounts.
+
+Isolation / denied-import tests are tracked in [#36](https://github.com/Interchouette-ITC/rustashop/issues/36). Engine ADR (wasmtime vs Wasmer) lands with the harness epic outcomes on [#34](https://github.com/Interchouette-ITC/rustashop/issues/34).
 
 ## OpenAPI vs WIT
 
