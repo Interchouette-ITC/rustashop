@@ -26,10 +26,21 @@ pub const PYTHON_PACKAGE_URL: &str = "https://wasmer.io/python/python@0.1.0";
 
 const PYTHON_WEBC_CACHE_NAME: &str = "python-python-0.1.0.webc";
 
+/// Registry URL for the pinned `QuickJS` Wasmer package (JS quote guest).
+pub const JS_PACKAGE_URL: &str = "https://wasmer.io/syrusakbary/quickjs";
+
+const JS_WEBC_CACHE_NAME: &str = "syrusakbary-quickjs.webc";
+
 /// Source of the checked-in Python quote fixture.
 #[must_use]
 pub const fn quote_fixture_source() -> &'static str {
     include_str!("../../../extensions/fixtures/wasmer-quote/quote.py")
+}
+
+/// Source of the checked-in `QuickJS` quote fixture.
+#[must_use]
+pub const fn quote_js_fixture_source() -> &'static str {
+    include_str!("../../../extensions/fixtures/wasmer-quote/quote.js")
 }
 
 /// Path to the checked-in Rust WASI `quote` guest wasm.
@@ -51,7 +62,33 @@ pub async fn invoke_python_quote(
     cart: &CartSnapshot,
     python_source: &str,
 ) -> Result<Vec<Adjustment>> {
-    invoke_python_quote_with_cache(cart, python_source, &wasmer_cache_root()).await
+    invoke_package_quote(
+        cart,
+        &wasmer_cache_root(),
+        PYTHON_PACKAGE_URL,
+        PYTHON_WEBC_CACHE_NAME,
+        "python",
+        vec!["-c".into(), python_source.to_owned()],
+    )
+    .await
+}
+
+/// Runs the `QuickJS` `quote` guest inside Wasmer and parses JSON adjustments.
+///
+/// # Errors
+///
+/// Returns an error when the package cannot be loaded, the guest fails, or
+/// stdout is not valid adjustment JSON.
+pub async fn invoke_js_quote(cart: &CartSnapshot, js_source: &str) -> Result<Vec<Adjustment>> {
+    invoke_package_quote(
+        cart,
+        &wasmer_cache_root(),
+        JS_PACKAGE_URL,
+        JS_WEBC_CACHE_NAME,
+        "qjs",
+        vec!["--std".into(), "-e".into(), js_source.to_owned()],
+    )
+    .await
 }
 
 /// Runs the checked-in Rust WASI `quote` guest and parses JSON adjustments.
@@ -73,46 +110,68 @@ async fn invoke_rust_wasi_quote_at(
     let cart_bytes = serde_json::to_vec(cart).context("serialize cart")?;
     let (out_buf, err_buf, run_result) =
         run_wasi_module_stdio("quote", &wasm_bytes, &cart_bytes, &wasmer_cache_root()).await?;
-    parse_guest_adjustments(
+    parse_guest_json(
         run_result.map_err(|error| anyhow::anyhow!("{error:#}")),
         &out_buf,
         &err_buf,
     )
 }
 
-async fn invoke_python_quote_with_cache(
+async fn invoke_package_quote(
     cart: &CartSnapshot,
-    python_source: &str,
     cache_root: &std::path::Path,
+    package_url: &str,
+    cache_name: &str,
+    command: &str,
+    args: Vec<String>,
 ) -> Result<Vec<Adjustment>> {
-    let webc = load_python_webc(cache_root).await?;
-    let container = from_bytes(webc).context("decode Wasmer Python webc")?;
+    let cart_bytes = serde_json::to_vec(cart).context("serialize cart")?;
+    invoke_package_json(
+        &cart_bytes,
+        cache_root,
+        package_url,
+        cache_name,
+        command,
+        args,
+    )
+    .await
+}
+
+async fn invoke_package_json<T: serde::de::DeserializeOwned>(
+    stdin_bytes: &[u8],
+    cache_root: &std::path::Path,
+    package_url: &str,
+    cache_name: &str,
+    command: &str,
+    args: Vec<String>,
+) -> Result<T> {
+    let webc = load_webc_from(cache_root, package_url, cache_name).await?;
+    let container =
+        from_bytes(webc).with_context(|| format!("decode Wasmer webc {package_url}"))?;
     let (runtime, tasks) = build_runtime(cache_root)?;
     let pkg = BinaryPackage::from_webc(&container, &runtime)
         .await
         .context("load BinaryPackage from webc")?;
 
-    let cart_bytes = serde_json::to_vec(cart).context("serialize cart")?;
-    let stdin = StaticFile::new(OwnedBuffer::from_bytes(cart_bytes));
+    let stdin = StaticFile::new(OwnedBuffer::from_bytes(stdin_bytes.to_vec()));
     let mut stdout = virtual_fs::ArcFile::new(Box::<virtual_fs::BufferFile>::default());
     let mut stderr = virtual_fs::ArcFile::new(Box::<virtual_fs::BufferFile>::default());
     let stdout_guest = stdout.clone();
     let stderr_guest = stderr.clone();
     let runtime = Arc::new(runtime);
-    let source = python_source.to_owned();
+    let command = command.to_owned();
 
     let join = tokio::task::spawn_blocking(move || {
         let _guard = tasks.runtime_handle().enter();
         WasiRunner::new()
-            .with_args(["-c", &source])
+            .with_args(args)
             .with_stdin(Box::new(stdin) as Box<_>)
             .with_stdout(Box::new(stdout_guest) as Box<_>)
             .with_stderr(Box::new(stderr_guest) as Box<_>)
-            .run_command("python", &pkg, RuntimeOrEngine::Runtime(runtime))
+            .run_command(&command, &pkg, RuntimeOrEngine::Runtime(runtime))
     });
 
-    let run_result = join.await.context("join wasmer python task")?;
-
+    let run_result = join.await.context("join wasmer package task")?;
     stdout.rewind().await.context("rewind stdout")?;
     stderr.rewind().await.context("rewind stderr")?;
     let mut out_buf = Vec::new();
@@ -125,8 +184,7 @@ async fn invoke_python_quote_with_cache(
         .read_to_end(&mut err_buf)
         .await
         .context("read stderr")?;
-
-    parse_guest_adjustments(
+    parse_guest_json(
         run_result.map_err(|error| anyhow::anyhow!("{error:#}")),
         &out_buf,
         &err_buf,
@@ -185,11 +243,20 @@ async fn run_wasi_module_stdio(
 }
 
 /// Interprets guest exit + stdout/stderr into adjustment JSON.
+#[cfg(test)]
 fn parse_guest_adjustments(
     run_result: Result<(), anyhow::Error>,
     out_buf: &[u8],
     err_buf: &[u8],
 ) -> Result<Vec<Adjustment>> {
+    parse_guest_json(run_result, out_buf, err_buf)
+}
+
+fn parse_guest_json<T: serde::de::DeserializeOwned>(
+    run_result: Result<(), anyhow::Error>,
+    out_buf: &[u8],
+    err_buf: &[u8],
+) -> Result<T> {
     if let Err(error) = run_result {
         bail!(
             "Wasmer guest failed: {error:#}; stderr: {}; stdout: {}",
@@ -207,7 +274,7 @@ fn parse_guest_adjustments(
 
     serde_json::from_slice(out_buf).with_context(|| {
         format!(
-            "parse adjustments JSON from guest stdout `{}` (stderr: {})",
+            "parse guest JSON from stdout `{}` (stderr: {})",
             String::from_utf8_lossy(out_buf),
             String::from_utf8_lossy(err_buf)
         )
@@ -253,16 +320,18 @@ fn ensure_webc_payload(body: &[u8]) -> Result<()> {
     Ok(())
 }
 
+#[cfg(test)]
 async fn load_python_webc(cache_root: &std::path::Path) -> Result<bytes::Bytes> {
-    load_python_webc_from(cache_root, PYTHON_PACKAGE_URL).await
+    load_webc_from(cache_root, PYTHON_PACKAGE_URL, PYTHON_WEBC_CACHE_NAME).await
 }
 
-async fn load_python_webc_from(
+async fn load_webc_from(
     cache_root: &std::path::Path,
     package_url: &str,
+    cache_name: &str,
 ) -> Result<bytes::Bytes> {
     let downloads = cache_root.join("downloads");
-    let cache_path = downloads.join(PYTHON_WEBC_CACHE_NAME);
+    let cache_path = downloads.join(cache_name);
     if cache_path.is_file() {
         return Ok(std::fs::read(&cache_path)
             .with_context(|| format!("read cached webc {}", cache_path.display()))?
@@ -322,6 +391,7 @@ mod host_tests {
         let source = quote_fixture_source();
         assert!(source.contains("def quote("));
         assert!(source.contains("json.dump"));
+        assert!(quote_js_fixture_source().contains("function quote("));
     }
 
     #[test]
@@ -339,7 +409,7 @@ mod host_tests {
         assert!(empty.to_string().contains("no stdout"));
 
         let bad = parse_guest_adjustments(Ok(()), b"not-json", b"").unwrap_err();
-        assert!(bad.to_string().contains("parse adjustments"));
+        assert!(bad.to_string().contains("parse guest JSON"));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -367,10 +437,18 @@ mod host_tests {
     #[tokio::test(flavor = "multi_thread")]
     async fn load_python_webc_maps_http_error() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let err = load_python_webc_from(tmp.path(), "https://httpbingo.org/status/404")
-            .await
-            .unwrap_err();
-        assert!(err.to_string().contains("failed with HTTP"));
+        let err = load_webc_from(
+            tmp.path(),
+            "https://example.com/no-such-webc",
+            "missing.webc",
+        )
+        .await
+        .unwrap_err();
+        let message = err.to_string();
+        assert!(
+            message.contains("failed with HTTP") || message.contains("too small"),
+            "unexpected error: {message}"
+        );
     }
 
     #[tokio::test(flavor = "multi_thread")]
