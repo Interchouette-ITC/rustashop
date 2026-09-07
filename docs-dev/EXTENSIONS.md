@@ -36,7 +36,9 @@ Start with **one** hook (`pricing-adjust`) plus a fixture component in CI.
 
 Rebuild the fixture with `make extensions-fixture` (needs `wasm32-unknown-unknown` + `wasm-tools`). Host tests call `invoke_pricing_adjust` and assert deterministic discounts.
 
-Isolation / denied-import tests are tracked in [#36](https://github.com/Interchouette-ITC/rustashop/issues/36). Engine ADR (wasmtime vs Wasmer) lands with the harness epic outcomes on [#34](https://github.com/Interchouette-ITC/rustashop/issues/34).
+Isolation / denied-import tests and golden I/O live in
+`crates/rustashop-extensions/tests/isolation.rs` ([#36](https://github.com/Interchouette-ITC/rustashop/issues/36)).
+Engine ADR (wasmtime vs Wasmer) lands with the remaining epic outcomes on [#34](https://github.com/Interchouette-ITC/rustashop/issues/34).
 
 ## OpenAPI vs WIT
 
@@ -62,6 +64,8 @@ Every extension hook gets a **module isolation test**:
 4. Optional: fuzz money fields stay integers / non-negative where required.
 
 These tests are part of the extension epic acceptance, not a nice-to-have.
+
+For `pricing-adjust`, see `cargo test -p rustashop-extensions --test isolation` (fixture has zero imports; empty linker denies a hostile `rustashop:forbidden/persist` import; golden discount cases).
 
 ## Relationship to Wasmer sandboxes
 
