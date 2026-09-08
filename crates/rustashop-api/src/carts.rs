@@ -642,6 +642,12 @@ mod cart_response_tests {
                 .status(),
             404
         );
+        assert_eq!(
+            delete_cart_line_response(&catalog, None, &cart.id, "no-line")
+                .await
+                .status(),
+            404
+        );
     }
 
     #[tokio::test]

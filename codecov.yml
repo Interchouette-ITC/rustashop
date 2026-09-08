@@ -5,10 +5,14 @@ coverage:
   status:
     project:
       default:
-        informational: true
+        target: 100%
+        threshold: 0%
+        informational: false
     patch:
       default:
-        informational: true
+        target: 100%
+        threshold: 0%
+        informational: false
 
 ignore:
   - "crates/rustashop-api/src/bin"

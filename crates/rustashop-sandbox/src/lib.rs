@@ -171,4 +171,32 @@ mod tests {
         }];
         assert!(validate_adjustments(&cart, &bad).is_err());
     }
+
+    #[test]
+    fn domain_event_draft_validation_rejects_bad_fields() {
+        let ok = DomainEventDraft {
+            event_type: CART_LINE_QUANTITY_PROPOSED.into(),
+            cart_id: "cart-1".into(),
+            product_id: "42".into(),
+            quantity: 1,
+            operator: "up".into(),
+        };
+        assert!(accept_validated_domain_event(ok.clone()).is_ok());
+
+        let mut bad = ok.clone();
+        bad.event_type = "unknown".into();
+        assert!(validate_domain_event_draft(&bad).is_err());
+
+        bad = ok.clone();
+        bad.cart_id = String::new();
+        assert!(validate_domain_event_draft(&bad).is_err());
+
+        bad = ok.clone();
+        bad.product_id = "  ".into();
+        assert!(validate_domain_event_draft(&bad).is_err());
+
+        bad = ok;
+        bad.operator = "sideways".into();
+        assert!(validate_domain_event_draft(&bad).is_err());
+    }
 }

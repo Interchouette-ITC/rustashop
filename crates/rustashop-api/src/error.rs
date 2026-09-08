@@ -158,5 +158,7 @@ mod tests {
             ApiError::Internal.status_code(),
             StatusCode::INTERNAL_SERVER_ERROR
         );
+        let response = ApiError::NotFound.error_response();
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 }
