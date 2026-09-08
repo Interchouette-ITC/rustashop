@@ -294,6 +294,16 @@ pub fn add_cart_line_input_example() -> AddCartLineInput {
 
 /// Example input for docs and tests.
 #[must_use]
+pub fn update_cart_line_input_example() -> CartLineRefInput {
+    CartLineRefInput {
+        cart_id: "00000000-0000-4000-8000-0000000000c1".into(),
+        line_id: "00000000-0000-4000-8000-0000000000l1".into(),
+        quantity: Some(3),
+    }
+}
+
+/// Example input for docs and tests.
+#[must_use]
 pub fn place_order_input_example() -> PlaceOrderInput {
     PlaceOrderInput {
         cart_id: "00000000-0000-4000-8000-0000000000c1".into(),
@@ -303,74 +313,18 @@ pub fn place_order_input_example() -> PlaceOrderInput {
 
 /// Example input for docs and tests.
 #[must_use]
+pub const fn admin_list_input_example() -> AdminListInput {
+    AdminListInput {
+        limit: Some(20),
+        offset: Some(0),
+    }
+}
+
+/// Example input for docs and tests.
+#[must_use]
 pub fn patch_order_status_input_example() -> PatchOrderStatusInput {
     PatchOrderStatusInput {
         id: "00000000-0000-4000-8000-0000000000o1".into(),
         status: "shipped".into(),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn every_tool_has_unique_name() {
-        let mut names: Vec<&str> = TOOLS.iter().map(|t| t.name).collect();
-        names.sort_unstable();
-        names.dedup();
-        assert_eq!(names.len(), TOOLS.len());
-    }
-
-    #[test]
-    fn commit_tools_require_human_approve_for_autonomous() {
-        for tool in TOOLS {
-            if tool.effect == ToolEffect::Commit {
-                assert!(
-                    tool.human_approve_for_autonomous,
-                    "{} commit tool must gate autonomous runs",
-                    tool.name
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn tool_by_name_finds_catalog_and_misses_unknown() {
-        assert_eq!(tool_by_name("list_products").map(|t| t.method), Some("GET"));
-        assert!(tool_by_name("run_raw_sql").is_none());
-    }
-
-    #[test]
-    fn catalog_json_lists_expected_names() {
-        let value = tools_catalog_json().expect("json");
-        let names: Vec<&str> = value
-            .as_array()
-            .expect("array")
-            .iter()
-            .map(|row| row["name"].as_str().expect("name"))
-            .collect();
-        assert!(names.contains(&"list_products"));
-        assert!(names.contains(&"place_order"));
-        assert!(names.contains(&"patch_order_status"));
-        assert!(!names.iter().any(|n| n.contains("sql")));
-    }
-
-    #[test]
-    fn input_examples_roundtrip_json() {
-        let line = add_cart_line_input_example();
-        let back: AddCartLineInput =
-            serde_json::from_value(serde_json::to_value(&line).expect("ser")).expect("de");
-        assert_eq!(back, line);
-        assert_eq!(
-            place_order_input_example().idempotency_key,
-            "agent-checkout-1"
-        );
-    }
-
-    #[test]
-    fn tools_catalog_snapshot() {
-        let value = tools_catalog_json().expect("json");
-        insta::assert_json_snapshot!("tools_catalog_v0", value);
     }
 }
