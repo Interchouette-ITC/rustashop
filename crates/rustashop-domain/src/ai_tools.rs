@@ -173,6 +173,6 @@ mod tests {
         assert!(tool_by_name("list_admin_products").is_some());
         assert!(tool_by_name("missing").is_none());
         let value = tools_catalog_json().expect("catalog json");
-        assert!(value.as_array().expect("array").len() == TOOLS.len());
+        assert_eq!(value.as_array().expect("array").len(), TOOLS.len());
     }
 }
