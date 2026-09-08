@@ -3,9 +3,9 @@
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="attr">#![forbid(unsafe_code)]
 <a href=#4 id=4 data-nosnippet>4</a>
 <a href=#5 id=5 data-nosnippet>5</a></span><span class="kw">use </span>anyhow::{Context, <span class="prelude-ty">Result</span>};
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>std::path::Path;
-<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>wasmtime::component::{Component, Linker};
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>wasmtime::{Engine, Store};
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>serenade_component_host::{default_engine, empty_linker, load_component, store_with_data};
+<a href=#7 id=7 data-nosnippet>7</a><span class="kw">use </span>std::path::Path;
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>wasmtime::component::Linker;
 <a href=#9 id=9 data-nosnippet>9</a>
 <a href=#10 id=10 data-nosnippet>10</a><span class="attr">#[allow(missing_docs)]
 <a href=#11 id=11 data-nosnippet>11</a></span><span class="kw">mod </span>bindings {
@@ -27,11 +27,11 @@
 <a href=#27 id=27 data-nosnippet>27</a>    component_path: <span class="kw">impl </span>AsRef&lt;Path&gt;,
 <a href=#28 id=28 data-nosnippet>28</a>    cart: <span class="kw-2">&amp;</span>CartSnapshot,
 <a href=#29 id=29 data-nosnippet>29</a>) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Adjustment&gt;&gt; {
-<a href=#30 id=30 data-nosnippet>30</a>    <span class="kw">let </span>engine = Engine::default();
-<a href=#31 id=31 data-nosnippet>31</a>    <span class="kw">let </span>component = Component::from_file(<span class="kw-2">&amp;</span>engine, component_path.as_ref())
+<a href=#30 id=30 data-nosnippet>30</a>    <span class="kw">let </span>engine = default_engine();
+<a href=#31 id=31 data-nosnippet>31</a>    <span class="kw">let </span>component = load_component(<span class="kw-2">&amp;</span>engine, component_path.as_ref())
 <a href=#32 id=32 data-nosnippet>32</a>        .with_context(|| <span class="macro">format!</span>(<span class="string">"load component {}"</span>, component_path.as_ref().display()))<span class="question-mark">?</span>;
-<a href=#33 id=33 data-nosnippet>33</a>    <span class="kw">let </span>linker = Linker::new(<span class="kw-2">&amp;</span>engine);
-<a href=#34 id=34 data-nosnippet>34</a>    <span class="kw">let </span><span class="kw-2">mut </span>store = Store::new(<span class="kw-2">&amp;</span>engine, ());
+<a href=#33 id=33 data-nosnippet>33</a>    <span class="kw">let </span>linker: Linker&lt;()&gt; = empty_linker(<span class="kw-2">&amp;</span>engine);
+<a href=#34 id=34 data-nosnippet>34</a>    <span class="kw">let </span><span class="kw-2">mut </span>store = store_with_data(<span class="kw-2">&amp;</span>engine, ());
 <a href=#35 id=35 data-nosnippet>35</a>    <span class="kw">let </span>instance = PricingAdjust::instantiate(<span class="kw-2">&amp;mut </span>store, <span class="kw-2">&amp;</span>component, <span class="kw-2">&amp;</span>linker)
 <a href=#36 id=36 data-nosnippet>36</a>        .context(<span class="string">"instantiate pricing-adjust"</span>)<span class="question-mark">?</span>;
 <a href=#37 id=37 data-nosnippet>37</a>    instance
