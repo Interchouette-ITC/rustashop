@@ -53,7 +53,7 @@ Both describe the **same domain**. They are two doors, not two products.
 ## Hosting engines
 
 **WIT plugins:** **wasmtime** ([ADR 0002](adr/0002-wit-plugin-engine.md)).  
-**Polyglot sandboxes:** Wasmer (or similar) under epic [#37](https://github.com/Interchouette-ITC/rustashop/issues/37) - a separate lane, not a substitute for the plugin host.
+**Polyglot sandboxes:** Wasmer WASIX lane in `rustashop-sandbox` ([WASMER-SANDBOX.md](WASMER-SANDBOX.md), [ADR 0003](adr/0003-pyo3-vs-wasmer-sandbox.md)) - a separate lane, not a substitute for the plugin host.
 
 ## Isolation tests (required habit)
 

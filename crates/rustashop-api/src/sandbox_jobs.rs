@@ -22,7 +22,7 @@ pub const JOB_TYPE_QUOTE: &str = "quote";
 /// Request body for creating a sandbox job.
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct CreateSandboxJobRequest {
-    /// Job type (`quote` only in this slice).
+    /// Job type (`quote` only).
     pub job_type: String,
     /// Cart currency for the quote fixture.
     pub currency: String,

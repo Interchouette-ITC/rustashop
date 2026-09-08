@@ -105,17 +105,18 @@ The PHP migration fixture proves cutover glue only:
 - One PrestaShop-inspired hook family (`actionCartUpdateQuantityBefore`)
 - Guest returns a **domain event draft**; the Rust host validates and remains the authority that commits cart state
 - No PHP-FPM, no legacy DB writes, no network from the guest by default
-- Not a general PrestaShop runtime; richer hooks stay later slices under #37 / #40
+- Not a general PrestaShop runtime; additional hook families are out of scope for the current guest
 
-## Suggested delivery slices
+## Status (shipped vs remaining)
 
-| Slice                   | Outcome                                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| **Sandbox harness**     | Rust host creates a Wasmer sandbox, runs a fixed Python `quote` fixture, returns adjustments |
-| **Admin console**       | Angular UI + audit log + WS logs for one job type                                            |
-| **PHP migration guest** | One legacy hook family bridged to domain events                                              |
-| **Browser twin**        | Same fixture ABI in Wasmer JS playground                                                     |
-| **Agent default**       | Documented policy: agent tools execute sandboxed unless marked first-party                   |
+| Item | Status |
+| --- | --- |
+| **Sandbox harness** + polyglot quote twins (Python / Rust WASI / QuickJS / PHP) | Shipped (`rustashop-sandbox`, epic #37) |
+| **PHP migration guest** (`actionCartUpdateQuantityBefore` → draft event) | Shipped |
+| **Admin console** (`/sandbox` jobs, in-process audit, WS logs) | Shipped |
+| **Agent default** (sandbox-by-default; PyO3 as trusted path) | Shipped ([ADR 0003](adr/0003-pyo3-vs-wasmer-sandbox.md)) |
+| **Durable Postgres audit** for sandbox jobs | Follow-up (API uses in-process registry today) |
+| **Browser twin** (Wasmer JS playground) | Not shipped |
 
 ## PyO3 and native connectors
 
