@@ -56,9 +56,42 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         run: make lint
 
+  # Prefetch once; test + coverage download the artifact (sibling jobs cannot share a
+  # cache fill from the same workflow run).
+  wasmer-webc:
+    name: wasmer webc
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTASHOP_WASMER_CACHE: ${{ github.workspace }}/.wasmer
+    steps:
+      - uses: actions/checkout@v7
+      - name: Markdown-only placeholder
+        if: needs.changes.outputs.code != 'true'
+        run: mkdir -p .wasmer && echo skip > .wasmer/.markdown-only
+      - name: Cache Wasmer packages
+        if: needs.changes.outputs.code == 'true'
+        uses: actions/cache@v4
+        with:
+          path: .wasmer
+          key: wasmer-webc-${{ runner.os }}-v1
+          restore-keys: |
+            wasmer-webc-${{ runner.os }}-
+      - name: Prefetch Wasmer webc
+        if: needs.changes.outputs.code == 'true'
+        run: bash scripts/prefetch-wasmer-webc.sh
+      - name: Upload Wasmer cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasmer-webc
+          path: .wasmer
+          if-no-files-found: error
+          retention-days: 1
+
   test:
     name: workspace tests
-    needs: changes
+    needs: [changes, wasmer-webc]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -83,18 +116,15 @@ jobs:
       - name: Markdown-only
         if: needs.changes.outputs.code != 'true'
         run: echo "markdown-only; skipping heavy tests"
+      - uses: actions/download-artifact@v4
+        if: needs.changes.outputs.code == 'true'
+        with:
+          name: wasmer-webc
+          path: .wasmer
       - uses: dtolnay/rust-toolchain@stable
         if: needs.changes.outputs.code == 'true'
       - uses: Swatinem/rust-cache@v2
         if: needs.changes.outputs.code == 'true'
-      - name: Cache Wasmer packages
-        if: needs.changes.outputs.code == 'true'
-        uses: actions/cache@v4
-        with:
-          path: .wasmer
-          key: wasmer-webc-${{ runner.os }}-v1
-          restore-keys: |
-            wasmer-webc-${{ runner.os }}-
       - name: Test
         if: needs.changes.outputs.code == 'true'
         run: make test
@@ -298,7 +328,7 @@ jobs:
 
   coverage:
     name: coverage (rust)
-    needs: changes
+    needs: [changes, wasmer-webc]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -323,20 +353,17 @@ jobs:
       - name: Markdown-only
         if: needs.changes.outputs.code != 'true'
         run: echo "markdown-only; skipping coverage"
+      - uses: actions/download-artifact@v4
+        if: needs.changes.outputs.code == 'true'
+        with:
+          name: wasmer-webc
+          path: .wasmer
       - uses: dtolnay/rust-toolchain@stable
         if: needs.changes.outputs.code == 'true'
         with:
           components: llvm-tools-preview
       - uses: Swatinem/rust-cache@v2
         if: needs.changes.outputs.code == 'true'
-      - name: Cache Wasmer packages
-        if: needs.changes.outputs.code == 'true'
-        uses: actions/cache@v4
-        with:
-          path: .wasmer
-          key: wasmer-webc-${{ runner.os }}-v1
-          restore-keys: |
-            wasmer-webc-${{ runner.os }}-
       - name: Install cargo-llvm-cov
         if: needs.changes.outputs.code == 'true'
         uses: taiki-e/install-action@v2
