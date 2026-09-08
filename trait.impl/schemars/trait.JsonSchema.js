@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["rustashop_mcp",[["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.AddCartLineInput.html\" title=\"struct rustashop_mcp::AddCartLineInput\">AddCartLineInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.AdminListInput.html\" title=\"struct rustashop_mcp::AdminListInput\">AdminListInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.CartLineRefInput.html\" title=\"struct rustashop_mcp::CartLineRefInput\">CartLineRefInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.CreateCartInput.html\" title=\"struct rustashop_mcp::CreateCartInput\">CreateCartInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.GetCartInput.html\" title=\"struct rustashop_mcp::GetCartInput\">GetCartInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.GetProductInput.html\" title=\"struct rustashop_mcp::GetProductInput\">GetProductInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.ListProductsInput.html\" title=\"struct rustashop_mcp::ListProductsInput\">ListProductsInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.PatchOrderStatusInput.html\" title=\"struct rustashop_mcp::PatchOrderStatusInput\">PatchOrderStatusInput</a>",0],["impl JsonSchema for <a class=\"struct\" href=\"rustashop_mcp/struct.PlaceOrderInput.html\" title=\"struct rustashop_mcp::PlaceOrderInput\">PlaceOrderInput</a>",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1522]}
