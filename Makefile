@@ -6,6 +6,7 @@ CARGO ?= cargo
 CLIPPY_FLAGS := -D warnings -D clippy::all -D clippy::pedantic -D clippy::nursery
 RUSTDOCFLAGS ?= -D warnings
 API_BIND ?= 127.0.0.1:8080
+MCP_ADDR ?= 127.0.0.1:8090
 DATABASE_URL ?= postgres://rustashop:rustashop@127.0.0.1:5432/rustashop
 OPENAPI_OUT ?= openapi/openapi.json
 SHOP_ANGULAR_DIR := shops/angular
@@ -36,7 +37,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -73,6 +74,8 @@ help:
 	@echo "  make audit-npm  npm audit + cve-lite + malware IoC (shop/admin/install)"
 	@echo "  make audit-all  audit + deny + audit-npm"
 	@echo "  make run-api    start Actix API on the host (RUSTASHOP_BIND, default $(API_BIND))"
+	@echo "  make run-mcp    start rustashop-mcp over stdio"
+	@echo "  make run-mcp-http start rustashop-mcp Streamable HTTP (RUSTASHOP_MCP_ADDR, default $(MCP_ADDR))"
 	@echo "  make db-up      start Postgres via docker compose"
 	@echo "  make db-down    stop the compose project (Postgres and API if started)"
 	@echo "  make stack-up   build and start Postgres + migrate + API"
@@ -94,8 +97,8 @@ check:
 	cd $(ROOT) && $(CARGO) check $(SEAORM_PACKAGES) $(SEAORM_FEATURES)
 
 test:
-	cd $(ROOT) && $(CARGO) test --workspace
-	cd $(ROOT) && $(CARGO) test $(SEAORM_PACKAGES) $(SEAORM_FEATURES)
+	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) $(CARGO) test --workspace
+	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) $(CARGO) test $(SEAORM_PACKAGES) $(SEAORM_FEATURES)
 
 ## Rebuild the checked-in pricing-adjust Component Model fixture (issue #35).
 extensions-fixture:
@@ -357,6 +360,20 @@ shop-leptos-rangular:
 
 run-api:
 	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) RUSTASHOP_BIND=$${RUSTASHOP_BIND:-$(API_BIND)} $(CARGO) run -p rustashop-api --bin rustashop-api
+
+run-mcp:
+	cd $(ROOT) && RUSTASHOP_API_BASE=$${RUSTASHOP_API_BASE:-http://$(API_BIND)} \
+		$(CARGO) run -p rustashop-mcp --bin rustashop-mcp
+
+run-mcp-http:
+	@addr="$${RUSTASHOP_MCP_ADDR:-$(MCP_ADDR)}"; \
+	port="$${addr##*:}"; \
+	if ss -tlnp 2>/dev/null | grep -q ":$${port} "; then \
+		echo "Port $${port} already in use - reuse that MCP server or set RUSTASHOP_MCP_ADDR"; \
+		exit 1; \
+	fi; \
+	cd $(ROOT) && RUSTASHOP_API_BASE=$${RUSTASHOP_API_BASE:-http://$(API_BIND)} \
+		$(CARGO) run -p rustashop-mcp --bin rustashop-mcp -- --http --listen "$${RUSTASHOP_MCP_ADDR:-$(MCP_ADDR)}"
 
 stack-up:
 	cd $(ROOT) && $(COMPOSE) up --build -d

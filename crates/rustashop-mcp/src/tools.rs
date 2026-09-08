@@ -3,6 +3,7 @@
 //! Tools are host-mediated: no SQL-from-prompt, integer money only, and
 //! commit-class effects require stronger policy than cart draft writes.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Who may invoke the tool.
@@ -165,7 +166,7 @@ pub fn tools_catalog_json() -> Result<serde_json::Value, serde_json::Error> {
 }
 
 /// Input for `list_products`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct ListProductsInput {
     /// Maximum rows (commerce caps at 100).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -176,14 +177,14 @@ pub struct ListProductsInput {
 }
 
 /// Input for `get_product`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct GetProductInput {
     /// Product id.
     pub id: String,
 }
 
 /// Input for `create_cart`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct CreateCartInput {
     /// ISO currency (default `EUR` when omitted).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -191,14 +192,14 @@ pub struct CreateCartInput {
 }
 
 /// Input for `get_cart`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct GetCartInput {
     /// Cart id.
     pub id: String,
 }
 
 /// Input for `add_cart_line`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct AddCartLineInput {
     /// Cart id (path `{id}`).
     pub cart_id: String,
@@ -209,7 +210,7 @@ pub struct AddCartLineInput {
 }
 
 /// Input for `update_cart_line` / `delete_cart_line` path params.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct CartLineRefInput {
     /// Cart id.
     pub cart_id: String,
@@ -221,7 +222,7 @@ pub struct CartLineRefInput {
 }
 
 /// Input for `place_order`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct PlaceOrderInput {
     /// Cart to check out.
     pub cart_id: String,
@@ -230,7 +231,7 @@ pub struct PlaceOrderInput {
 }
 
 /// Input for admin list tools (`list_admin_products` / `list_admin_orders`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct AdminListInput {
     /// Maximum rows.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -241,7 +242,7 @@ pub struct AdminListInput {
 }
 
 /// Input for `patch_order_status`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, JsonSchema)]
 pub struct PatchOrderStatusInput {
     /// Order id.
     pub id: String,
