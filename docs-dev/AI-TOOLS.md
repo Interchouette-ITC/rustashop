@@ -63,7 +63,7 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 
 ## MCP server
 
-`make run-mcp` serves Streamable HTTP on `/mcp` (default bind `127.0.0.1:8090`). Commit tools require `RUSTASHOP_MCP_ALLOW_COMMIT=1`. See `crates/rustashop-mcp/README.md`.
+`make run-mcp` (stdio) and `make run-mcp-http` (Streamable HTTP on `/mcp`, default bind `127.0.0.1:8090`). House env: `MCP_HTTP`, `RUSTASHOP_MCP_ADDR`. Commit tools require `RUSTASHOP_MCP_ALLOW_COMMIT=1`. See `crates/rustashop-mcp/README.md`.
 
 ## Non-goals (v0)
 

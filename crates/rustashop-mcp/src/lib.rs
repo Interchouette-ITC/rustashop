@@ -13,7 +13,7 @@ mod tools;
 pub use client::{
     ADMIN_PREFIX_ENV, ADMIN_TOKEN_ENV, ALLOW_COMMIT_ENV, API_BASE_ENV, CommerceClient,
 };
-pub use server::{DEFAULT_HTTP_LISTEN, RustashopMcp, run_http, run_stdio};
+pub use server::{DEFAULT_HTTP_LISTEN, RustashopMcp, run_http};
 pub use tools::{
     AddCartLineInput, AdminListInput, CartLineRefInput, CreateCartInput, GetCartInput,
     GetProductInput, ListProductsInput, PatchOrderStatusInput, PlaceOrderInput, TOOLS,

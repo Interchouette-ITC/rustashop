@@ -36,7 +36,7 @@ rustashop
 - Money, inventory, and payment capture stay **host-authorized**; models propose, humans or strict policies confirm where required.
 - Pricing / inventory **commits** stay host-mediated (same rule as WIT plugins).
 - Realtime gateway carries agent job progress and cart updates ([REALTIME.md](REALTIME.md)).
-- **Axum** hosts MCP Streamable HTTP (`make run-mcp`, default `127.0.0.1:8090/mcp`) using the same tool names; handlers proxy to the Actix API.
+- **Axum** hosts MCP Streamable HTTP (`make run-mcp-http`, default `127.0.0.1:8090/mcp`) or stdio (`make run-mcp`); handlers proxy to the Actix API.
 
 ## Frontend (native)
 

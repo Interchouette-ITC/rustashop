@@ -64,6 +64,14 @@ impl CommerceClient {
         }
     }
 
+    /// Sets admin bearer + prefix for tests.
+    #[must_use]
+    pub fn with_admin(mut self, token: impl Into<String>, prefix: impl Into<String>) -> Self {
+        self.admin_token = Some(token.into());
+        self.admin_prefix = prefix.into();
+        self
+    }
+
     /// Whether commit-class tools are enabled.
     #[must_use]
     pub const fn allow_commit(&self) -> bool {
@@ -362,5 +370,55 @@ mod tests {
         assert!(err.contains(ALLOW_COMMIT_ENV));
         let ok = CommerceClient::new_for_test("http://127.0.0.1:9", true);
         ok.refuse_commit_if_gated("place_order").expect("allowed");
+        ok.refuse_commit_if_gated("unknown_tool")
+            .expect("unknown ok");
+    }
+
+    #[tokio::test]
+    async fn transport_error_when_api_unreachable() {
+        let client = CommerceClient::new_for_test("http://127.0.0.1:9", false);
+        let err = client
+            .list_products(&ListProductsInput {
+                limit: Some(1),
+                offset: None,
+            })
+            .await
+            .expect_err("unreachable");
+        assert_ne!(err, "");
+    }
+
+    #[test]
+    fn from_env_reads_commit_and_admin() {
+        let prev_base = std::env::var(API_BASE_ENV).ok();
+        let prev_commit = std::env::var(ALLOW_COMMIT_ENV).ok();
+        let prev_token = std::env::var(ADMIN_TOKEN_ENV).ok();
+        let prev_prefix = std::env::var(ADMIN_PREFIX_ENV).ok();
+        // SAFETY: single-threaded test process; restored below.
+        unsafe {
+            std::env::set_var(API_BASE_ENV, "http://127.0.0.1:18080/");
+            std::env::set_var(ALLOW_COMMIT_ENV, "true");
+            std::env::set_var(ADMIN_TOKEN_ENV, "secret");
+            std::env::set_var(ADMIN_PREFIX_ENV, "ops");
+        }
+        let client = CommerceClient::from_env();
+        assert!(client.allow_commit());
+        unsafe {
+            match prev_base {
+                Some(v) => std::env::set_var(API_BASE_ENV, v),
+                None => std::env::remove_var(API_BASE_ENV),
+            }
+            match prev_commit {
+                Some(v) => std::env::set_var(ALLOW_COMMIT_ENV, v),
+                None => std::env::remove_var(ALLOW_COMMIT_ENV),
+            }
+            match prev_token {
+                Some(v) => std::env::set_var(ADMIN_TOKEN_ENV, v),
+                None => std::env::remove_var(ADMIN_TOKEN_ENV),
+            }
+            match prev_prefix {
+                Some(v) => std::env::set_var(ADMIN_PREFIX_ENV, v),
+                None => std::env::remove_var(ADMIN_PREFIX_ENV),
+            }
+        }
     }
 }
