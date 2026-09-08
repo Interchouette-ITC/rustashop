@@ -31,12 +31,12 @@ rustashop
 ## Backend (native)
 
 - **Actix-web** hosts the commerce kernel: REST, OpenAPI, WebSocket gateway ([FOUNDATIONS.md](FOUNDATIONS.md)).
-- Domain services expose **stable tool surfaces** (not ad-hoc prompts over SQL).
+- Domain services expose **stable tool surfaces** (not ad-hoc prompts over SQL). See **[AI-TOOLS.md](AI-TOOLS.md)** for the v0 catalog (`rustashop-mcp::TOOLS`).
 - Agent runs are **audited**; untrusted code/scripts go through the [Wasmer sandbox](WASMER-SANDBOX.md) lane (default unless a tool is marked first-party; [ADR 0003](adr/0003-pyo3-vs-wasmer-sandbox.md)).
 - Money, inventory, and payment capture stay **host-authorized**; models propose, humans or strict policies confirm where required.
 - Pricing / inventory **commits** stay host-mediated (same rule as WIT plugins).
 - Realtime gateway carries agent job progress and cart updates ([REALTIME.md](REALTIME.md)).
-- **Axum** hosts the MCP server and other narrow tool HTTP surfaces; it speaks the same capabilities the admin agent uses, backed by the kernel domain.
+- **Axum** will host MCP HTTP using the same tool names; `rustashop-mcp` already owns the typed schema (no listen yet).
 
 ## Frontend (native)
 
@@ -52,12 +52,13 @@ rustashop
 | Official MCP tools with authz                      | Raw model output applied to money without review     |
 | Human approve for catalog publish / capture        | Autonomous capture or inventory write without guards |
 
-## Delivery slices (backlog)
+## Delivery slices
 
-1. Tool schema for cart/catalog/order reads + draft writes
-2. Admin agent console (Angular) + job audit
+1. **Done (#44):** tool schema for cart/catalog/order reads + draft writes - [AI-TOOLS.md](AI-TOOLS.md) + `rustashop-mcp`
+2. Admin agent console (Angular) beyond `/sandbox` + job audit
 3. Storefront discovery / shopping-agent MVP
-4. MCP HTTP surface on **Axum**, tools aligned with kernel domain
+4. MCP HTTP surface on **Axum**, tools from the same catalog (#47)
 5. Autonomous job runner (sandbox + host commit)
+6. Model provider config (operator API keys; never in Wasmer guests)
 
 Track under the AI epic on GitHub (`area:ai`).

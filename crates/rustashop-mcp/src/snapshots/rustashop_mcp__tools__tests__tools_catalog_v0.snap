@@ -1,0 +1,105 @@
+---
+source: crates/rustashop-mcp/src/tools.rs
+expression: value
+---
+[
+  {
+    "effect": "read",
+    "human_approve_for_autonomous": false,
+    "method": "GET",
+    "name": "list_products",
+    "openapi_path": "/v1/products",
+    "scope": "shop",
+    "summary": "List enabled catalog products with optional pagination"
+  },
+  {
+    "effect": "read",
+    "human_approve_for_autonomous": false,
+    "method": "GET",
+    "name": "get_product",
+    "openapi_path": "/v1/products/{id}",
+    "scope": "shop",
+    "summary": "Fetch one product and its variants by id"
+  },
+  {
+    "effect": "draft_write",
+    "human_approve_for_autonomous": false,
+    "method": "POST",
+    "name": "create_cart",
+    "openapi_path": "/v1/carts",
+    "scope": "shop",
+    "summary": "Create an open cart (optional ISO currency, default EUR)"
+  },
+  {
+    "effect": "read",
+    "human_approve_for_autonomous": false,
+    "method": "GET",
+    "name": "get_cart",
+    "openapi_path": "/v1/carts/{id}",
+    "scope": "shop",
+    "summary": "Read a cart by id including line totals"
+  },
+  {
+    "effect": "draft_write",
+    "human_approve_for_autonomous": false,
+    "method": "POST",
+    "name": "add_cart_line",
+    "openapi_path": "/v1/carts/{id}/lines",
+    "scope": "shop",
+    "summary": "Add or merge a variant line on an open cart"
+  },
+  {
+    "effect": "draft_write",
+    "human_approve_for_autonomous": false,
+    "method": "PATCH",
+    "name": "update_cart_line",
+    "openapi_path": "/v1/carts/{id}/lines/{line_id}",
+    "scope": "shop",
+    "summary": "Change quantity on an existing cart line"
+  },
+  {
+    "effect": "draft_write",
+    "human_approve_for_autonomous": false,
+    "method": "DELETE",
+    "name": "delete_cart_line",
+    "openapi_path": "/v1/carts/{id}/lines/{line_id}",
+    "scope": "shop",
+    "summary": "Remove a line from an open cart"
+  },
+  {
+    "effect": "commit",
+    "human_approve_for_autonomous": true,
+    "method": "POST",
+    "name": "place_order",
+    "openapi_path": "/v1/checkout",
+    "scope": "shop",
+    "summary": "Checkout a cart into a placed order (idempotent)"
+  },
+  {
+    "effect": "read",
+    "human_approve_for_autonomous": false,
+    "method": "GET",
+    "name": "list_admin_products",
+    "openapi_path": "/v1/{admin_api_prefix}/products",
+    "scope": "admin",
+    "summary": "List products for operators (admin bearer)"
+  },
+  {
+    "effect": "read",
+    "human_approve_for_autonomous": false,
+    "method": "GET",
+    "name": "list_admin_orders",
+    "openapi_path": "/v1/{admin_api_prefix}/orders",
+    "scope": "admin",
+    "summary": "List orders for operators (admin bearer)"
+  },
+  {
+    "effect": "commit",
+    "human_approve_for_autonomous": true,
+    "method": "PATCH",
+    "name": "patch_order_status",
+    "openapi_path": "/v1/{admin_api_prefix}/orders/{id}",
+    "scope": "admin",
+    "summary": "Update order lifecycle status (admin bearer)"
+  }
+]
