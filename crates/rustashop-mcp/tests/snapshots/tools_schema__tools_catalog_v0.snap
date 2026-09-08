@@ -1,5 +1,5 @@
 ---
-source: crates/rustashop-mcp/src/tools.rs
+source: crates/rustashop-mcp/tests/tools_schema.rs
 expression: value
 ---
 [
