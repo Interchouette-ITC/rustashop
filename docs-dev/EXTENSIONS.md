@@ -32,7 +32,7 @@ Start with **one** hook (`pricing-adjust`) plus a fixture component in CI.
 | --- | --- |
 | [`extensions/wit/v0/world.wit`](../extensions/wit/v0/world.wit) | WIT world `pricing-adjust` (`export adjust`) |
 | [`extensions/fixtures/pricing-adjust`](../extensions/fixtures/pricing-adjust) | Guest fixture + checked-in `pricing_adjust.component.wasm` |
-| [`crates/rustashop-extensions`](../crates/rustashop-extensions) | Host invoke helper + unit tests |
+| [`crates/rustashop-extensions`](../crates/rustashop-extensions) | Host invoke helper + unit tests (wasmtime via Serenade `serenade-component-host`) |
 
 Rebuild the fixture with `make extensions-fixture` (needs `wasm32-unknown-unknown` + `wasm-tools`). Host tests call `invoke_pricing_adjust` and assert deterministic discounts.
 

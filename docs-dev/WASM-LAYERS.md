@@ -64,8 +64,8 @@ See [WASMER-SANDBOX.md](WASMER-SANDBOX.md) and the Wasmer announcement: [Local S
 | Engine / stack                  | Sensible use                                                   |
 | ------------------------------- | -------------------------------------------------------------- |
 | **Leptos / wasm-bindgen**       | Storefront UI Wasm                                             |
-| **wasmtime (CM)**               | Primary candidate for WIT plugin hosting                       |
-| **Wasmer SDK / WASIX packages** | Sandbox lane, polyglot packages, browser playgrounds           |
+| **wasmtime (CM)**               | Plugin hosting via Serenade `serenade-component-host` + product WIT |
+| **Wasmer SDK / WASIX packages** | Sandbox via Serenade `serenade-sandbox` + product fixtures/ABIs     |
 | **wasmi**                       | Tiny embedded interpreters if a hook needs a minimal evaluator |
 
 We stay **Wasm-first** without requiring every guest to share one engine on day one. Interfaces (WIT, sandbox job API) matter more than a single `.wasm` monoculture.

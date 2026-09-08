@@ -11,23 +11,10 @@ rust-version.workspace = true
 [dependencies]
 anyhow = "1"
 bytes = "1"
-reqwest = { version = "0.12", default-features = false, features = [
-    "rustls-tls",
-] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-shared-buffer = "0.1"
+serenade-sandbox = { workspace = true }
 tokio = { workspace = true }
-virtual-fs = { version = "0.704.0", default-features = false }
-wasmer = { version = "7.4.0", default-features = false, features = [
-    "cranelift",
-    "sys",
-] }
-wasmer-types = "7.4.0"
-wasmer-package = { version = "0.704.0", default-features = false }
-wasmer-wasix = { version = "0.704.0", default-features = false, features = [
-    "sys-default",
-] }
 
 [dev-dependencies]
 tempfile = "3"

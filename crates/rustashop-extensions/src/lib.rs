@@ -3,9 +3,9 @@
 #![forbid(unsafe_code)]
 
 use anyhow::{Context, Result};
+use serenade_component_host::{default_engine, empty_linker, load_component, store_with_data};
 use std::path::Path;
-use wasmtime::component::{Component, Linker};
-use wasmtime::{Engine, Store};
+use wasmtime::component::Linker;
 
 #[allow(missing_docs)]
 mod bindings {
@@ -27,11 +27,11 @@ pub fn invoke_pricing_adjust(
     component_path: impl AsRef<Path>,
     cart: &CartSnapshot,
 ) -> Result<Vec<Adjustment>> {
-    let engine = Engine::default();
-    let component = Component::from_file(&engine, component_path.as_ref())
+    let engine = default_engine();
+    let component = load_component(&engine, component_path.as_ref())
         .with_context(|| format!("load component {}", component_path.as_ref().display()))?;
-    let linker = Linker::new(&engine);
-    let mut store = Store::new(&engine, ());
+    let linker: Linker<()> = empty_linker(&engine);
+    let mut store = store_with_data(&engine, ());
     let instance = PricingAdjust::instantiate(&mut store, &component, &linker)
         .context("instantiate pricing-adjust")?;
     instance

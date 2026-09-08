@@ -10,6 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow = "1"
+serenade-component-host = { workspace = true }
 wasmtime = { version = "36", default-features = false, features = [
     "component-model",
     "cranelift",
