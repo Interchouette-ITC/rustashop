@@ -554,4 +554,62 @@ mod tests {
         // Hub events may race if the guest finishes before subscribe; registry is the source of truth.
         let _ = finished;
     }
+
+    #[test]
+    fn openapi_stubs_are_callable() {
+        create_sandbox_job();
+        get_sandbox_job();
+        list_sandbox_audit();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn run_quote_job_maps_guest_and_validation_failures() {
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let cart = CartSnapshot {
+            currency: "EUR".into(),
+            lines: vec![CartLine {
+                sku: "HOODIE-M".into(),
+                quantity: 2,
+                unit_price: Money {
+                    amount_minor: 5000,
+                    currency: "EUR".into(),
+                },
+            }],
+        };
+
+        let guest_fail = registry.start_job(JOB_TYPE_QUOTE, "bad", "admin");
+        run_quote_job(
+            &registry,
+            &hub,
+            &guest_fail.id,
+            &cart,
+            "raise SystemExit(1)",
+        )
+        .await;
+        let failed = registry.get(&guest_fail.id).expect("job");
+        assert_eq!(failed.status, SandboxJobStatus::Failed);
+        assert!(
+            failed
+                .error
+                .as_deref()
+                .is_some_and(|message| message.contains("guest failed")),
+            "error={:?}",
+            failed.error
+        );
+
+        let validation_fail = registry.start_job(JOB_TYPE_QUOTE, "usd", "admin");
+        let bad_currency = r#"import json,sys; json.dump([{"label":"x","amount_minor":-1,"currency":"USD"}], sys.stdout)"#;
+        run_quote_job(&registry, &hub, &validation_fail.id, &cart, bad_currency).await;
+        let failed = registry.get(&validation_fail.id).expect("job");
+        assert_eq!(failed.status, SandboxJobStatus::Failed);
+        assert!(
+            failed
+                .error
+                .as_deref()
+                .is_some_and(|message| message.contains("validation failed")),
+            "error={:?}",
+            failed.error
+        );
+    }
 }

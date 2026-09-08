@@ -41,3 +41,16 @@ pub fn health_json_body() -> Vec<u8> {
 )]
 #[allow(clippy::missing_const_for_fn)]
 pub fn healthz() {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn health_payload_and_stub() {
+        let body = HealthResponse::ok();
+        assert_eq!(body.status, "ok");
+        assert!(!health_json_body().is_empty());
+        healthz();
+    }
+}

@@ -50,6 +50,30 @@ mod tests {
     }
 
     #[test]
+    fn abi_reexports_are_constructible() {
+        let money = Money {
+            amount_minor: 1,
+            currency: "EUR".into(),
+        };
+        let line = CartLine {
+            sku: "SKU".into(),
+            quantity: 1,
+            unit_price: money.clone(),
+        };
+        let cart = CartSnapshot {
+            currency: "EUR".into(),
+            lines: vec![line],
+        };
+        let adjustment = Adjustment {
+            label: "x".into(),
+            amount_minor: -1,
+        };
+        assert_eq!(cart.lines.len(), 1);
+        assert_eq!(adjustment.amount_minor, -1);
+        assert_eq!(money.currency, "EUR");
+    }
+
+    #[test]
     fn pricing_adjust_applies_volume_discount() {
         let cart = CartSnapshot {
             currency: "EUR".into(),

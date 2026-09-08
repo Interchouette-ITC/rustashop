@@ -56,7 +56,8 @@
   "overrides": {
     "openapi-typescript": {
       "typescript": "$typescript"
-    }
+    },
+    "js-yaml": "4.3.2"
   },
   "allowScripts": {
     "@parcel/watcher@2.6.0": true,

@@ -1042,4 +1042,27 @@ mod tests {
             Some(HEALTHZ_ROUTE)
         );
     }
+
+    #[test]
+    fn dispatch_sandbox_unknown_route_is_404() {
+        let config = CommerceFrontConfig::test_default();
+        let input = DispatchInput {
+            query: None,
+            id: None,
+            line_id: None,
+            body: &[],
+            idempotency: None,
+            bearer: None,
+        };
+        let response = dispatch_sandbox_route("not_sandbox", &config, &input);
+        assert_eq!(response.status(), 404);
+    }
+
+    #[test]
+    fn get_sandbox_job_via_registry_requires_job_id() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let response = get_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), None);
+        assert_eq!(response.status(), 404);
+    }
 }
