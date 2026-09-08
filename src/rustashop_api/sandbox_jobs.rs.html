@@ -554,5 +554,63 @@
 <a href=#554 id=554 data-nosnippet>554</a>        <span class="comment">// Hub events may race if the guest finishes before subscribe; registry is the source of truth.
 <a href=#555 id=555 data-nosnippet>555</a>        </span><span class="kw">let _ </span>= finished;
 <a href=#556 id=556 data-nosnippet>556</a>    }
-<a href=#557 id=557 data-nosnippet>557</a>}
+<a href=#557 id=557 data-nosnippet>557</a>
+<a href=#558 id=558 data-nosnippet>558</a>    <span class="attr">#[test]
+<a href=#559 id=559 data-nosnippet>559</a>    </span><span class="kw">fn </span>openapi_stubs_are_callable() {
+<a href=#560 id=560 data-nosnippet>560</a>        create_sandbox_job();
+<a href=#561 id=561 data-nosnippet>561</a>        get_sandbox_job();
+<a href=#562 id=562 data-nosnippet>562</a>        list_sandbox_audit();
+<a href=#563 id=563 data-nosnippet>563</a>    }
+<a href=#564 id=564 data-nosnippet>564</a>
+<a href=#565 id=565 data-nosnippet>565</a>    <span class="attr">#[tokio::test(flavor = <span class="string">"multi_thread"</span>)]
+<a href=#566 id=566 data-nosnippet>566</a>    </span><span class="kw">async fn </span>run_quote_job_maps_guest_and_validation_failures() {
+<a href=#567 id=567 data-nosnippet>567</a>        <span class="kw">let </span>registry = SandboxJobRegistry::new();
+<a href=#568 id=568 data-nosnippet>568</a>        <span class="kw">let </span>hub = SandboxJobHub::new();
+<a href=#569 id=569 data-nosnippet>569</a>        <span class="kw">let </span>cart = CartSnapshot {
+<a href=#570 id=570 data-nosnippet>570</a>            currency: <span class="string">"EUR"</span>.into(),
+<a href=#571 id=571 data-nosnippet>571</a>            lines: <span class="macro">vec!</span>[CartLine {
+<a href=#572 id=572 data-nosnippet>572</a>                sku: <span class="string">"HOODIE-M"</span>.into(),
+<a href=#573 id=573 data-nosnippet>573</a>                quantity: <span class="number">2</span>,
+<a href=#574 id=574 data-nosnippet>574</a>                unit_price: Money {
+<a href=#575 id=575 data-nosnippet>575</a>                    amount_minor: <span class="number">5000</span>,
+<a href=#576 id=576 data-nosnippet>576</a>                    currency: <span class="string">"EUR"</span>.into(),
+<a href=#577 id=577 data-nosnippet>577</a>                },
+<a href=#578 id=578 data-nosnippet>578</a>            }],
+<a href=#579 id=579 data-nosnippet>579</a>        };
+<a href=#580 id=580 data-nosnippet>580</a>
+<a href=#581 id=581 data-nosnippet>581</a>        <span class="kw">let </span>guest_fail = registry.start_job(JOB_TYPE_QUOTE, <span class="string">"bad"</span>, <span class="string">"admin"</span>);
+<a href=#582 id=582 data-nosnippet>582</a>        run_quote_job(
+<a href=#583 id=583 data-nosnippet>583</a>            <span class="kw-2">&amp;</span>registry,
+<a href=#584 id=584 data-nosnippet>584</a>            <span class="kw-2">&amp;</span>hub,
+<a href=#585 id=585 data-nosnippet>585</a>            <span class="kw-2">&amp;</span>guest_fail.id,
+<a href=#586 id=586 data-nosnippet>586</a>            <span class="kw-2">&amp;</span>cart,
+<a href=#587 id=587 data-nosnippet>587</a>            <span class="string">"raise SystemExit(1)"</span>,
+<a href=#588 id=588 data-nosnippet>588</a>        )
+<a href=#589 id=589 data-nosnippet>589</a>        .<span class="kw">await</span>;
+<a href=#590 id=590 data-nosnippet>590</a>        <span class="kw">let </span>failed = registry.get(<span class="kw-2">&amp;</span>guest_fail.id).expect(<span class="string">"job"</span>);
+<a href=#591 id=591 data-nosnippet>591</a>        <span class="macro">assert_eq!</span>(failed.status, SandboxJobStatus::Failed);
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="macro">assert!</span>(
+<a href=#593 id=593 data-nosnippet>593</a>            failed
+<a href=#594 id=594 data-nosnippet>594</a>                .error
+<a href=#595 id=595 data-nosnippet>595</a>                .as_deref()
+<a href=#596 id=596 data-nosnippet>596</a>                .is_some_and(|message| message.contains(<span class="string">"guest failed"</span>)),
+<a href=#597 id=597 data-nosnippet>597</a>            <span class="string">"error={:?}"</span>,
+<a href=#598 id=598 data-nosnippet>598</a>            failed.error
+<a href=#599 id=599 data-nosnippet>599</a>        );
+<a href=#600 id=600 data-nosnippet>600</a>
+<a href=#601 id=601 data-nosnippet>601</a>        <span class="kw">let </span>validation_fail = registry.start_job(JOB_TYPE_QUOTE, <span class="string">"usd"</span>, <span class="string">"admin"</span>);
+<a href=#602 id=602 data-nosnippet>602</a>        <span class="kw">let </span>bad_currency = <span class="string">r#"import json,sys; json.dump([{"label":"x","amount_minor":-1,"currency":"USD"}], sys.stdout)"#</span>;
+<a href=#603 id=603 data-nosnippet>603</a>        run_quote_job(<span class="kw-2">&amp;</span>registry, <span class="kw-2">&amp;</span>hub, <span class="kw-2">&amp;</span>validation_fail.id, <span class="kw-2">&amp;</span>cart, bad_currency).<span class="kw">await</span>;
+<a href=#604 id=604 data-nosnippet>604</a>        <span class="kw">let </span>failed = registry.get(<span class="kw-2">&amp;</span>validation_fail.id).expect(<span class="string">"job"</span>);
+<a href=#605 id=605 data-nosnippet>605</a>        <span class="macro">assert_eq!</span>(failed.status, SandboxJobStatus::Failed);
+<a href=#606 id=606 data-nosnippet>606</a>        <span class="macro">assert!</span>(
+<a href=#607 id=607 data-nosnippet>607</a>            failed
+<a href=#608 id=608 data-nosnippet>608</a>                .error
+<a href=#609 id=609 data-nosnippet>609</a>                .as_deref()
+<a href=#610 id=610 data-nosnippet>610</a>                .is_some_and(|message| message.contains(<span class="string">"validation failed"</span>)),
+<a href=#611 id=611 data-nosnippet>611</a>            <span class="string">"error={:?}"</span>,
+<a href=#612 id=612 data-nosnippet>612</a>            failed.error
+<a href=#613 id=613 data-nosnippet>613</a>        );
+<a href=#614 id=614 data-nosnippet>614</a>    }
+<a href=#615 id=615 data-nosnippet>615</a>}
 </code></pre></div></section></main></body></html>

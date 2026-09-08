@@ -1042,5 +1042,28 @@
 <a href=#1042 id=1042 data-nosnippet>1042</a>            <span class="prelude-val">Some</span>(HEALTHZ_ROUTE)
 <a href=#1043 id=1043 data-nosnippet>1043</a>        );
 <a href=#1044 id=1044 data-nosnippet>1044</a>    }
-<a href=#1045 id=1045 data-nosnippet>1045</a>}
+<a href=#1045 id=1045 data-nosnippet>1045</a>
+<a href=#1046 id=1046 data-nosnippet>1046</a>    <span class="attr">#[test]
+<a href=#1047 id=1047 data-nosnippet>1047</a>    </span><span class="kw">fn </span>dispatch_sandbox_unknown_route_is_404() {
+<a href=#1048 id=1048 data-nosnippet>1048</a>        <span class="kw">let </span>config = CommerceFrontConfig::test_default();
+<a href=#1049 id=1049 data-nosnippet>1049</a>        <span class="kw">let </span>input = DispatchInput {
+<a href=#1050 id=1050 data-nosnippet>1050</a>            query: <span class="prelude-val">None</span>,
+<a href=#1051 id=1051 data-nosnippet>1051</a>            id: <span class="prelude-val">None</span>,
+<a href=#1052 id=1052 data-nosnippet>1052</a>            line_id: <span class="prelude-val">None</span>,
+<a href=#1053 id=1053 data-nosnippet>1053</a>            body: <span class="kw-2">&amp;</span>[],
+<a href=#1054 id=1054 data-nosnippet>1054</a>            idempotency: <span class="prelude-val">None</span>,
+<a href=#1055 id=1055 data-nosnippet>1055</a>            bearer: <span class="prelude-val">None</span>,
+<a href=#1056 id=1056 data-nosnippet>1056</a>        };
+<a href=#1057 id=1057 data-nosnippet>1057</a>        <span class="kw">let </span>response = dispatch_sandbox_route(<span class="string">"not_sandbox"</span>, <span class="kw-2">&amp;</span>config, <span class="kw-2">&amp;</span>input);
+<a href=#1058 id=1058 data-nosnippet>1058</a>        <span class="macro">assert_eq!</span>(response.status(), <span class="number">404</span>);
+<a href=#1059 id=1059 data-nosnippet>1059</a>    }
+<a href=#1060 id=1060 data-nosnippet>1060</a>
+<a href=#1061 id=1061 data-nosnippet>1061</a>    <span class="attr">#[test]
+<a href=#1062 id=1062 data-nosnippet>1062</a>    </span><span class="kw">fn </span>get_sandbox_job_via_registry_requires_job_id() {
+<a href=#1063 id=1063 data-nosnippet>1063</a>        <span class="kw">let </span>auth = AdminAuthConfig::from_token(<span class="string">"tok"</span>);
+<a href=#1064 id=1064 data-nosnippet>1064</a>        <span class="kw">let </span>registry = <span class="kw">crate</span>::sandbox_jobs::SandboxJobRegistry::new();
+<a href=#1065 id=1065 data-nosnippet>1065</a>        <span class="kw">let </span>response = get_sandbox_job_via_registry(<span class="kw-2">&amp;</span>auth, <span class="prelude-val">Some</span>(<span class="string">"tok"</span>), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>registry), <span class="prelude-val">None</span>);
+<a href=#1066 id=1066 data-nosnippet>1066</a>        <span class="macro">assert_eq!</span>(response.status(), <span class="number">404</span>);
+<a href=#1067 id=1067 data-nosnippet>1067</a>    }
+<a href=#1068 id=1068 data-nosnippet>1068</a>}
 </code></pre></div></section></main></body></html>
