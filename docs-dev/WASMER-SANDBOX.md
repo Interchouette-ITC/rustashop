@@ -90,7 +90,7 @@ Rust authorizes; Wasm executes within a jail; audit logs are mandatory.
 | JS fixture | [`extensions/fixtures/wasmer-quote/quote.js`](../extensions/fixtures/wasmer-quote/quote.js) (pinned `syrusakbary/quickjs`) |
 | PHP fixture | [`extensions/fixtures/wasmer-quote/quote.php`](../extensions/fixtures/wasmer-quote/quote.php) (pinned `php/php-32`) |
 | PHP migration guest | [`extensions/fixtures/wasmer-php-migration/`](../extensions/fixtures/wasmer-php-migration/) (`actionCartUpdateQuantityBefore` → `cart.line_quantity_proposed`) |
-| Cache | `.wasmer/` (gitignored); override with `RUSTASHOP_WASMER_CACHE` |
+| Cache | `.wasmer/` (gitignored); override with `RUSTASHOP_WASMER_CACHE`. CI restores this dir so PHP/Python/JS webc downloads are not cold on every run. |
 
 ```bash
 cargo test -p rustashop-sandbox
