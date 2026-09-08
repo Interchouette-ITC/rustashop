@@ -57,10 +57,13 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 
 ## Next slices
 
-1. Axum MCP server in `rustashop-mcp` exposing this catalog (#47).
-2. Admin / shop AI UIs calling the same names.
-3. Provider API-key routing for first-party model calls (keys never in Wasmer guests).
-4. Autonomous jobs: sandbox + host commit using Serenade messenger when wired.
+1. Admin / shop AI UIs calling the same names.
+2. Provider API-key routing for first-party model calls (keys never in Wasmer guests).
+3. Autonomous jobs: sandbox + host commit using Serenade messenger when wired.
+
+## MCP server
+
+`make run-mcp` serves Streamable HTTP on `/mcp` (default bind `127.0.0.1:8090`). Commit tools require `RUSTASHOP_MCP_ALLOW_COMMIT=1`. See `crates/rustashop-mcp/README.md`.
 
 ## Non-goals (v0)
 

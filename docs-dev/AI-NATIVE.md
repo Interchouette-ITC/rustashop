@@ -36,7 +36,7 @@ rustashop
 - Money, inventory, and payment capture stay **host-authorized**; models propose, humans or strict policies confirm where required.
 - Pricing / inventory **commits** stay host-mediated (same rule as WIT plugins).
 - Realtime gateway carries agent job progress and cart updates ([REALTIME.md](REALTIME.md)).
-- **Axum** will host MCP HTTP using the same tool names; `rustashop-mcp` already owns the typed schema (no listen yet).
+- **Axum** hosts MCP Streamable HTTP (`make run-mcp`, default `127.0.0.1:8090/mcp`) using the same tool names; handlers proxy to the Actix API.
 
 ## Frontend (native)
 
@@ -57,7 +57,7 @@ rustashop
 1. **Done (#44):** tool schema for cart/catalog/order reads + draft writes - [AI-TOOLS.md](AI-TOOLS.md) + `rustashop-mcp`
 2. Admin agent console (Angular) beyond `/sandbox` + job audit
 3. Storefront discovery / shopping-agent MVP
-4. MCP HTTP surface on **Axum**, tools from the same catalog (#47)
+4. **Done (#47):** MCP HTTP surface on **Axum**, tools from the same catalog
 5. Autonomous job runner (sandbox + host commit)
 6. Model provider config (operator API keys; never in Wasmer guests)
 

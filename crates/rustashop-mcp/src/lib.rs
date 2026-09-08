@@ -1,13 +1,19 @@
 //! Axum MCP and shared commerce agent tool surfaces.
 //!
-//! This crate owns the **stable tool schema** (names, scopes, effects, input
-//! shapes) shared by future MCP HTTP routes and in-app agents. It does not yet
-//! listen on a socket; commerce execution stays on `rustashop-api`.
+//! This crate owns the **stable tool schema** (`TOOLS`) and the MCP server
+//! (stdio or Streamable HTTP on `/mcp`) that proxies those tools to
+//! `rustashop-api`. Commerce execution stays on the Actix API.
 
 #![deny(missing_docs)]
 
+mod client;
+mod server;
 mod tools;
 
+pub use client::{
+    ADMIN_PREFIX_ENV, ADMIN_TOKEN_ENV, ALLOW_COMMIT_ENV, API_BASE_ENV, CommerceClient,
+};
+pub use server::{DEFAULT_HTTP_LISTEN, RustashopMcp, run_http, run_stdio};
 pub use tools::{
     AddCartLineInput, AdminListInput, CartLineRefInput, CreateCartInput, GetCartInput,
     GetProductInput, ListProductsInput, PatchOrderStatusInput, PlaceOrderInput, TOOLS,
@@ -17,7 +23,7 @@ pub use tools::{
     tool_by_name, tools_catalog_json, update_cart_line_input_example,
 };
 
-/// Crate name marker for workspace and diagnostics checks.
+/// Crate id for workspace and diagnostics checks.
 pub const MCP_CRATE: &str = "rustashop-mcp";
 
 /// Kernel integration status from the `rustashop` application package.
@@ -31,7 +37,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn crate_marker_and_kernel_status() {
+    fn crate_id_and_kernel_status() {
         assert_eq!(MCP_CRATE, "rustashop-mcp");
         assert_eq!(kernel_status(), rustashop::kernel_status());
     }
