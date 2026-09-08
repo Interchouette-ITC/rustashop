@@ -8,7 +8,7 @@ rustashop is a Rust commerce product. The [Serenade](https://github.com/Intercho
 Clients (Angular | Leptos+rangular)
         │  OpenAPI + cart WebSocket
         ▼
-rustashop-api (Actix)     rustashop-mcp (Axum name marker)
+rustashop-api (Actix)     rustashop-mcp (tool schema; Axum later)
         │
         ▼
 rustashop-domain          pure types (Money, Product, Cart, Order, …)
@@ -41,7 +41,7 @@ Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, 
 | `rustashop-extensions` | WIT Component Model host (`pricing-adjust` invoke) |
 | `rustashop-sandbox` | Wasmer polyglot sandbox host (Python `quote` fixture) |
 | `rustashop-api` | Commerce HTTP via Serenade listen (Actix adapter), OpenAPI |
-| `rustashop-mcp` | Axum MCP / agent tools (name marker; not wired yet) |
+| `rustashop-mcp` | Tool schema for MCP / agents (`TOOLS`); Axum listen not wired yet |
 | `rustashop-template-shop-default` | Shared storefront HTML/SCSS package |
 
 ## HTTP house split

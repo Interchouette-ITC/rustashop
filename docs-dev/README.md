@@ -11,6 +11,7 @@ Public contributor docs (`docs/ARCHITECTURE.md`, `docs/CONTRIBUTING.md`, …) li
 | [FOUNDATIONS.md](FOUNDATIONS.md)       | Overall identity: contracts, three Wasm roles, realtime default, AI-native, roadmap axes |
 | [PERSISTENCE.md](PERSISTENCE.md)       | Parameterized queries, persist-param NUL hygiene, raw SQL gate                           |
 | [AI-NATIVE.md](AI-NATIVE.md)           | AI across API and UIs: discovery, agents, catalog, pricing, support, MCP                 |
+| [AI-TOOLS.md](AI-TOOLS.md)             | v0 commerce tool / function schema (MCP + in-app agents)                                 |
 | [DOMAINS.md](DOMAINS.md)               | Hostnames (`ai` / `io` / `dev` / `app` / redirects) and deploy surfaces                  |
 | [UI-RENDERERS.md](UI-RENDERERS.md)     | Angular + rangular dual track; Leptos web vs GPUI native hosts                           |
 | [WASM-LAYERS.md](WASM-LAYERS.md)       | Storefront Wasm vs plugin Component Model vs sandbox runtimes                            |

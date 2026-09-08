@@ -5434,7 +5434,10 @@ dependencies = [
 name = "rustashop-mcp"
 version = "0.1.0"
 dependencies = [
+ "insta",
  "rustashop",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

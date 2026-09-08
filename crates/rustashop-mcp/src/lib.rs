@@ -1,7 +1,20 @@
-//! Axum MCP and agent HTTP name marker.
+//! Axum MCP and shared commerce agent tool surfaces.
 //!
-//! Workspace member that reserves the crate name for future MCP tool routes.
-//! Today it only re-exports the application kernel status for shared diagnostics.
+//! This crate owns the **stable tool schema** (names, scopes, effects, input
+//! shapes) shared by future MCP HTTP routes and in-app agents. It does not yet
+//! listen on a socket; commerce execution stays on `rustashop-api`.
+
+#![deny(missing_docs)]
+
+mod tools;
+
+pub use tools::{
+    AddCartLineInput, AdminListInput, CartLineRefInput, CreateCartInput, GetCartInput,
+    GetProductInput, ListProductsInput, PatchOrderStatusInput, PlaceOrderInput, TOOLS,
+    ToolDescriptor, ToolEffect, ToolScope, add_cart_line_input_example, create_cart_input_example,
+    get_cart_input_example, get_product_input_example, list_products_input_example,
+    patch_order_status_input_example, place_order_input_example, tool_by_name, tools_catalog_json,
+};
 
 /// Crate name marker for workspace and diagnostics checks.
 pub const MCP_CRATE: &str = "rustashop-mcp";
