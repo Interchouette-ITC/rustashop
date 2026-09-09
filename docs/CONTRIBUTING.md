@@ -18,8 +18,13 @@ Coverage (no %-fail gate in CI; reports upload to Codecov):
 
 ```bash
 make db-up
-make coverage      # Rust lcov → coverage/lcov.info (needs cargo-llvm-cov)
-make coverage-js   # Vitest lcov for shop, admin, install
+make coverage         # Rust lcov → coverage/lcov.info (needs cargo-llvm-cov)
+make coverage-summary # Rust terminal summary (llvm-cov --summary-only)
+make coverage-html    # Rust HTML → coverage/html/
+make tarpaulin        # Alternate local Rust coverage (cargo-tarpaulin)
+make machete          # Unused Rust deps (cargo-machete)
+make outdated         # Outdated Rust crates (cargo-outdated)
+make coverage-js      # Vitest lcov for shop, admin, install
 ```
 
 3. One concern per PR. Finish the concern locally, then open a **ready** PR (use draft only when the branch must be visible before that concern is done).
@@ -38,7 +43,12 @@ make coverage-js   # Vitest lcov for shop, admin, install
 | --- | --- |
 | `make lint` | `fmt --check` + clippy (`-D warnings`, pedantic, nursery) for workspace and SeaORM features |
 | `make test` | workspace tests, then SeaORM feature tests |
-| `make coverage` | Rust `cargo llvm-cov` → `coverage/lcov.info` |
+| `make coverage` | Rust `cargo llvm-cov` lcov → `coverage/lcov.info` (CI / Codecov) |
+| `make coverage-summary` | Rust `cargo llvm-cov --summary-only` |
+| `make coverage-html` | Rust `cargo llvm-cov` HTML → `coverage/html/` |
+| `make tarpaulin` | Alternate local Rust coverage (`cargo tarpaulin`; CI stays on llvm-cov) |
+| `make machete` | Unused Rust deps (`cargo machete`) |
+| `make outdated` | Outdated Rust crates (`cargo outdated`) |
 | `make coverage-js` | Vitest coverage for shop, admin, install |
 | `make openapi` | write `openapi/openapi.json` from utoipa |
 | `make openapi-check` | regenerate OpenAPI and fail if the committed dump drifted |

@@ -37,7 +37,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -53,7 +53,12 @@ help:
 	@echo "  make test       cargo test --workspace, then SeaORM feature tests"
 	@echo "  make extensions-fixture  rebuild pricing-adjust component wasm (needs wasm-tools)"
 	@echo "  make sandbox-quote-rust-fixture  rebuild Rust WASI quote.wasm for Wasmer sandbox"
-	@echo "  make coverage   cargo llvm-cov → coverage/lcov.info (needs DATABASE_URL for integration)"
+	@echo "  make coverage         cargo llvm-cov lcov → coverage/lcov.info (needs DATABASE_URL; CI / Codecov)"
+	@echo "  make coverage-summary cargo llvm-cov --summary-only"
+	@echo "  make coverage-html    cargo llvm-cov HTML → coverage/html/"
+	@echo "  make tarpaulin        cargo tarpaulin → coverage/tarpaulin/ (local alternate)"
+	@echo "  make machete          cargo machete (unused deps)"
+	@echo "  make outdated         cargo outdated --workspace"
 	@echo "  make coverage-js Vitest coverage for shop, admin, and install → coverage/*-lcov.info"
 	@echo "  make lint       fmt check + SQL safety + clippy + Angular shop/admin lint (when node_modules present)"
 	@echo "  make ci         lint + test + doc + audit + deny (local mirror of core CI jobs before opening a PR)"
@@ -117,18 +122,49 @@ sandbox-quote-rust-fixture:
 ## Local mirror of core CI jobs. Run before every PR create/update (see .cursor/rules/rustashop-ci-before-pr.mdc).
 ci: lint test doc openapi-check audit deny
 
-## Requires `cargo install cargo-llvm-cov`. Writes `coverage/lcov.info`.
+## Requires `cargo install cargo-llvm-cov`. Writes `coverage/lcov.info` (CI / Codecov).
 ## Uses the stable toolchain so llvm-cov finds instrumented objects.
 ## Integration tests need DATABASE_URL (make db-up).
 ## Bins match Codecov ignore paths so local lcov stays aligned.
+COVERAGE_IGNORE := /src/bin/|/src/main\.rs$$
+
 coverage:
-	cd $(ROOT) && mkdir -p coverage && RUSTUP_TOOLCHAIN=stable $(CARGO) llvm-cov --workspace \
+	cd $(ROOT) && mkdir -p coverage && RUSTUP_TOOLCHAIN=stable $(CARGO) llvm-cov --workspace --locked \
 		--exclude rustashop-persist-seaorm --lcov \
-		--ignore-filename-regex '/src/bin/|/src/main\.rs$$' \
+		--ignore-filename-regex '$(COVERAGE_IGNORE)' \
 		--output-path coverage/lcov.info
-	cd $(ROOT) && RUSTUP_TOOLCHAIN=stable $(CARGO) llvm-cov $(SEAORM_PACKAGES) $(SEAORM_FEATURES) --lcov \
-		--ignore-filename-regex '/src/bin/|/src/main\.rs$$' \
+	cd $(ROOT) && RUSTUP_TOOLCHAIN=stable $(CARGO) llvm-cov $(SEAORM_PACKAGES) $(SEAORM_FEATURES) --locked --lcov \
+		--ignore-filename-regex '$(COVERAGE_IGNORE)' \
 		--output-path coverage/lcov-seaorm.info
+
+## Terminal summary only (default features workspace; needs DATABASE_URL for integration).
+coverage-summary:
+	cd $(ROOT) && RUSTUP_TOOLCHAIN=stable $(CARGO) llvm-cov --workspace --locked --summary-only \
+		--exclude rustashop-persist-seaorm \
+		--ignore-filename-regex '$(COVERAGE_IGNORE)'
+
+## HTML report → `coverage/html/` (default features workspace).
+coverage-html:
+	cd $(ROOT) && mkdir -p coverage && RUSTUP_TOOLCHAIN=stable $(CARGO) llvm-cov --workspace --locked --html \
+		--exclude rustashop-persist-seaorm \
+		--ignore-filename-regex '$(COVERAGE_IGNORE)' \
+		--output-dir coverage/html
+
+## Alternate local coverage via tarpaulin (not used by CI; Codecov stays on llvm-cov).
+## Requires `cargo install cargo-tarpaulin`. Needs DATABASE_URL for integration tests.
+tarpaulin:
+	cd $(ROOT) && mkdir -p coverage/tarpaulin && DATABASE_URL=$(DATABASE_URL) $(CARGO) tarpaulin --workspace --locked \
+		--exclude rustashop-persist-seaorm \
+		--exclude-files '**/src/bin/*' '**/src/main.rs' \
+		--out Html --out Xml --output-dir coverage/tarpaulin
+
+## Unused workspace dependencies. Requires `cargo install cargo-machete`.
+machete:
+	cd $(ROOT) && $(CARGO) machete
+
+## Outdated crates report. Requires `cargo install cargo-outdated`.
+outdated:
+	cd $(ROOT) && $(CARGO) outdated --workspace
 
 ## Vitest coverage for shop, admin, and install. Writes coverage/*-lcov.info.
 coverage-js:
