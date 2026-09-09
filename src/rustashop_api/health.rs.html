@@ -50,8 +50,9 @@
 <a href=#50 id=50 data-nosnippet>50</a>    </span><span class="kw">fn </span>health_payload_and_stub() {
 <a href=#51 id=51 data-nosnippet>51</a>        <span class="kw">let </span>body = HealthResponse::ok();
 <a href=#52 id=52 data-nosnippet>52</a>        <span class="macro">assert_eq!</span>(body.status, <span class="string">"ok"</span>);
-<a href=#53 id=53 data-nosnippet>53</a>        <span class="macro">assert!</span>(!health_json_body().is_empty());
-<a href=#54 id=54 data-nosnippet>54</a>        healthz();
-<a href=#55 id=55 data-nosnippet>55</a>    }
-<a href=#56 id=56 data-nosnippet>56</a>}
+<a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">let </span>json = health_json_body();
+<a href=#54 id=54 data-nosnippet>54</a>        <span class="macro">assert_ne!</span>(json.as_slice(), <span class="kw-2">&amp;</span>[] <span class="kw">as </span><span class="kw-2">&amp;</span>[u8]);
+<a href=#55 id=55 data-nosnippet>55</a>        healthz();
+<a href=#56 id=56 data-nosnippet>56</a>    }
+<a href=#57 id=57 data-nosnippet>57</a>}
 </code></pre></div></section></main></body></html>
