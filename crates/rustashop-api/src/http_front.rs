@@ -14,7 +14,7 @@ use crate::admin_orders::{
 };
 use crate::admin_prefix::DEFAULT_ADMIN_API_PREFIX;
 use crate::admin_products::{ListAdminProductsQuery, list_admin_products_response};
-use crate::ai_tools::list_ai_tools_response;
+use crate::ai_tools::{list_ai_tools_response, list_shop_ai_tools_response};
 use crate::carts::{
     add_cart_line_response, create_cart_response, delete_cart_line_response, get_cart_response,
     update_cart_line_response,
@@ -44,6 +44,7 @@ const CREATE_SANDBOX_JOB_ROUTE: &str = "create_sandbox_job";
 const GET_SANDBOX_JOB_ROUTE: &str = "get_sandbox_job";
 const LIST_SANDBOX_AUDIT_ROUTE: &str = "list_sandbox_audit";
 const LIST_AI_TOOLS_ROUTE: &str = "list_ai_tools";
+const LIST_SHOP_AI_TOOLS_ROUTE: &str = "list_shop_ai_tools";
 const INSTALL_STATUS_ROUTE: &str = "install_status";
 const INSTALL_COMPLETE_ROUTE: &str = "install_complete";
 const QUERY_STRING_ATTR: &str = "query_string";
@@ -213,6 +214,7 @@ async fn dispatch_route(
             dispatch_sandbox_route(route_name, config, &input)
         }
         LIST_AI_TOOLS_ROUTE => list_ai_tools_response(&config.admin_auth, input.bearer),
+        LIST_SHOP_AI_TOOLS_ROUTE => list_shop_ai_tools_response(),
         INSTALL_STATUS_ROUTE => install_status_response(config.install_root.as_deref()),
         INSTALL_COMPLETE_ROUTE => {
             install_complete_response(config.install_root.as_deref(), input.body)
@@ -533,6 +535,13 @@ fn add_storefront_routes(collection: &mut RouteCollection) {
             Method::Post,
         ))
         .expect("place order route");
+    collection
+        .add(Route::with_method(
+            LIST_SHOP_AI_TOOLS_ROUTE,
+            "/v1/ai/tools",
+            Method::Get,
+        ))
+        .expect("list shop ai tools route");
 }
 
 fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str) {
@@ -674,6 +683,7 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
             actix_web::web::delete().to(serenade_dispatch),
         )
         .route("/v1/checkout", actix_web::web::post().to(serenade_dispatch))
+        .route("/v1/ai/tools", actix_web::web::get().to(serenade_dispatch))
         .route("/openapi.json", actix_web::web::get().to(serenade_dispatch))
         .route(&admin_products, actix_web::web::get().to(serenade_dispatch))
         .route(&admin_orders, actix_web::web::get().to(serenade_dispatch))
@@ -784,6 +794,25 @@ mod tests {
             .to_request();
         let resp = actix_test::call_service(&app, req).await;
         assert_eq!(resp.status(), 500);
+    }
+
+    #[actix_web::test]
+    async fn shop_ai_tools_public() {
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(test_kernel())
+                .configure(|cfg| configure_serenade_front(cfg, DEFAULT_ADMIN_API_PREFIX)),
+        )
+        .await;
+        let req = actix_test::TestRequest::get()
+            .uri("/v1/ai/tools")
+            .to_request();
+        let resp = actix_test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+        let body: Vec<crate::ai_tools::AiToolResponse> = actix_test::read_body_json(resp).await;
+        assert!(!body.is_empty());
+        assert!(body.iter().all(|tool| tool.scope == "shop"));
+        assert!(body.iter().any(|tool| tool.name == "list_products"));
     }
 
     #[actix_web::test]

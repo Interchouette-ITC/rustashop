@@ -34,7 +34,7 @@ pub use admin_prefix::{
     ADMIN_API_PREFIX_ENV, AdminApiPrefix, DEFAULT_ADMIN_API_PREFIX, configure_admin_routes,
 };
 pub use admin_products::list_admin_products;
-pub use ai_tools::{AiToolResponse, list_ai_tools};
+pub use ai_tools::{AiToolResponse, list_ai_tools, list_shop_ai_tools};
 pub use carts::{
     CartLineResponse, CartResponse, MoneyResponse, add_cart_line, create_cart, delete_cart_line,
     get_cart, update_cart_line,

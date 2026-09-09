@@ -2,7 +2,7 @@
 
 Stable **tool / function** names for MCP and in-app agents. They map 1:1 to OpenAPI commerce routes. Models never receive raw SQL or invent money floats.
 
-Typed catalog: `rustashop-domain` (`TOOLS`, `tools_catalog_json()`); MCP input structs in `rustashop-mcp`; admin discovery via `GET /v1/{admin_api_prefix}/ai/tools`.
+Typed catalog: `rustashop-domain` (`TOOLS`, `tools_catalog_json()`); MCP input structs in `rustashop-mcp`; shop discovery via `GET /v1/ai/tools`; admin discovery via `GET /v1/{admin_api_prefix}/ai/tools`.
 
 Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Slice: [#44](https://github.com/Interchouette-ITC/rustashop/issues/44).
 

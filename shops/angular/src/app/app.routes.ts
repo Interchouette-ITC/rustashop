@@ -26,6 +26,11 @@ export const routes: Routes = [
         loadComponent: () =>
           import('../components/checkout_page/checkout_page').then((m) => m.CheckoutPage),
       },
+      {
+        path: 'discover',
+        loadComponent: () =>
+          import('../components/discover_page/discover_page').then((m) => m.DiscoverPage),
+      },
       { path: '**', redirectTo: '' },
     ],
   },

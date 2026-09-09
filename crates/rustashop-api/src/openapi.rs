@@ -54,6 +54,7 @@ impl Modify for AdminSecurityAddon {
         crate::sandbox_jobs::get_sandbox_job,
         crate::sandbox_jobs::list_sandbox_audit,
         crate::ai_tools::list_ai_tools,
+        crate::ai_tools::list_shop_ai_tools,
         openapi_json
     ),
     components(schemas(

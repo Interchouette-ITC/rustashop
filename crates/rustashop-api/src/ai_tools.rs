@@ -1,4 +1,4 @@
-//! Admin AI tool catalog (`GET …/ai/tools`).
+//! AI tool catalog (`GET /v1/ai/tools` shop; `GET …/{admin}/ai/tools` full).
 
 use rustashop_domain::{TOOLS, ToolDescriptor, ToolEffect, ToolScope};
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 use crate::admin_auth::AdminAuthConfig;
 use crate::error::{ErrorBody, api_error_json_response, json_response};
 
-/// One tool row for admin agent discovery.
+/// One tool row for agent discovery (shop or admin).
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct AiToolResponse {
     /// Stable MCP / agent function name.
@@ -56,7 +56,18 @@ const fn effect_label(effect: ToolEffect) -> &'static str {
     }
 }
 
-/// Lists the shared commerce tool catalog for in-app admin agents.
+/// Public shop-scoped catalog for storefront discovery agents (no bearer).
+#[must_use]
+pub fn list_shop_ai_tools_response() -> Response {
+    let tools: Vec<AiToolResponse> = TOOLS
+        .iter()
+        .filter(|tool| tool.scope == ToolScope::Shop)
+        .map(AiToolResponse::from)
+        .collect();
+    json_response(200, &tools)
+}
+
+/// Lists the full commerce tool catalog for in-app admin agents.
 pub fn list_ai_tools_response(auth: &AdminAuthConfig, bearer: Option<&str>) -> Response {
     if let Err(error) = auth.authorize_bearer(bearer) {
         return api_error_json_response(&error);
@@ -64,6 +75,17 @@ pub fn list_ai_tools_response(auth: &AdminAuthConfig, bearer: Option<&str>) -> R
     let tools: Vec<AiToolResponse> = TOOLS.iter().map(AiToolResponse::from).collect();
     json_response(200, &tools)
 }
+
+/// `GET /v1/ai/tools` `OpenAPI` stub (shop scope only).
+#[utoipa::path(
+    get,
+    path = "/v1/ai/tools",
+    responses(
+        (status = 200, description = "Shop-scoped commerce AI tool catalog", body = [AiToolResponse])
+    )
+)]
+#[allow(clippy::missing_const_for_fn)]
+pub fn list_shop_ai_tools() {}
 
 /// `GET /v1/{admin_api_prefix}/ai/tools` `OpenAPI` stub.
 #[utoipa::path(
@@ -99,5 +121,19 @@ mod tests {
         assert_eq!(body.len(), TOOLS.len());
         assert!(body.iter().any(|t| t.name == "list_admin_products"));
         list_ai_tools();
+    }
+
+    #[test]
+    fn lists_shop_scope_without_bearer() {
+        let response = list_shop_ai_tools_response();
+        assert_eq!(response.status(), 200);
+        let body: Vec<AiToolResponse> =
+            serde_json::from_slice(response.body()).expect("shop ai tools json");
+        assert!(!body.is_empty());
+        assert!(body.iter().all(|t| t.scope == "shop"));
+        assert!(body.iter().any(|t| t.name == "list_products"));
+        assert!(body.iter().any(|t| t.name == "place_order"));
+        assert!(!body.iter().any(|t| t.name == "list_admin_products"));
+        list_shop_ai_tools();
     }
 }
