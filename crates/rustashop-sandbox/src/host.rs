@@ -17,7 +17,6 @@ use crate::types::{Adjustment, CartSnapshot};
 /// Serializes Wasmer package runs so parallel tests share one webc download.
 static PACKAGE_RUN_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
-
 /// Registry URL for the pinned Python Wasmer package (webc download).
 pub const PYTHON_PACKAGE_URL: &str = "https://wasmer.io/python/python@0.1.0";
 
