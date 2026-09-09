@@ -12,7 +12,7 @@ concurrency:
 permissions:
   contents: read
 
-# Action runtimes: Node 24+ (checkout/setup-node v7, codecov-action v6).
+# Action runtimes: Node 24+ (checkout/setup-node v7, artifact/cache Node24, codecov-action v6).
 # Project Node for Angular/install jobs: 24 (matches engines ^24).
 env:
   CARGO_TERM_COLOR: always
@@ -72,7 +72,7 @@ jobs:
         run: mkdir -p .wasmer && echo skip > .wasmer/.markdown-only
       - name: Cache Wasmer packages
         if: needs.changes.outputs.code == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .wasmer
           key: wasmer-webc-${{ runner.os }}-v1
@@ -82,7 +82,7 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         run: bash scripts/prefetch-wasmer-webc.sh
       - name: Upload Wasmer cache
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wasmer-webc
           path: .wasmer
@@ -116,7 +116,7 @@ jobs:
       - name: Markdown-only
         if: needs.changes.outputs.code != 'true'
         run: echo "markdown-only; skipping heavy tests"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         if: needs.changes.outputs.code == 'true'
         with:
           name: wasmer-webc
@@ -353,7 +353,7 @@ jobs:
       - name: Markdown-only
         if: needs.changes.outputs.code != 'true'
         run: echo "markdown-only; skipping coverage"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v6
         if: needs.changes.outputs.code == 'true'
         with:
           name: wasmer-webc
