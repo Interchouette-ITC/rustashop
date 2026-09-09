@@ -69,23 +69,37 @@ jobs:
       - uses: actions/checkout@v7
       - name: Markdown-only placeholder
         if: needs.changes.outputs.code != 'true'
-        run: mkdir -p .wasmer && echo skip > .wasmer/.markdown-only
+        run: |
+          mkdir -p .wasmer/downloads
+          echo skip > .wasmer/MARKDOWN_ONLY
       - name: Cache Wasmer packages
         if: needs.changes.outputs.code == 'true'
         uses: actions/cache@v5
         with:
           path: .wasmer
-          key: wasmer-webc-${{ runner.os }}-v1
+          key: wasmer-webc-${{ runner.os }}-v2
           restore-keys: |
             wasmer-webc-${{ runner.os }}-
       - name: Prefetch Wasmer webc
         if: needs.changes.outputs.code == 'true'
         run: bash scripts/prefetch-wasmer-webc.sh
+      - name: Ensure uploadable Wasmer tree
+        run: |
+          mkdir -p .wasmer/downloads
+          if [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
+            test -s .wasmer/downloads/php-php-32.webc
+            test -s .wasmer/downloads/python-python-0.1.0.webc
+            test -s .wasmer/downloads/syrusakbary-quickjs.webc
+          else
+            test -f .wasmer/MARKDOWN_ONLY
+          fi
+          find .wasmer -type f -printf '%p %s\n'
       - name: Upload Wasmer cache
         uses: actions/upload-artifact@v6
         with:
           name: wasmer-webc
           path: .wasmer
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
 
