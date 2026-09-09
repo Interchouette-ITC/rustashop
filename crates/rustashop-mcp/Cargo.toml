@@ -19,6 +19,7 @@ clap = { workspace = true }
 reqwest = { workspace = true }
 rmcp = { workspace = true }
 rustashop = { workspace = true }
+rustashop-domain = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

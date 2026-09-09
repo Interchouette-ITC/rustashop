@@ -50,7 +50,8 @@ mod tests {
     fn health_payload_and_stub() {
         let body = HealthResponse::ok();
         assert_eq!(body.status, "ok");
-        assert!(!health_json_body().is_empty());
+        let json = health_json_body();
+        assert_ne!(json.as_slice(), &[] as &[u8]);
         healthz();
     }
 }

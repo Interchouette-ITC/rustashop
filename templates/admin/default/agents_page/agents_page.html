@@ -1,0 +1,107 @@
+<section aria-labelledby="agents-heading">
+  <h1 id="agents-heading" class="admin__title">Agents</h1>
+  <p class="admin__tagline">
+    Operator AI surface on the same commerce tools as MCP. Untrusted scripts stay on
+    <a routerLink="/sandbox">Sandbox</a>.
+  </p>
+
+  @if (error()) {
+    <p class="admin__error" role="alert">{{ error() }}</p>
+  }
+
+  @if (!hasToken()) {
+    <p class="admin__tagline">Set an admin bearer token in the bar (RUSTASHOP_ADMIN_API_TOKEN value).</p>
+  } @else {
+    <div class="admin__panel">
+      <h2 class="admin__title">Assist</h2>
+      <p class="admin__tagline">
+        Run <code>list_admin_products</code> through the commerce API (same OpenAPI as the tool catalog).
+      </p>
+      <button
+        type="button"
+        class="btn btn-primary btn-sm"
+        (click)="runListProducts()"
+        [disabled]="busy()"
+      >
+        List admin products
+      </button>
+      @if (productNames().length > 0) {
+        <ul class="mt-2">
+          @for (name of productNames(); track name) {
+            <li>{{ name }}</li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="admin__panel mt-3">
+      <h2 class="admin__title">Tool catalog</h2>
+      <button type="button" class="btn btn-outline-secondary btn-sm mb-2" (click)="reloadTools()" [disabled]="busy()">
+        Refresh tools
+      </button>
+      @if (tools().length === 0) {
+        <p class="admin__empty">No tools loaded.</p>
+      } @else {
+        <table class="admin__table">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Scope</th>
+              <th scope="col">Effect</th>
+              <th scope="col">Approve</th>
+              <th scope="col">OpenAPI</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tool of tools(); track tool.name) {
+              <tr>
+                <td>
+                  <code>{{ tool.name }}</code>
+                  <div class="admin__tagline">{{ tool.summary }}</div>
+                </td>
+                <td>{{ tool.scope }}</td>
+                <td>{{ tool.effect }}</td>
+                <td>{{ tool.human_approve_for_autonomous ? 'yes' : 'no' }}</td>
+                <td>
+                  <code>{{ tool.method }} {{ tool.openapi_path }}</code>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <div class="admin__panel mt-3">
+      <h2 class="admin__title">Job audit</h2>
+      <p class="admin__tagline">Recent sandbox job rows (in-process). Guest runs: Sandbox page.</p>
+      <button type="button" class="btn btn-outline-secondary btn-sm mb-2" (click)="reloadAudit()" [disabled]="busy()">
+        Refresh audit
+      </button>
+      @if (audit().length === 0) {
+        <p class="admin__empty">No audit rows yet.</p>
+      } @else {
+        <table class="admin__table">
+          <thead>
+            <tr>
+              <th scope="col">Job</th>
+              <th scope="col">Type</th>
+              <th scope="col">Status</th>
+              <th scope="col">Hash</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of audit(); track row.job_id) {
+              <tr>
+                <td><code>{{ row.job_id }}</code></td>
+                <td>{{ row.job_type }}</td>
+                <td>{{ row.status }}</td>
+                <td><code>{{ row.source_hash }}</code></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+</section>

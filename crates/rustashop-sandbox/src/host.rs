@@ -4,13 +4,18 @@
 //! package pins, fixtures, and quote/migration entrypoints.
 
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 
 use anyhow::{Context, Result};
 #[cfg(test)]
 use serenade_sandbox::load_webc_from;
 use serenade_sandbox::{PackageRun, decode_json, run_module, run_package, wasmer_cache_root_from};
+use tokio::sync::Mutex;
 
 use crate::types::{Adjustment, CartSnapshot};
+
+/// Serializes Wasmer package runs so parallel tests share one webc download.
+static PACKAGE_RUN_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 /// Registry URL for the pinned Python Wasmer package (webc download).
 pub const PYTHON_PACKAGE_URL: &str = "https://wasmer.io/python/python@0.1.0";
@@ -202,6 +207,7 @@ async fn invoke_package_json<T: serde::de::DeserializeOwned>(
     command: &str,
     args: Vec<String>,
 ) -> Result<T> {
+    let _guard = PACKAGE_RUN_LOCK.lock().await;
     let output = run_package(PackageRun {
         stdin_bytes,
         cache_root,

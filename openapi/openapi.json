@@ -473,6 +473,45 @@
         }
       }
     },
+    "/v1/{admin_api_prefix}/ai/tools": {
+      "get": {
+        "tags": [
+          "crate::ai_tools"
+        ],
+        "summary": "`GET /v1/{admin_api_prefix}/ai/tools` `OpenAPI` stub.",
+        "operationId": "list_ai_tools",
+        "responses": {
+          "200": {
+            "description": "Commerce AI tool catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AiToolResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
     "/v1/{admin_api_prefix}/orders": {
       "get": {
         "tags": [
@@ -841,6 +880,49 @@
           "variant_id": {
             "type": "string",
             "description": "Variant to add."
+          }
+        }
+      },
+      "AiToolResponse": {
+        "type": "object",
+        "description": "One tool row for admin agent discovery.",
+        "required": [
+          "name",
+          "summary",
+          "openapi_path",
+          "method",
+          "scope",
+          "effect",
+          "human_approve_for_autonomous"
+        ],
+        "properties": {
+          "effect": {
+            "type": "string",
+            "description": "Read / draft write / commit (`read` / `draft_write` / `commit`)."
+          },
+          "human_approve_for_autonomous": {
+            "type": "boolean",
+            "description": "Autonomous agents need human or strict policy approve."
+          },
+          "method": {
+            "type": "string",
+            "description": "HTTP method for the commerce route."
+          },
+          "name": {
+            "type": "string",
+            "description": "Stable MCP / agent function name."
+          },
+          "openapi_path": {
+            "type": "string",
+            "description": "Matching `OpenAPI` path template."
+          },
+          "scope": {
+            "type": "string",
+            "description": "Shop vs admin authz class (`shop` / `admin`)."
+          },
+          "summary": {
+            "type": "string",
+            "description": "One-line capability summary."
           }
         }
       },

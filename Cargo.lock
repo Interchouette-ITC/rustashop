@@ -5595,6 +5595,7 @@ dependencies = [
  "reqwest 0.13.4",
  "rmcp",
  "rustashop",
+ "rustashop-domain",
  "schemars",
  "serde",
  "serde_json",

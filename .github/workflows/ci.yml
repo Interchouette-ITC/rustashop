@@ -12,7 +12,7 @@ concurrency:
 permissions:
   contents: read
 
-# Action runtimes: Node 24+ (checkout/setup-node v7, codecov-action v6).
+# Action runtimes: Node 24+ (checkout/setup-node v7, artifact/cache Node24, codecov-action v6).
 # Project Node for Angular/install jobs: 24 (matches engines ^24).
 env:
   CARGO_TERM_COLOR: always
@@ -56,9 +56,56 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         run: make lint
 
+  # Prefetch once; test + coverage download the artifact (sibling jobs cannot share a
+  # cache fill from the same workflow run).
+  wasmer-webc:
+    name: wasmer webc
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUSTASHOP_WASMER_CACHE: ${{ github.workspace }}/.wasmer
+    steps:
+      - uses: actions/checkout@v7
+      - name: Markdown-only placeholder
+        if: needs.changes.outputs.code != 'true'
+        run: |
+          mkdir -p .wasmer/downloads
+          echo skip > .wasmer/MARKDOWN_ONLY
+      - name: Cache Wasmer packages
+        if: needs.changes.outputs.code == 'true'
+        uses: actions/cache@v5
+        with:
+          path: .wasmer
+          key: wasmer-webc-${{ runner.os }}-v2
+          restore-keys: |
+            wasmer-webc-${{ runner.os }}-
+      - name: Prefetch Wasmer webc
+        if: needs.changes.outputs.code == 'true'
+        run: bash scripts/prefetch-wasmer-webc.sh
+      - name: Ensure uploadable Wasmer tree
+        run: |
+          mkdir -p .wasmer/downloads
+          if [[ "${{ needs.changes.outputs.code }}" == "true" ]]; then
+            test -s .wasmer/downloads/php-php-32.webc
+            test -s .wasmer/downloads/python-python-0.1.0.webc
+            test -s .wasmer/downloads/syrusakbary-quickjs.webc
+          else
+            test -f .wasmer/MARKDOWN_ONLY
+          fi
+          find .wasmer -type f -printf '%p %s\n'
+      - name: Upload Wasmer cache
+        uses: actions/upload-artifact@v6
+        with:
+          name: wasmer-webc
+          path: .wasmer
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
   test:
     name: workspace tests
-    needs: changes
+    needs: [changes, wasmer-webc]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -77,11 +124,17 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgres://rustashop:rustashop@127.0.0.1:5432/rustashop
+      RUSTASHOP_WASMER_CACHE: ${{ github.workspace }}/.wasmer
     steps:
       - uses: actions/checkout@v7
       - name: Markdown-only
         if: needs.changes.outputs.code != 'true'
         run: echo "markdown-only; skipping heavy tests"
+      - uses: actions/download-artifact@v6
+        if: needs.changes.outputs.code == 'true'
+        with:
+          name: wasmer-webc
+          path: .wasmer
       - uses: dtolnay/rust-toolchain@stable
         if: needs.changes.outputs.code == 'true'
       - uses: Swatinem/rust-cache@v2
@@ -289,7 +342,7 @@ jobs:
 
   coverage:
     name: coverage (rust)
-    needs: changes
+    needs: [changes, wasmer-webc]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -308,11 +361,17 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgres://rustashop:rustashop@127.0.0.1:5432/rustashop
+      RUSTASHOP_WASMER_CACHE: ${{ github.workspace }}/.wasmer
     steps:
       - uses: actions/checkout@v7
       - name: Markdown-only
         if: needs.changes.outputs.code != 'true'
         run: echo "markdown-only; skipping coverage"
+      - uses: actions/download-artifact@v6
+        if: needs.changes.outputs.code == 'true'
+        with:
+          name: wasmer-webc
+          path: .wasmer
       - uses: dtolnay/rust-toolchain@stable
         if: needs.changes.outputs.code == 'true'
         with:

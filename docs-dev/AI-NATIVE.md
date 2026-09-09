@@ -54,8 +54,8 @@ rustashop
 
 ## Delivery slices
 
-1. **Done (#44):** tool schema for cart/catalog/order reads + draft writes - [AI-TOOLS.md](AI-TOOLS.md) + `rustashop-mcp`
-2. Admin agent console (Angular) beyond `/sandbox` + job audit
+1. **Done (#44):** tool schema for cart/catalog/order reads + draft writes - [AI-TOOLS.md](AI-TOOLS.md) + `rustashop-domain::TOOLS` / `rustashop-mcp`
+2. **Landing (#187):** Admin Agents console (Angular `/agents`) + tool catalog API + job audit (Sandbox remains Wasmer guests)
 3. Storefront discovery / shopping-agent MVP
 4. **Done (#47):** MCP HTTP surface on **Axum**, tools from the same catalog
 5. Autonomous job runner (sandbox + host commit)

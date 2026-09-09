@@ -1,7 +1,7 @@
 //! Axum MCP and shared commerce agent tool surfaces.
 //!
-//! This crate owns the **stable tool schema** (`TOOLS`) and the MCP server
-//! (stdio or Streamable HTTP on `/mcp`) that proxies those tools to
+//! This crate exposes MCP (stdio or Streamable HTTP on `/mcp`) over the shared
+//! commerce tool catalog in `rustashop-domain` (`TOOLS`), proxying to
 //! `rustashop-api`. Commerce execution stays on the Actix API.
 
 #![deny(missing_docs)]

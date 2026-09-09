@@ -14,6 +14,7 @@ use crate::admin_orders::{
 };
 use crate::admin_prefix::DEFAULT_ADMIN_API_PREFIX;
 use crate::admin_products::{ListAdminProductsQuery, list_admin_products_response};
+use crate::ai_tools::list_ai_tools_response;
 use crate::carts::{
     add_cart_line_response, create_cart_response, delete_cart_line_response, get_cart_response,
     update_cart_line_response,
@@ -42,6 +43,7 @@ const PATCH_ADMIN_ORDER_ROUTE: &str = "patch_admin_order";
 const CREATE_SANDBOX_JOB_ROUTE: &str = "create_sandbox_job";
 const GET_SANDBOX_JOB_ROUTE: &str = "get_sandbox_job";
 const LIST_SANDBOX_AUDIT_ROUTE: &str = "list_sandbox_audit";
+const LIST_AI_TOOLS_ROUTE: &str = "list_ai_tools";
 const INSTALL_STATUS_ROUTE: &str = "install_status";
 const INSTALL_COMPLETE_ROUTE: &str = "install_complete";
 const QUERY_STRING_ATTR: &str = "query_string";
@@ -210,6 +212,7 @@ async fn dispatch_route(
         CREATE_SANDBOX_JOB_ROUTE | GET_SANDBOX_JOB_ROUTE | LIST_SANDBOX_AUDIT_ROUTE => {
             dispatch_sandbox_route(route_name, config, &input)
         }
+        LIST_AI_TOOLS_ROUTE => list_ai_tools_response(&config.admin_auth, input.bearer),
         INSTALL_STATUS_ROUTE => install_status_response(config.install_root.as_deref()),
         INSTALL_COMPLETE_ROUTE => {
             install_complete_response(config.install_root.as_deref(), input.body)
@@ -588,6 +591,14 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Get,
         ))
         .expect("list sandbox audit route");
+    let ai_tools = format!("/v1/{admin_prefix}/ai/tools");
+    collection
+        .add(Route::with_method(
+            LIST_AI_TOOLS_ROUTE,
+            &ai_tools,
+            Method::Get,
+        ))
+        .expect("list ai tools route");
     collection
         .add(Route::with_method(
             INSTALL_STATUS_ROUTE,
@@ -638,6 +649,7 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
     let sandbox_jobs = format!("/v1/{admin_prefix}/sandbox/jobs");
     let sandbox_job = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}");
     let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
+    let ai_tools = format!("/v1/{admin_prefix}/ai/tools");
     cfg.route("/healthz", actix_web::web::get().to(serenade_dispatch))
         .route("/v1/products", actix_web::web::get().to(serenade_dispatch))
         .route(
@@ -669,6 +681,7 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
         .route(&sandbox_jobs, actix_web::web::post().to(serenade_dispatch))
         .route(&sandbox_job, actix_web::web::get().to(serenade_dispatch))
         .route(&sandbox_audit, actix_web::web::get().to(serenade_dispatch))
+        .route(&ai_tools, actix_web::web::get().to(serenade_dispatch))
         .route(
             "/install/api/status",
             actix_web::web::get().to(serenade_dispatch),
