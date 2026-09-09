@@ -55,10 +55,10 @@ rustashop
 ## Delivery slices
 
 1. **Done (#44):** tool schema for cart/catalog/order reads + draft writes - [AI-TOOLS.md](AI-TOOLS.md) + `rustashop-domain::TOOLS` / `rustashop-mcp`
-2. **Landing (#187):** Admin Agents console (Angular `/agents`) + tool catalog API + job audit (Sandbox remains Wasmer guests)
-3. **Landing (#189):** Storefront discovery / shopping-agent MVP (Angular `/discover` + public `GET /v1/ai/tools`)
+2. **Done (#187):** Admin Agents console (Angular `/agents`) + tool catalog API + job audit (Sandbox remains Wasmer guests)
+3. **Done (#189):** Storefront discovery / shopping-agent MVP (Angular `/discover` + public `GET /v1/ai/tools`)
 4. **Done (#47):** MCP HTTP surface on **Axum**, tools from the same catalog
 5. Autonomous job runner (sandbox + host commit)
-6. Model provider config (operator API keys; never in Wasmer guests)
+6. **Landing (#191):** Model provider config (env status + masked catalog; never in Wasmer guests)
 
 Track under the AI epic on GitHub (`area:ai`).

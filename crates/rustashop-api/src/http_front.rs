@@ -23,6 +23,9 @@ use crate::checkout::{idempotency_key_from_headers, place_order_response};
 use crate::error::{ApiError, api_error_json_response};
 use crate::health::health_json_body;
 use crate::install_routes::{install_complete_response, install_status_response};
+use crate::model_providers::{
+    list_ai_providers_catalog_response, list_ai_providers_response, test_ai_provider_response,
+};
 use crate::openapi::openapi_json_response;
 use crate::products::{ListProductsQuery, get_product_response, list_products_response};
 use crate::realtime::CartHub;
@@ -45,6 +48,9 @@ const GET_SANDBOX_JOB_ROUTE: &str = "get_sandbox_job";
 const LIST_SANDBOX_AUDIT_ROUTE: &str = "list_sandbox_audit";
 const LIST_AI_TOOLS_ROUTE: &str = "list_ai_tools";
 const LIST_SHOP_AI_TOOLS_ROUTE: &str = "list_shop_ai_tools";
+const LIST_AI_PROVIDERS_ROUTE: &str = "list_ai_providers";
+const LIST_AI_PROVIDERS_CATALOG_ROUTE: &str = "list_ai_providers_catalog";
+const TEST_AI_PROVIDER_ROUTE: &str = "test_ai_provider";
 const INSTALL_STATUS_ROUTE: &str = "install_status";
 const INSTALL_COMPLETE_ROUTE: &str = "install_complete";
 const QUERY_STRING_ATTR: &str = "query_string";
@@ -215,6 +221,13 @@ async fn dispatch_route(
         }
         LIST_AI_TOOLS_ROUTE => list_ai_tools_response(&config.admin_auth, input.bearer),
         LIST_SHOP_AI_TOOLS_ROUTE => list_shop_ai_tools_response(),
+        LIST_AI_PROVIDERS_ROUTE => list_ai_providers_response(&config.admin_auth, input.bearer),
+        LIST_AI_PROVIDERS_CATALOG_ROUTE => {
+            list_ai_providers_catalog_response(&config.admin_auth, input.bearer)
+        }
+        TEST_AI_PROVIDER_ROUTE => {
+            test_ai_provider_response(&config.admin_auth, input.bearer, input.body)
+        }
         INSTALL_STATUS_ROUTE => install_status_response(config.install_root.as_deref()),
         INSTALL_COMPLETE_ROUTE => {
             install_complete_response(config.install_root.as_deref(), input.body)
@@ -576,6 +589,25 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Patch,
         ))
         .expect("patch admin order route");
+    add_sandbox_admin_routes(collection, admin_prefix);
+    add_ai_admin_routes(collection, admin_prefix);
+    collection
+        .add(Route::with_method(
+            INSTALL_STATUS_ROUTE,
+            "/install/api/status",
+            Method::Get,
+        ))
+        .expect("install status route");
+    collection
+        .add(Route::with_method(
+            INSTALL_COMPLETE_ROUTE,
+            "/install/api/complete",
+            Method::Post,
+        ))
+        .expect("install complete route");
+}
+
+fn add_sandbox_admin_routes(collection: &mut RouteCollection, admin_prefix: &str) {
     let sandbox_jobs = format!("/v1/{admin_prefix}/sandbox/jobs");
     collection
         .add(Route::with_method(
@@ -600,6 +632,9 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Get,
         ))
         .expect("list sandbox audit route");
+}
+
+fn add_ai_admin_routes(collection: &mut RouteCollection, admin_prefix: &str) {
     let ai_tools = format!("/v1/{admin_prefix}/ai/tools");
     collection
         .add(Route::with_method(
@@ -608,20 +643,30 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Get,
         ))
         .expect("list ai tools route");
+    let ai_providers = format!("/v1/{admin_prefix}/ai/providers");
     collection
         .add(Route::with_method(
-            INSTALL_STATUS_ROUTE,
-            "/install/api/status",
+            LIST_AI_PROVIDERS_ROUTE,
+            &ai_providers,
             Method::Get,
         ))
-        .expect("install status route");
+        .expect("list ai providers route");
+    let ai_providers_catalog = format!("/v1/{admin_prefix}/ai/providers/catalog");
     collection
         .add(Route::with_method(
-            INSTALL_COMPLETE_ROUTE,
-            "/install/api/complete",
+            LIST_AI_PROVIDERS_CATALOG_ROUTE,
+            &ai_providers_catalog,
+            Method::Get,
+        ))
+        .expect("list ai providers catalog route");
+    let ai_providers_test = format!("/v1/{admin_prefix}/ai/providers/test");
+    collection
+        .add(Route::with_method(
+            TEST_AI_PROVIDER_ROUTE,
+            &ai_providers_test,
             Method::Post,
         ))
-        .expect("install complete route");
+        .expect("test ai provider route");
 }
 
 fn healthz_response() -> Response {
@@ -659,6 +704,9 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
     let sandbox_job = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}");
     let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
     let ai_tools = format!("/v1/{admin_prefix}/ai/tools");
+    let ai_providers = format!("/v1/{admin_prefix}/ai/providers");
+    let ai_providers_catalog = format!("/v1/{admin_prefix}/ai/providers/catalog");
+    let ai_providers_test = format!("/v1/{admin_prefix}/ai/providers/test");
     cfg.route("/healthz", actix_web::web::get().to(serenade_dispatch))
         .route("/v1/products", actix_web::web::get().to(serenade_dispatch))
         .route(
@@ -692,6 +740,15 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
         .route(&sandbox_job, actix_web::web::get().to(serenade_dispatch))
         .route(&sandbox_audit, actix_web::web::get().to(serenade_dispatch))
         .route(&ai_tools, actix_web::web::get().to(serenade_dispatch))
+        .route(&ai_providers, actix_web::web::get().to(serenade_dispatch))
+        .route(
+            &ai_providers_catalog,
+            actix_web::web::get().to(serenade_dispatch),
+        )
+        .route(
+            &ai_providers_test,
+            actix_web::web::post().to(serenade_dispatch),
+        )
         .route(
             "/install/api/status",
             actix_web::web::get().to(serenade_dispatch),

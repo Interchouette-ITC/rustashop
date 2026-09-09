@@ -497,6 +497,134 @@
         }
       }
     },
+    "/v1/{admin_api_prefix}/ai/providers": {
+      "get": {
+        "tags": [
+          "crate::model_providers"
+        ],
+        "summary": "`OpenAPI` stub: list provider status.",
+        "operationId": "list_ai_providers",
+        "responses": {
+          "200": {
+            "description": "Model provider status (masked)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProvidersStatusResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/{admin_api_prefix}/ai/providers/catalog": {
+      "get": {
+        "tags": [
+          "crate::model_providers"
+        ],
+        "summary": "`OpenAPI` stub: static catalog.",
+        "operationId": "list_ai_providers_catalog",
+        "responses": {
+          "200": {
+            "description": "Model provider catalog (env names only)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProvidersCatalogResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/{admin_api_prefix}/ai/providers/test": {
+      "post": {
+        "tags": [
+          "crate::model_providers"
+        ],
+        "summary": "`OpenAPI` stub: test provider.",
+        "operationId": "test_ai_provider",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AiProviderTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Provider probe result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AiProviderTestResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
     "/v1/{admin_api_prefix}/ai/tools": {
       "get": {
         "tags": [
@@ -904,6 +1032,182 @@
           "variant_id": {
             "type": "string",
             "description": "Variant to add."
+          }
+        }
+      },
+      "AiCredentialSource": {
+        "type": "string",
+        "description": "Where a credential was resolved from (never the secret itself).",
+        "enum": [
+          "env",
+          "default",
+          "none"
+        ]
+      },
+      "AiProviderCatalogItem": {
+        "type": "object",
+        "description": "One catalog row for the admin UI (no secrets).",
+        "required": [
+          "id",
+          "display_name",
+          "group",
+          "kind",
+          "default_base_url",
+          "env_api_key",
+          "env_base_url"
+        ],
+        "properties": {
+          "default_base_url": {
+            "type": "string",
+            "description": "Default base URL when known."
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Display label."
+          },
+          "env_api_key": {
+            "type": "string",
+            "description": "Env var name for the API key (may be empty)."
+          },
+          "env_base_url": {
+            "type": "string",
+            "description": "Env var name for base URL (may be empty)."
+          },
+          "group": {
+            "type": "string",
+            "description": "Group."
+          },
+          "id": {
+            "type": "string",
+            "description": "Stable id."
+          },
+          "kind": {
+            "type": "string",
+            "description": "Protocol kind label."
+          }
+        }
+      },
+      "AiProviderStatus": {
+        "type": "object",
+        "description": "Status of one provider after env resolution.",
+        "required": [
+          "id",
+          "display_name",
+          "available",
+          "source",
+          "is_default"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "description": "Whether credentials / local URL resolve."
+          },
+          "base_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Resolved base URL when applicable (no key)."
+          },
+          "display_name": {
+            "type": "string",
+            "description": "Display label."
+          },
+          "hint": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Safe hint (last-4 of key, or host:port for local). Never a full secret."
+          },
+          "id": {
+            "type": "string",
+            "description": "Stable id."
+          },
+          "is_default": {
+            "type": "boolean",
+            "description": "Whether this id is the configured default provider."
+          },
+          "source": {
+            "$ref": "#/components/schemas/AiCredentialSource",
+            "description": "Credential source (`env` / `default` / `none`)."
+          }
+        }
+      },
+      "AiProviderTestRequest": {
+        "type": "object",
+        "description": "Body for `POST …/ai/providers/test`.",
+        "required": [
+          "provider_id"
+        ],
+        "properties": {
+          "provider_id": {
+            "type": "string",
+            "description": "Provider id to probe."
+          }
+        }
+      },
+      "AiProviderTestResponse": {
+        "type": "object",
+        "description": "Result of a provider connectivity / config test.",
+        "required": [
+          "ok",
+          "provider_id"
+        ],
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Error when not ok."
+          },
+          "ok": {
+            "type": "boolean",
+            "description": "Whether the probe succeeded."
+          },
+          "provider_id": {
+            "type": "string",
+            "description": "Provider id tested."
+          }
+        }
+      },
+      "AiProvidersCatalogResponse": {
+        "type": "object",
+        "description": "List payload for `GET …/ai/providers/catalog`.",
+        "required": [
+          "providers"
+        ],
+        "properties": {
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiProviderCatalogItem"
+            },
+            "description": "Static catalog rows."
+          }
+        }
+      },
+      "AiProvidersStatusResponse": {
+        "type": "object",
+        "description": "List payload for `GET …/ai/providers`.",
+        "required": [
+          "providers"
+        ],
+        "properties": {
+          "default_provider_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Default provider id from env (or first available)."
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AiProviderStatus"
+            },
+            "description": "Status rows in catalog order."
           }
         }
       },

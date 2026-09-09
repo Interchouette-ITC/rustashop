@@ -16,6 +16,7 @@ mod install_env;
 mod install_fs;
 mod install_routes;
 mod listen_app;
+mod model_providers;
 mod openapi;
 mod products;
 mod realtime;
@@ -51,6 +52,11 @@ pub use install_fs::{
     INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, ROOT_ENV, install_artefacts_present, shop_root,
 };
 pub use listen_app::{BoundCommerce, CommerceListenData, bind_commerce_server, commerce_app};
+pub use model_providers::{
+    AiCredentialSource, AiProviderCatalogItem, AiProviderStatus, AiProviderTestRequest,
+    AiProviderTestResponse, AiProvidersCatalogResponse, AiProvidersStatusResponse,
+    list_ai_providers, list_ai_providers_catalog, test_ai_provider,
+};
 pub use openapi::{ApiDoc, openapi_json, swagger_ui};
 pub use products::{
     ProductDetailResponse, ProductListResponse, ProductResponse, ProductVariantResponse,
