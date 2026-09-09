@@ -1,0 +1,81 @@
+<section aria-labelledby="discover-heading">
+  <header class="mb-4">
+    <h1 id="discover-heading" class="catalog__title">Discover</h1>
+    <p class="text-muted mb-0">
+      Shop AI surface on the same commerce tools as MCP. Commit tools such as
+      <code>place_order</code> stay approve-gated.
+    </p>
+  </header>
+
+  @if (error(); as message) {
+    <div class="alert alert-warning" role="alert">{{ message }}</div>
+  }
+
+  <div class="mb-4">
+    <h2 class="h5">Assist</h2>
+    <p class="text-muted">
+      Run <code>list_products</code> through the Commerce API (same OpenAPI as the tool catalog).
+    </p>
+    <button
+      type="button"
+      class="btn btn-primary btn-sm"
+      (click)="runListProducts()"
+      [disabled]="busy()"
+    >
+      List products
+    </button>
+    @if (productHits().length > 0) {
+      <ul class="mt-3 list-unstyled">
+        @for (hit of productHits(); track hit.id) {
+          <li class="mb-1">
+            <a [routerLink]="['/products', hit.id]">{{ hit.name }}</a>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <div>
+    <h2 class="h5">Tool catalog</h2>
+    <p class="text-muted">Shop-scoped tools from <code>GET /v1/ai/tools</code>.</p>
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm mb-2"
+      (click)="reloadTools()"
+      [disabled]="busy()"
+    >
+      Refresh tools
+    </button>
+    @if (tools().length === 0) {
+      <p class="text-muted">No tools loaded.</p>
+    } @else {
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Effect</th>
+              <th scope="col">Approve</th>
+              <th scope="col">OpenAPI</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tool of tools(); track tool.name) {
+              <tr>
+                <td>
+                  <code>{{ tool.name }}</code>
+                  <div class="text-muted small">{{ tool.summary }}</div>
+                </td>
+                <td>{{ tool.effect }}</td>
+                <td>{{ tool.human_approve_for_autonomous ? 'yes' : 'no' }}</td>
+                <td>
+                  <code>{{ tool.method }} {{ tool.openapi_path }}</code>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</section>

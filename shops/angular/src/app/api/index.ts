@@ -5,6 +5,8 @@ export { HealthApi } from './health.api';
 export { CatalogApi } from './catalog.api';
 export { CartApi } from './cart.api';
 export { CheckoutApi } from './checkout.api';
+export { ShopAiApi } from './shop-ai.api';
+export type { AiToolDto } from './shop-ai.api';
 
 export type {
   AddCartLineRequest,

@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /healthz` handler. */
+        /** `GET /healthz` `OpenAPI` path (served by the Serenade HTTP front controller). */
         get: operations["healthz"];
         put?: never;
         post?: never;
@@ -28,8 +28,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** `GET /openapi.json` handler. */
+        /** `GET /openapi.json` `OpenAPI` path (served by the Serenade HTTP front controller). */
         get: operations["openapi_json"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/ai/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /v1/ai/tools` `OpenAPI` stub (shop scope only). */
+        get: operations["list_shop_ai_tools"];
         put?: never;
         post?: never;
         delete?: never;
@@ -47,7 +64,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Creates an empty cart. */
+        /** `POST /v1/carts` `OpenAPI` path (served by the Serenade HTTP front controller). */
         post: operations["create_cart"];
         delete?: never;
         options?: never;
@@ -62,7 +79,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Returns one cart by id. */
+        /** `GET /v1/carts/{id}` `OpenAPI` path (served by the Serenade HTTP front controller). */
         get: operations["get_cart"];
         put?: never;
         post?: never;
@@ -81,7 +98,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Adds a line (merges quantity when the variant is already present). */
+        /** `POST /v1/carts/{id}/lines` `OpenAPI` path (served by the Serenade HTTP front controller). */
         post: operations["add_cart_line"];
         delete?: never;
         options?: never;
@@ -99,11 +116,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Removes a line. */
+        /** `DELETE /v1/carts/{id}/lines/{line_id}` `OpenAPI` path (served by the Serenade HTTP front controller). */
         delete: operations["delete_cart_line"];
         options?: never;
         head?: never;
-        /** Updates a line quantity. */
+        /** `PATCH /v1/carts/{id}/lines/{line_id}` `OpenAPI` path (served by the Serenade HTTP front controller). */
         patch: operations["update_cart_line"];
         trace?: never;
     };
@@ -116,7 +133,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Converts a cart into a placed order. */
+        /** `POST /v1/checkout` `OpenAPI` path (served by the Serenade HTTP front controller). */
         post: operations["place_order"];
         delete?: never;
         options?: never;
@@ -131,7 +148,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Lists enabled products. */
+        /** `GET /v1/products` `OpenAPI` path (served by the Serenade HTTP front controller). */
         get: operations["list_products"];
         put?: never;
         post?: never;
@@ -148,8 +165,127 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Returns one product by id, with variants. */
+        /** `GET /v1/products/{id}` `OpenAPI` path (served by the Serenade HTTP front controller). */
         get: operations["get_product"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/ai/tools": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /v1/{admin_api_prefix}/ai/tools` `OpenAPI` stub. */
+        get: operations["list_ai_tools"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /v1/{admin_api_prefix}/orders` `OpenAPI` path (Serenade front). */
+        get: operations["list_admin_orders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** `PATCH /v1/{admin_api_prefix}/orders/{id}` `OpenAPI` path (Serenade front). */
+        patch: operations["patch_admin_order"];
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /v1/{admin_api_prefix}/products` `OpenAPI` path (Serenade front). */
+        get: operations["list_admin_products"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/sandbox/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /v1/{admin_api_prefix}/sandbox/audit` `OpenAPI` stub. */
+        get: operations["list_sandbox_audit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/sandbox/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `POST /v1/{admin_api_prefix}/sandbox/jobs` `OpenAPI` stub. */
+        post: operations["create_sandbox_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/sandbox/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `GET /v1/{admin_api_prefix}/sandbox/jobs/{id}` `OpenAPI` stub. */
+        get: operations["get_sandbox_job"];
         put?: never;
         post?: never;
         delete?: never;
@@ -171,6 +307,23 @@ export interface components {
             quantity: number;
             /** @description Variant to add. */
             variant_id: string;
+        };
+        /** @description One tool row for agent discovery (shop or admin). */
+        AiToolResponse: {
+            /** @description Read / draft write / commit (`read` / `draft_write` / `commit`). */
+            effect: string;
+            /** @description Autonomous agents need human or strict policy approve. */
+            human_approve_for_autonomous: boolean;
+            /** @description HTTP method for the commerce route. */
+            method: string;
+            /** @description Stable MCP / agent function name. */
+            name: string;
+            /** @description Matching `OpenAPI` path template. */
+            openapi_path: string;
+            /** @description Shop vs admin authz class (`shop` / `admin`). */
+            scope: string;
+            /** @description One-line capability summary. */
+            summary: string;
         };
         /** @description Cart line JSON. */
         CartLineResponse: {
@@ -219,6 +372,15 @@ export interface components {
             /** @description ISO currency for the cart (default `EUR`). */
             currency?: string | null;
         };
+        /** @description Request body for creating a sandbox job. */
+        CreateSandboxJobRequest: {
+            /** @description Cart currency for the quote fixture. */
+            currency: string;
+            /** @description Job type (`quote` only). */
+            job_type: string;
+            /** @description Cart lines for the guest snapshot. */
+            lines: components["schemas"]["SandboxJobLine"][];
+        };
         /** @description JSON error body (message + stable machine code). */
         ErrorBody: {
             /** @description Stable machine-readable code (`not_found`, `conflict`, …). */
@@ -228,7 +390,7 @@ export interface components {
         };
         /** @description JSON body for `GET /healthz`. */
         HealthResponse: {
-            /** @description Serenade kernel integration marker from the `rustashop` crate. */
+            /** @description Serenade kernel integration marker from the `rustashop` crate (`serenade` after boot). */
             kernel: string;
             /** @description Liveness status. */
             status: string;
@@ -263,6 +425,11 @@ export interface components {
             /** @description Snapshotted SKU. */
             variant_sku: string;
         };
+        /** @description Paginated admin order list. */
+        OrderListResponse: {
+            /** @description Orders newest first. */
+            items: components["schemas"]["OrderResponse"][];
+        };
         /** @description Order JSON returned by checkout. */
         OrderResponse: {
             /** @description Source cart id. */
@@ -283,6 +450,11 @@ export interface components {
             state: string;
             /** @description Payable total. */
             total: components["schemas"]["MoneyResponse"];
+        };
+        /** @description Body for admin order status PATCH. */
+        PatchOrderStatusRequest: {
+            /** @description Fulfillment status: `placed`, `paid`, `shipped`, or `cancelled`. */
+            status: string;
         };
         /** @description Product detail including purchasable variants. */
         ProductDetailResponse: {
@@ -339,6 +511,71 @@ export interface components {
              */
             stock_quantity: number;
         };
+        /** @description Adjustment JSON for admin. */
+        SandboxAdjustmentResponse: {
+            /**
+             * Format: int64
+             * @description Signed minor units.
+             */
+            amount_minor: number;
+            /** @description Currency. */
+            currency: string;
+            /** @description Label. */
+            label: string;
+        };
+        /** @description One audit row (process-local until a persist table lands). */
+        SandboxAuditRecord: {
+            /** @description Actor label (`admin-bearer` when authorized). */
+            actor: string;
+            /**
+             * Format: int64
+             * @description Unix seconds when the job was created.
+             */
+            created_at_unix: number;
+            /** @description Job id. */
+            job_id: string;
+            /** @description Job type. */
+            job_type: string;
+            /** @description Source fingerprint. */
+            source_hash: string;
+            /** @description Final status string. */
+            status: string;
+        };
+        /** @description One cart line in the create-job body. */
+        SandboxJobLine: {
+            /**
+             * Format: int32
+             * @description Quantity.
+             */
+            quantity: number;
+            /** @description SKU. */
+            sku: string;
+            /**
+             * Format: int64
+             * @description Unit price in minor units.
+             */
+            unit_price_minor: number;
+        };
+        /** @description Public job view. */
+        SandboxJobResponse: {
+            /** @description Host-validated adjustments when succeeded. */
+            adjustments?: components["schemas"]["SandboxAdjustmentResponse"][] | null;
+            /** @description Error message when failed. */
+            error?: string | null;
+            /** @description Job id. */
+            id: string;
+            /** @description Job type. */
+            job_type: string;
+            /** @description Fingerprint of the fixture source used. */
+            source_hash: string;
+            /** @description Lifecycle status. */
+            status: components["schemas"]["SandboxJobStatus"];
+        };
+        /**
+         * @description Job status returned to the admin UI.
+         * @enum {string}
+         */
+        SandboxJobStatus: "running" | "succeeded" | "failed";
         /** @description Body for `PATCH /v1/carts/{id}/lines/{line_id}`. */
         UpdateCartLineRequest: {
             /**
@@ -391,6 +628,26 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    list_shop_ai_tools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Shop-scoped commerce AI tool catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiToolResponse"][];
+                };
             };
         };
     };
@@ -643,9 +900,9 @@ export interface operations {
         parameters: {
             query?: {
                 /** @description Maximum rows (capped). */
-                limit?: number | null;
+                limit?: number;
                 /** @description Rows to skip. */
-                offset?: number | null;
+                offset?: number;
             };
             header?: never;
             path?: never;
@@ -686,6 +943,269 @@ export interface operations {
                 };
             };
             /** @description Unknown id */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_ai_tools: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Commerce AI tool catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiToolResponse"][];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_admin_orders: {
+        parameters: {
+            query?: {
+                /** @description Maximum rows (capped). */
+                limit?: number;
+                /** @description Rows to skip. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Order page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderListResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    patch_admin_order: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Order id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchOrderStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Order not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid status */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_admin_products: {
+        parameters: {
+            query?: {
+                /** @description Maximum rows (capped). */
+                limit?: number;
+                /** @description Rows to skip. */
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Product page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductListResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_sandbox_audit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Audit rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SandboxAuditRecord"][];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    create_sandbox_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSandboxJobRequest"];
+            };
+        };
+        responses: {
+            /** @description Job accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SandboxJobResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid body */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_sandbox_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Job id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SandboxJobResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown job */
             404: {
                 headers: {
                     [name: string]: unknown;
