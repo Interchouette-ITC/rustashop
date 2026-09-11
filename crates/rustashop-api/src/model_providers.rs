@@ -508,6 +508,18 @@ mod tests {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
+    fn clear_provider_env() {
+        // SAFETY: serialized by ENV_LOCK in this module's tests.
+        unsafe {
+            std::env::remove_var(OPENAI_API_KEY_ENV);
+            std::env::remove_var(ANTHROPIC_API_KEY_ENV);
+            std::env::remove_var(LOCAL_LLM_URL_ENV);
+            std::env::remove_var(DEFAULT_PROVIDER_ENV);
+            std::env::remove_var(CUSTOM_LLM_URL_ENV);
+            std::env::remove_var(CUSTOM_LLM_API_KEY_ENV);
+        }
+    }
+
     #[test]
     fn catalog_has_four_entries_without_secrets() {
         let catalog = providers_catalog();
@@ -522,19 +534,51 @@ mod tests {
                 .env_api_key,
             OPENAI_API_KEY_ENV
         );
+        assert_eq!(
+            catalog
+                .providers
+                .iter()
+                .find(|p| p.id == "local")
+                .expect("local")
+                .kind,
+            "local"
+        );
+        assert_eq!(
+            catalog
+                .providers
+                .iter()
+                .find(|p| p.id == "anthropic")
+                .expect("anthropic")
+                .kind,
+            "anthropic"
+        );
+        assert_eq!(
+            catalog
+                .providers
+                .iter()
+                .find(|p| p.id == "custom")
+                .expect("custom")
+                .kind,
+            "openai_compatible"
+        );
         list_ai_providers_catalog();
+    }
+
+    #[test]
+    fn key_hint_edges() {
+        assert_eq!(key_hint(""), None);
+        assert_eq!(key_hint("   "), None);
+        assert_eq!(key_hint("ab"), Some("••••".to_owned()));
+        assert_eq!(key_hint("abcd"), Some("••••".to_owned()));
+        assert_eq!(key_hint("secret-zzzz"), Some("…zzzz".to_owned()));
     }
 
     #[test]
     fn status_masks_openai_key() {
         let _guard = lock_env();
-        // SAFETY: serialized by ENV_LOCK in this module's tests.
+        clear_provider_env();
         unsafe {
             std::env::set_var(OPENAI_API_KEY_ENV, "sk-test-secret-abcd");
-            std::env::remove_var(ANTHROPIC_API_KEY_ENV);
-            std::env::remove_var(DEFAULT_PROVIDER_ENV);
-            std::env::remove_var(CUSTOM_LLM_URL_ENV);
-            std::env::remove_var(CUSTOM_LLM_API_KEY_ENV);
         }
         let status = providers_status();
         let openai = status
@@ -552,9 +596,94 @@ mod tests {
         );
         list_ai_providers();
         test_ai_provider();
+        clear_provider_env();
+    }
+
+    #[test]
+    fn local_uses_default_url_and_env_override() {
+        let _guard = lock_env();
+        clear_provider_env();
+        let status = providers_status();
+        let local = status
+            .providers
+            .iter()
+            .find(|p| p.id == "local")
+            .expect("local");
+        assert!(local.available);
+        assert_eq!(local.source, AiCredentialSource::Default);
+        assert_eq!(local.base_url.as_deref(), Some(DEFAULT_LOCAL_LLM_URL));
+
         unsafe {
+            std::env::set_var(LOCAL_LLM_URL_ENV, "http://127.0.0.1:9");
+        }
+        let status = providers_status();
+        let local = status
+            .providers
+            .iter()
+            .find(|p| p.id == "local")
+            .expect("local");
+        assert_eq!(local.source, AiCredentialSource::Env);
+        assert_eq!(local.base_url.as_deref(), Some("http://127.0.0.1:9"));
+        clear_provider_env();
+    }
+
+    #[test]
+    fn custom_requires_url_and_key() {
+        let _guard = lock_env();
+        clear_provider_env();
+        let status = providers_status();
+        let custom = status
+            .providers
+            .iter()
+            .find(|p| p.id == "custom")
+            .expect("custom");
+        assert!(!custom.available);
+        assert_eq!(custom.source, AiCredentialSource::None);
+
+        unsafe {
+            std::env::set_var(CUSTOM_LLM_URL_ENV, "http://example.test/v1");
+            std::env::set_var(CUSTOM_LLM_API_KEY_ENV, "ck-1234");
+        }
+        let status = providers_status();
+        let custom = status
+            .providers
+            .iter()
+            .find(|p| p.id == "custom")
+            .expect("custom");
+        assert!(custom.available);
+        assert_eq!(custom.source, AiCredentialSource::Env);
+        assert_eq!(custom.hint.as_deref(), Some("…1234"));
+        assert_eq!(custom.base_url.as_deref(), Some("http://example.test/v1"));
+        assert!(test_provider("custom").ok);
+        clear_provider_env();
+    }
+
+    #[test]
+    fn default_provider_env_and_fallback() {
+        let _guard = lock_env();
+        clear_provider_env();
+        unsafe {
+            std::env::set_var(DEFAULT_PROVIDER_ENV, "anthropic");
+            std::env::set_var(ANTHROPIC_API_KEY_ENV, "anth-key-9999");
+        }
+        let status = providers_status();
+        assert_eq!(status.default_provider_id.as_deref(), Some("anthropic"));
+        let anthropic = status
+            .providers
+            .iter()
+            .find(|p| p.id == "anthropic")
+            .expect("anthropic");
+        assert!(anthropic.is_default);
+        assert_eq!(anthropic.hint.as_deref(), Some("…9999"));
+
+        unsafe {
+            std::env::set_var(DEFAULT_PROVIDER_ENV, "not-a-provider");
+            std::env::remove_var(ANTHROPIC_API_KEY_ENV);
             std::env::remove_var(OPENAI_API_KEY_ENV);
         }
+        let status = providers_status();
+        assert_eq!(status.default_provider_id.as_deref(), Some("local"));
+        clear_provider_env();
     }
 
     #[test]
@@ -572,22 +701,84 @@ mod tests {
     }
 
     #[test]
-    fn test_unknown_provider() {
-        let result = test_provider("missing");
-        assert!(!result.ok);
-        assert!(result.error.is_some());
+    fn authorized_handlers_return_200() {
+        let _guard = lock_env();
+        clear_provider_env();
+        let auth = AdminAuthConfig::from_token("tok");
+        assert_eq!(list_ai_providers_response(&auth, Some("tok")).status(), 200);
+        assert_eq!(
+            list_ai_providers_catalog_response(&auth, Some("tok")).status(),
+            200
+        );
+        assert_eq!(
+            test_ai_provider_response(&auth, Some("tok"), b"{\"provider_id\":\"local\"}").status(),
+            200
+        );
+    }
+
+    #[test]
+    fn test_handler_rejects_bad_body() {
+        let auth = AdminAuthConfig::from_token("tok");
+        assert_eq!(
+            test_ai_provider_response(&auth, Some("tok"), b"{").status(),
+            422
+        );
+        assert_eq!(
+            test_ai_provider_response(&auth, Some("tok"), b"{\"provider_id\":\"  \"}").status(),
+            422
+        );
+    }
+
+    #[test]
+    fn test_unknown_and_unconfigured_provider() {
+        let _guard = lock_env();
+        clear_provider_env();
+        let missing = test_provider("missing");
+        assert!(!missing.ok);
+        assert!(missing.error.is_some());
+
+        let openai = test_provider("openai");
+        assert!(!openai.ok);
+        assert_eq!(openai.error.as_deref(), Some("provider not configured"));
     }
 
     #[test]
     fn test_openai_when_configured() {
         let _guard = lock_env();
+        clear_provider_env();
         unsafe {
             std::env::set_var(OPENAI_API_KEY_ENV, "sk-live-zzzz");
         }
         let result = test_provider("openai");
         assert!(result.ok);
+        clear_provider_env();
+    }
+
+    #[test]
+    fn test_local_tcp_probe_reports_result() {
+        let _guard = lock_env();
+        clear_provider_env();
         unsafe {
-            std::env::remove_var(OPENAI_API_KEY_ENV);
+            // Closed port: probe should fail without panicking.
+            std::env::set_var(LOCAL_LLM_URL_ENV, "http://127.0.0.1:1");
         }
+        let result = test_provider("local");
+        assert!(!result.ok);
+        assert!(
+            result
+                .error
+                .as_deref()
+                .is_some_and(|e| e.contains("tcp") || e.contains("resolve"))
+        );
+        clear_provider_env();
+    }
+
+    #[test]
+    fn tcp_probe_host_port_edges() {
+        assert!(tcp_probe_host_port("").is_err());
+        let closed = tcp_probe_host_port("http://127.0.0.1:1").expect_err("closed port");
+        assert!(closed.contains("tcp") || closed.contains("resolve"));
+        // https without explicit port uses :443
+        let _ = tcp_probe_host_port("https://127.0.0.1:1");
     }
 }

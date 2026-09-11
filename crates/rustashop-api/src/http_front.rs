@@ -873,6 +873,44 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn ai_providers_admin_routes() {
+        let kernel = web::Data::new(commerce_http_kernel(CommerceFrontConfig {
+            admin_auth: AdminAuthConfig::from_token("tok"),
+            ..CommerceFrontConfig::test_default()
+        }));
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(kernel)
+                .configure(|cfg| configure_serenade_front(cfg, DEFAULT_ADMIN_API_PREFIX)),
+        )
+        .await;
+
+        let denied = actix_test::TestRequest::get()
+            .uri("/v1/admin/ai/providers")
+            .to_request();
+        assert_eq!(actix_test::call_service(&app, denied).await.status(), 401);
+
+        let status = actix_test::TestRequest::get()
+            .uri("/v1/admin/ai/providers")
+            .insert_header(("Authorization", "Bearer tok"))
+            .to_request();
+        assert_eq!(actix_test::call_service(&app, status).await.status(), 200);
+
+        let catalog = actix_test::TestRequest::get()
+            .uri("/v1/admin/ai/providers/catalog")
+            .insert_header(("Authorization", "Bearer tok"))
+            .to_request();
+        assert_eq!(actix_test::call_service(&app, catalog).await.status(), 200);
+
+        let probe = actix_test::TestRequest::post()
+            .uri("/v1/admin/ai/providers/test")
+            .insert_header(("Authorization", "Bearer tok"))
+            .set_json(serde_json::json!({ "provider_id": "local" }))
+            .to_request();
+        assert_eq!(actix_test::call_service(&app, probe).await.status(), 200);
+    }
+
+    #[actix_web::test]
     async fn openapi_and_admin_without_catalog() {
         let kernel = web::Data::new(commerce_http_kernel(CommerceFrontConfig {
             admin_auth: AdminAuthConfig::from_token("tok"),
