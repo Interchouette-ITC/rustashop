@@ -779,10 +779,10 @@ mod tests {
         let closed = tcp_probe_host_port("http://127.0.0.1:1").expect_err("closed port");
         assert!(closed.contains("tcp") || closed.contains("resolve"));
         // No explicit port → default https:443 / http:80 formatting.
-        let https_default = tcp_probe_host_port("https://127.0.0.1");
-        assert!(https_default.is_err());
-        let http_default = tcp_probe_host_port("http://127.0.0.1");
-        assert!(http_default.is_err());
+        let tls_probe = tcp_probe_host_port("https://127.0.0.1");
+        assert!(tls_probe.is_err());
+        let plain_probe = tcp_probe_host_port("http://127.0.0.1");
+        assert!(plain_probe.is_err());
     }
 
     #[test]
