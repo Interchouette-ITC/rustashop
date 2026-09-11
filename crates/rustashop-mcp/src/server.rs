@@ -324,15 +324,26 @@ mod tests {
     use super::*;
     use crate::client::CommerceClient;
     use crate::tools::{
-        AdminListInput, CartLineRefInput, GetProductInput, ListProductsInput,
-        add_cart_line_input_example, admin_list_input_example, create_cart_input_example,
-        get_cart_input_example, get_product_input_example, list_products_input_example,
-        patch_order_status_input_example, place_order_input_example,
-        update_cart_line_input_example,
+        CartLineRefInput, GetProductInput, ListProductsInput, add_cart_line_input_example,
+        admin_list_input_example, create_cart_input_example, get_cart_input_example,
+        get_product_input_example, list_products_input_example, patch_order_status_input_example,
+        place_order_input_example, update_cart_line_input_example,
     };
     use serde_json::json;
     use wiremock::matchers::{header, method, path, path_regex, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    async fn poll_tcp_ready(addr: std::net::SocketAddr, attempts: u32) -> bool {
+        for _ in 0..attempts {
+            match tokio::net::TcpStream::connect(addr).await {
+                Ok(_) => return true,
+                Err(_) => {
+                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                }
+            }
+        }
+        false
+    }
 
     #[test]
     fn tool_router_names_match_catalog() {
@@ -378,14 +389,10 @@ mod tests {
 
         let handle = tokio::spawn(async move { run_http(&addr.to_string()).await });
 
-        for _ in 0..50 {
-            match tokio::net::TcpStream::connect(addr).await {
-                Ok(_) => break,
-                Err(_) => {
-                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-                }
-            }
-        }
+        assert!(
+            poll_tcp_ready(addr, 50).await,
+            "mcp http should accept connections"
+        );
 
         let slash = reqwest::Client::new()
             .post(format!("http://{addr}/mcp/"))
@@ -417,14 +424,10 @@ mod tests {
             .await
         });
 
-        for _ in 0..50 {
-            match tokio::net::TcpStream::connect(addr).await {
-                Ok(_) => break,
-                Err(_) => {
-                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
-                }
-            }
-        }
+        assert!(
+            poll_tcp_ready(addr, 50).await,
+            "mcp http should accept connections"
+        );
 
         let init = json!({
             "jsonrpc": "2.0",
@@ -500,12 +503,15 @@ mod tests {
             .await;
         Mock::given(method("GET"))
             .and(path("/v1/ops/products"))
+            .and(query_param("limit", "20"))
+            .and(query_param("offset", "0"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"items":[]})))
             .mount(mock)
             .await;
         Mock::given(method("GET"))
             .and(path("/v1/ops/orders"))
             .and(query_param("limit", "20"))
+            .and(query_param("offset", "0"))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!({"items":[]})))
             .mount(mock)
             .await;
@@ -550,18 +556,60 @@ mod tests {
         mcp.call_place_order(place_order_input_example())
             .await
             .expect("place");
-        mcp.call_list_admin_products(AdminListInput {
-            limit: None,
-            offset: None,
-        })
-        .await
-        .expect("admin products");
+        mcp.call_list_admin_products(admin_list_input_example())
+            .await
+            .expect("admin products");
         mcp.call_list_admin_orders(admin_list_input_example())
             .await
             .expect("admin orders");
         mcp.call_patch_order_status(patch_order_status_input_example())
             .await
             .expect("patch");
+    }
+
+    #[tokio::test]
+    async fn tool_transport_errors_surface_as_text_err() {
+        let mcp = RustashopMcp::with_client(
+            CommerceClient::new_for_test("http://127.0.0.1:9", true).with_admin("tok", "ops"),
+        );
+        let results = [
+            mcp.call_list_products(list_products_input_example())
+                .await
+                .expect("list"),
+            mcp.call_get_product(get_product_input_example())
+                .await
+                .expect("get"),
+            mcp.call_create_cart(create_cart_input_example())
+                .await
+                .expect("create"),
+            mcp.call_get_cart(get_cart_input_example())
+                .await
+                .expect("get cart"),
+            mcp.call_add_cart_line(add_cart_line_input_example())
+                .await
+                .expect("add"),
+            mcp.call_delete_cart_line(update_cart_line_input_example())
+                .await
+                .expect("delete"),
+            mcp.call_list_admin_products(admin_list_input_example())
+                .await
+                .expect("admin products"),
+            mcp.call_list_admin_orders(admin_list_input_example())
+                .await
+                .expect("admin orders"),
+            mcp.call_patch_order_status(patch_order_status_input_example())
+                .await
+                .expect("patch"),
+        ];
+        for result in results {
+            assert_eq!(result.is_error, Some(true));
+        }
+    }
+
+    #[tokio::test]
+    async fn poll_tcp_ready_sleeps_when_refused() {
+        let addr: std::net::SocketAddr = "127.0.0.1:9".parse().expect("addr");
+        assert!(!poll_tcp_ready(addr, 2).await);
     }
 
     #[tokio::test]

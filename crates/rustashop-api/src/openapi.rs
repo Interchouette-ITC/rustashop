@@ -55,6 +55,9 @@ impl Modify for AdminSecurityAddon {
         crate::sandbox_jobs::list_sandbox_audit,
         crate::ai_tools::list_ai_tools,
         crate::ai_tools::list_shop_ai_tools,
+        crate::model_providers::list_ai_providers,
+        crate::model_providers::list_ai_providers_catalog,
+        crate::model_providers::test_ai_provider,
         openapi_json
     ),
     components(schemas(
@@ -81,6 +84,13 @@ impl Modify for AdminSecurityAddon {
         crate::sandbox_jobs::SandboxAdjustmentResponse,
         crate::sandbox_jobs::SandboxAuditRecord,
         crate::ai_tools::AiToolResponse,
+        crate::model_providers::AiCredentialSource,
+        crate::model_providers::AiProviderCatalogItem,
+        crate::model_providers::AiProviderStatus,
+        crate::model_providers::AiProvidersStatusResponse,
+        crate::model_providers::AiProvidersCatalogResponse,
+        crate::model_providers::AiProviderTestRequest,
+        crate::model_providers::AiProviderTestResponse,
         ErrorBody
     )),
     modifiers(&AdminSecurityAddon)

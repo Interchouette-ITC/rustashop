@@ -73,6 +73,100 @@
     </div>
 
     <div class="admin__panel mt-3">
+      <h2 class="admin__title">Model providers</h2>
+      <p class="admin__tagline">
+        Env-backed status only (no key upsert). Keys never leave the host process / Wasmer guests.
+        Set <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>,
+        <code>RUSTASHOP_LOCAL_LLM_URL</code>, <code>RUSTASHOP_AI_DEFAULT_PROVIDER</code>.
+      </p>
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm mb-2"
+        (click)="reloadProviders()"
+        [disabled]="busy()"
+      >
+        Refresh providers
+      </button>
+      @if (defaultProviderId(); as defaultId) {
+        <p class="admin__tagline">Default: <code>{{ defaultId }}</code></p>
+      }
+      @if (providers().length === 0) {
+        <p class="admin__empty">No provider status loaded.</p>
+      } @else {
+        <table class="admin__table">
+          <thead>
+            <tr>
+              <th scope="col">Id</th>
+              <th scope="col">Available</th>
+              <th scope="col">Source</th>
+              <th scope="col">Hint</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of providers(); track row.id) {
+              <tr>
+                <td>
+                  <code>{{ row.id }}</code>
+                  <div class="admin__tagline">{{ row.display_name }}</div>
+                </td>
+                <td>{{ row.available ? 'yes' : 'no' }}</td>
+                <td>{{ row.source }}</td>
+                <td>
+                  @if (row.hint) {
+                    <code>{{ row.hint }}</code>
+                  } @else {
+                    -
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+      @if (catalog().length > 0) {
+        <p class="admin__tagline mt-2">Catalog env names (values never returned):</p>
+        <ul class="admin__tagline">
+          @for (entry of catalog(); track entry.id) {
+            <li>
+              <code>{{ entry.id }}</code>
+              @if (entry.env_api_key) {
+                - key <code>{{ entry.env_api_key }}</code>
+              }
+              @if (entry.env_base_url) {
+                - URL <code>{{ entry.env_base_url }}</code>
+              }
+            </li>
+          }
+        </ul>
+      }
+      <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+        <label class="admin__tagline mb-0" for="provider-test-id">Test provider</label>
+        <select
+          id="provider-test-id"
+          class="form-select form-select-sm"
+          style="max-width: 12rem"
+          [ngModel]="testProviderId()"
+          (ngModelChange)="testProviderId.set($event)"
+        >
+          @for (row of providers(); track row.id) {
+            <option [value]="row.id">{{ row.id }}</option>
+          }
+        </select>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          (click)="runProviderTest()"
+          [disabled]="busy() || providers().length === 0"
+        >
+          Test
+        </button>
+      </div>
+      @if (testMessage(); as message) {
+        <p class="admin__tagline mt-2">{{ message }}</p>
+      }
+    </div>
+
+    <div class="admin__panel mt-3">
       <h2 class="admin__title">Job audit</h2>
       <p class="admin__tagline">Recent sandbox job rows (in-process). Guest runs: Sandbox page.</p>
       <button type="button" class="btn btn-outline-secondary btn-sm mb-2" (click)="reloadAudit()" [disabled]="busy()">

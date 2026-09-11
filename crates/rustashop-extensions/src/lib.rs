@@ -7,13 +7,7 @@ use serenade_component_host::{default_engine, empty_linker, load_component, stor
 use std::path::Path;
 use wasmtime::component::Linker;
 
-#[allow(missing_docs)]
-mod bindings {
-    wasmtime::component::bindgen!({
-        path: "../../extensions/wit/v0",
-        world: "pricing-adjust",
-    });
-}
+mod bindings;
 
 use bindings::PricingAdjust;
 pub use bindings::{Adjustment, CartLine, CartSnapshot, Money};

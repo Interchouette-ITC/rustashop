@@ -57,9 +57,22 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 
 ## Next slices
 
-1. Admin / shop AI UIs calling the same names.
-2. Provider API-key routing for first-party model calls (keys never in Wasmer guests).
+1. ~~Admin / shop AI UIs calling the same names.~~ Done (#187 / #189).
+2. ~~Provider API-key routing for first-party model calls (keys never in Wasmer guests).~~ Landing (#191): env status + catalog + test under `/v1/{admin}/ai/providers*`.
 3. Autonomous jobs: sandbox + host commit using Serenade messenger when wired.
+
+### Model provider env (host only)
+
+| Variable | Role |
+| --- | --- |
+| `OPENAI_API_KEY` | OpenAI |
+| `ANTHROPIC_API_KEY` | Anthropic |
+| `RUSTASHOP_LOCAL_LLM_URL` | Local OpenAI-compatible base (default `http://127.0.0.1:11434`) |
+| `RUSTASHOP_AI_DEFAULT_PROVIDER` | Default id (`local` / `openai` / `anthropic` / `custom`) |
+| `RUSTASHOP_CUSTOM_LLM_URL` | Custom OpenAI-compatible base |
+| `RUSTASHOP_CUSTOM_LLM_API_KEY` | Custom OpenAI-compatible key |
+
+API responses never return raw keys (`source` + optional last-4 hint / URL only).
 
 ## MCP server
 
