@@ -37,7 +37,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -59,6 +59,9 @@ help:
 	@echo "  make tarpaulin        cargo tarpaulin → coverage/tarpaulin/ (local alternate)"
 	@echo "  make machete          cargo machete (unused deps)"
 	@echo "  make outdated         cargo outdated --workspace"
+	@echo "  make fuzz             cargo +nightly fuzz run $(FUZZ_TARGET) (FUZZ_TIME=$(FUZZ_TIME)s)"
+	@echo "  make fuzz-build       cargo +nightly fuzz build"
+	@echo "  make geiger           cargo geiger (unsafe dependency audit)"
 	@echo "  make coverage-js Vitest coverage for shop, admin, and install → coverage/*-lcov.info"
 	@echo "  make lint       fmt check + SQL safety + clippy + Angular shop/admin lint (when node_modules present)"
 	@echo "  make ci         lint + test + doc + audit + deny (local mirror of core CI jobs before opening a PR)"
@@ -165,6 +168,21 @@ machete:
 ## Outdated crates report. Requires `cargo install cargo-outdated`.
 outdated:
 	cd $(ROOT) && $(CARGO) outdated --workspace
+
+## Default fuzz target: AdminApiPrefix::parse (operator URI segment).
+## Requires nightly + `cargo install cargo-fuzz`. Override: FUZZ_TARGET=… FUZZ_TIME=…
+FUZZ_TARGET ?= admin-prefix
+FUZZ_TIME ?= 10
+
+fuzz-build:
+	cd $(ROOT) && cargo +nightly fuzz build
+
+fuzz:
+	cd $(ROOT) && cargo +nightly fuzz run $(FUZZ_TARGET) -- -max_total_time=$(FUZZ_TIME)
+
+## Unsafe Rust surface in deps + workspace. Requires `cargo install cargo-geiger`.
+geiger:
+	cd $(ROOT) && $(CARGO) geiger --workspace
 
 ## Vitest coverage for shop, admin, and install. Writes coverage/*-lcov.info.
 coverage-js:
