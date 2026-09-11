@@ -360,6 +360,9 @@ impl CommerceClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn commit_gate_refuses_without_allow() {
@@ -388,9 +391,11 @@ mod tests {
     }
 
     #[test]
-    fn from_env_reads_commit_and_admin() {
-        // Seed prior values so restore takes the `Some(v)` arms (not only `remove_var`).
-        // SAFETY: test-only env mutation; restored below.
+    fn from_env_reads_commit_and_restores_previous() {
+        let _guard = ENV_LOCK.lock().expect("env lock");
+
+        // Phase 1: prior values set → restore takes the `Some(v)` arms.
+        // SAFETY: test-only env mutation; cleaned below.
         unsafe {
             std::env::set_var(API_BASE_ENV, "http://127.0.0.1:1/");
             std::env::set_var(ALLOW_COMMIT_ENV, "false");
@@ -409,24 +414,7 @@ mod tests {
         }
         let client = CommerceClient::from_env();
         assert!(client.allow_commit());
-        unsafe {
-            match prev_base {
-                Some(v) => std::env::set_var(API_BASE_ENV, v),
-                None => std::env::remove_var(API_BASE_ENV),
-            }
-            match prev_commit {
-                Some(v) => std::env::set_var(ALLOW_COMMIT_ENV, v),
-                None => std::env::remove_var(ALLOW_COMMIT_ENV),
-            }
-            match prev_token {
-                Some(v) => std::env::set_var(ADMIN_TOKEN_ENV, v),
-                None => std::env::remove_var(ADMIN_TOKEN_ENV),
-            }
-            match prev_prefix {
-                Some(v) => std::env::set_var(ADMIN_PREFIX_ENV, v),
-                None => std::env::remove_var(ADMIN_PREFIX_ENV),
-            }
-        }
+        restore_client_env(prev_base, prev_commit, prev_token, prev_prefix);
         assert_eq!(
             std::env::var(API_BASE_ENV).as_deref(),
             Ok("http://127.0.0.1:1/")
@@ -434,17 +422,8 @@ mod tests {
         assert_eq!(std::env::var(ALLOW_COMMIT_ENV).as_deref(), Ok("false"));
         assert_eq!(std::env::var(ADMIN_TOKEN_ENV).as_deref(), Ok("prev-token"));
         assert_eq!(std::env::var(ADMIN_PREFIX_ENV).as_deref(), Ok("prev-ops"));
-        unsafe {
-            std::env::remove_var(API_BASE_ENV);
-            std::env::remove_var(ALLOW_COMMIT_ENV);
-            std::env::remove_var(ADMIN_TOKEN_ENV);
-            std::env::remove_var(ADMIN_PREFIX_ENV);
-        }
-    }
 
-    #[test]
-    fn from_env_restore_clears_when_previously_unset() {
-        // SAFETY: test-only env mutation; restored below.
+        // Phase 2: previously unset → restore takes the `remove_var` arms.
         unsafe {
             std::env::remove_var(API_BASE_ENV);
             std::env::remove_var(ALLOW_COMMIT_ENV);
@@ -462,6 +441,20 @@ mod tests {
             std::env::set_var(ADMIN_PREFIX_ENV, "ops");
         }
         let _ = CommerceClient::from_env();
+        restore_client_env(prev_base, prev_commit, prev_token, prev_prefix);
+        assert!(std::env::var(API_BASE_ENV).is_err());
+        assert!(std::env::var(ALLOW_COMMIT_ENV).is_err());
+        assert!(std::env::var(ADMIN_TOKEN_ENV).is_err());
+        assert!(std::env::var(ADMIN_PREFIX_ENV).is_err());
+    }
+
+    fn restore_client_env(
+        prev_base: Option<String>,
+        prev_commit: Option<String>,
+        prev_token: Option<String>,
+        prev_prefix: Option<String>,
+    ) {
+        // SAFETY: called only from tests holding `ENV_LOCK`.
         unsafe {
             match prev_base {
                 Some(v) => std::env::set_var(API_BASE_ENV, v),
@@ -480,9 +473,5 @@ mod tests {
                 None => std::env::remove_var(ADMIN_PREFIX_ENV),
             }
         }
-        assert!(std::env::var(API_BASE_ENV).is_err());
-        assert!(std::env::var(ALLOW_COMMIT_ENV).is_err());
-        assert!(std::env::var(ADMIN_TOKEN_ENV).is_err());
-        assert!(std::env::var(ADMIN_PREFIX_ENV).is_err());
     }
 }
