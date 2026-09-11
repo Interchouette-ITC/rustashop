@@ -24,6 +24,8 @@ make coverage-html    # Rust HTML → coverage/html/
 make tarpaulin        # Alternate local Rust coverage (cargo-tarpaulin)
 make machete          # Unused Rust deps (cargo-machete)
 make outdated         # Outdated Rust crates (cargo-outdated)
+make fuzz             # cargo +nightly fuzz (default: AdminApiPrefix::parse)
+make geiger           # cargo geiger (unsafe surface)
 make coverage-js      # Vitest lcov for shop, admin, install
 ```
 
@@ -49,6 +51,8 @@ make coverage-js      # Vitest lcov for shop, admin, install
 | `make tarpaulin` | Alternate local Rust coverage (`cargo tarpaulin`; CI stays on llvm-cov) |
 | `make machete` | Unused Rust deps (`cargo machete`) |
 | `make outdated` | Outdated Rust crates (`cargo outdated`) |
+| `make fuzz` | `cargo +nightly fuzz` (default target `admin-prefix`) |
+| `make geiger` | Unsafe surface report (`cargo geiger`) |
 | `make coverage-js` | Vitest coverage for shop, admin, install |
 | `make openapi` | write `openapi/openapi.json` from utoipa |
 | `make openapi-check` | regenerate OpenAPI and fail if the committed dump drifted |

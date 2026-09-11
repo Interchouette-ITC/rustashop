@@ -16,6 +16,7 @@ exclude = [
     "templates/shop/default",
     "extensions/fixtures/pricing-adjust",
     "extensions/fixtures/wasmer-quote-rust",
+    "fuzz",
 ]
 resolver = "3"
 
