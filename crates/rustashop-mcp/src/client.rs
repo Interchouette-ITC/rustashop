@@ -389,11 +389,18 @@ mod tests {
 
     #[test]
     fn from_env_reads_commit_and_admin() {
+        // Seed prior values so restore takes the `Some(v)` arms (not only `remove_var`).
+        // SAFETY: test-only env mutation; restored below.
+        unsafe {
+            std::env::set_var(API_BASE_ENV, "http://127.0.0.1:1/");
+            std::env::set_var(ALLOW_COMMIT_ENV, "false");
+            std::env::set_var(ADMIN_TOKEN_ENV, "prev-token");
+            std::env::set_var(ADMIN_PREFIX_ENV, "prev-ops");
+        }
         let prev_base = std::env::var(API_BASE_ENV).ok();
         let prev_commit = std::env::var(ALLOW_COMMIT_ENV).ok();
         let prev_token = std::env::var(ADMIN_TOKEN_ENV).ok();
         let prev_prefix = std::env::var(ADMIN_PREFIX_ENV).ok();
-        // SAFETY: single-threaded test process; restored below.
         unsafe {
             std::env::set_var(API_BASE_ENV, "http://127.0.0.1:18080/");
             std::env::set_var(ALLOW_COMMIT_ENV, "true");
@@ -420,5 +427,62 @@ mod tests {
                 None => std::env::remove_var(ADMIN_PREFIX_ENV),
             }
         }
+        assert_eq!(
+            std::env::var(API_BASE_ENV).as_deref(),
+            Ok("http://127.0.0.1:1/")
+        );
+        assert_eq!(std::env::var(ALLOW_COMMIT_ENV).as_deref(), Ok("false"));
+        assert_eq!(std::env::var(ADMIN_TOKEN_ENV).as_deref(), Ok("prev-token"));
+        assert_eq!(std::env::var(ADMIN_PREFIX_ENV).as_deref(), Ok("prev-ops"));
+        unsafe {
+            std::env::remove_var(API_BASE_ENV);
+            std::env::remove_var(ALLOW_COMMIT_ENV);
+            std::env::remove_var(ADMIN_TOKEN_ENV);
+            std::env::remove_var(ADMIN_PREFIX_ENV);
+        }
+    }
+
+    #[test]
+    fn from_env_restore_clears_when_previously_unset() {
+        // SAFETY: test-only env mutation; restored below.
+        unsafe {
+            std::env::remove_var(API_BASE_ENV);
+            std::env::remove_var(ALLOW_COMMIT_ENV);
+            std::env::remove_var(ADMIN_TOKEN_ENV);
+            std::env::remove_var(ADMIN_PREFIX_ENV);
+        }
+        let prev_base = std::env::var(API_BASE_ENV).ok();
+        let prev_commit = std::env::var(ALLOW_COMMIT_ENV).ok();
+        let prev_token = std::env::var(ADMIN_TOKEN_ENV).ok();
+        let prev_prefix = std::env::var(ADMIN_PREFIX_ENV).ok();
+        unsafe {
+            std::env::set_var(API_BASE_ENV, "http://127.0.0.1:18081/");
+            std::env::set_var(ALLOW_COMMIT_ENV, "1");
+            std::env::set_var(ADMIN_TOKEN_ENV, "t");
+            std::env::set_var(ADMIN_PREFIX_ENV, "ops");
+        }
+        let _ = CommerceClient::from_env();
+        unsafe {
+            match prev_base {
+                Some(v) => std::env::set_var(API_BASE_ENV, v),
+                None => std::env::remove_var(API_BASE_ENV),
+            }
+            match prev_commit {
+                Some(v) => std::env::set_var(ALLOW_COMMIT_ENV, v),
+                None => std::env::remove_var(ALLOW_COMMIT_ENV),
+            }
+            match prev_token {
+                Some(v) => std::env::set_var(ADMIN_TOKEN_ENV, v),
+                None => std::env::remove_var(ADMIN_TOKEN_ENV),
+            }
+            match prev_prefix {
+                Some(v) => std::env::set_var(ADMIN_PREFIX_ENV, v),
+                None => std::env::remove_var(ADMIN_PREFIX_ENV),
+            }
+        }
+        assert!(std::env::var(API_BASE_ENV).is_err());
+        assert!(std::env::var(ALLOW_COMMIT_ENV).is_err());
+        assert!(std::env::var(ADMIN_TOKEN_ENV).is_err());
+        assert!(std::env::var(ADMIN_PREFIX_ENV).is_err());
     }
 }

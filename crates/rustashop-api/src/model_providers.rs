@@ -778,7 +778,28 @@ mod tests {
         assert!(tcp_probe_host_port("").is_err());
         let closed = tcp_probe_host_port("http://127.0.0.1:1").expect_err("closed port");
         assert!(closed.contains("tcp") || closed.contains("resolve"));
-        // https without explicit port uses :443
-        let _ = tcp_probe_host_port("https://127.0.0.1:1");
+        // No explicit port → default https:443 / http:80 formatting.
+        let https_default = tcp_probe_host_port("https://127.0.0.1");
+        assert!(https_default.is_err());
+        let http_default = tcp_probe_host_port("http://127.0.0.1");
+        assert!(http_default.is_err());
+    }
+
+    #[test]
+    fn test_local_tcp_probe_success() {
+        let _guard = lock_env();
+        clear_provider_env();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let port = listener.local_addr().expect("addr").port();
+        let _accept = std::thread::spawn(move || {
+            let _ = listener.accept();
+        });
+        let url = format!("http://127.0.0.1:{port}");
+        unsafe {
+            std::env::set_var(LOCAL_LLM_URL_ENV, &url);
+        }
+        let result = test_provider("local");
+        assert!(result.ok, "{result:?}");
+        clear_provider_env();
     }
 }

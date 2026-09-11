@@ -104,9 +104,13 @@ pub fn configure_app(cfg: &mut web::ServiceConfig, admin_prefix: &AdminApiPrefix
 #[cfg(test)]
 mod bind_tests {
     use super::{BIND_ENV, DEFAULT_BIND, bind_address};
+    use std::sync::Mutex;
+
+    static BIND_ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn bind_address_defaults_when_unset() {
+        let _guard = BIND_ENV_LOCK.lock().expect("bind env lock");
         unsafe {
             std::env::remove_var(BIND_ENV);
         }
@@ -115,6 +119,7 @@ mod bind_tests {
 
     #[test]
     fn bind_address_reads_env_override() {
+        let _guard = BIND_ENV_LOCK.lock().expect("bind env lock");
         unsafe {
             std::env::set_var(BIND_ENV, "127.0.0.1:18080");
         }
