@@ -1386,6 +1386,39 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "persist-sqlx")]
+    #[tokio::test]
+    async fn commit_via_registry_missing_job_id_is_not_found() {
+        use rustashop_persist_sqlx::SqlxCatalogRepository;
+        use sqlx::postgres::PgPoolOptions;
+
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://rustashop:rustashop@127.0.0.1:5432/rustashop".into());
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        let catalog = SqlxCatalogRepository::new(pool);
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                None,
+                Some(&catalog),
+                None
+            )
+            .await
+            .status(),
+            404
+        );
+    }
+
     #[tokio::test]
     async fn dispatch_commit_and_discard_routes() {
         let auth = AdminAuthConfig::from_token("tok");

@@ -655,6 +655,28 @@ mod tests {
             422
         );
         assert_eq!(
+            create_sandbox_job_response(
+                &auth,
+                Some("tok"),
+                &registry,
+                &hub,
+                br#"{"job_type":"quote"}"#
+            )
+            .status(),
+            422
+        );
+        assert_eq!(
+            create_sandbox_job_response(
+                &auth,
+                Some("tok"),
+                &registry,
+                &hub,
+                br#"{"job_type":"quote","currency":"","lines":[]}"#
+            )
+            .status(),
+            422
+        );
+        assert_eq!(
             get_sandbox_job_response(&auth, None, &registry, "x").status(),
             401
         );

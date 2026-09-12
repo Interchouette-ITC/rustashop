@@ -207,9 +207,11 @@ pub fn discard_sandbox_job_response(
     registry.finalize_proposal(job_id, SandboxJobStatus::Discarded);
     hub.publish(&SandboxJobEvent::log(job_id, "operator discarded proposal"));
     hub.publish(&SandboxJobEvent::finished(job_id, "discarded"));
-    registry.get(job_id).map_or_else(
-        || json_response(200, &job),
-        |updated| json_response(200, &updated),
+    json_response(
+        200,
+        &registry
+            .get(job_id)
+            .expect("job remains in registry after finalize"),
     )
 }
 
@@ -218,11 +220,11 @@ async fn apply_cart_quantity_proposal(
     cart_hub: Option<&CartHub>,
     proposal: &SandboxProposalResponse,
 ) -> Result<CartResponse, ApiError> {
-    let mut cart = match catalog.find_cart_by_id(&proposal.cart_id).await {
-        Ok(Some(cart)) => cart,
-        Ok(None) => return Err(ApiError::NotFound),
-        Err(error) => return Err(ApiError::from_persist(&error)),
-    };
+    let mut cart = catalog
+        .find_cart_by_id(&proposal.cart_id)
+        .await
+        .map_err(|error| ApiError::from_persist(&error))?
+        .ok_or(ApiError::NotFound)?;
     let line = cart
         .lines
         .iter()
@@ -233,15 +235,11 @@ async fn apply_cart_quantity_proposal(
     let next = resolve_quantity(current, proposal.quantity, &proposal.operator)?;
     cart.update_line_quantity(&line_id, next)
         .map_err(|error| ApiError::from_domain(&error))?;
-    let saved = match catalog.save_cart(&cart).await {
-        Ok(()) => match catalog.find_cart_by_id(&proposal.cart_id).await {
-            Ok(Some(cart)) => cart,
-            Ok(None) => return Err(ApiError::NotFound),
-            Err(error) => return Err(ApiError::from_persist(&error)),
-        },
-        Err(error) => return Err(ApiError::from_persist(&error)),
-    };
-    let response = CartResponse::try_from_cart(saved)?;
+    catalog
+        .save_cart(&cart)
+        .await
+        .map_err(|error| ApiError::from_persist(&error))?;
+    let response = CartResponse::try_from_cart(cart)?;
     if let Some(hub) = cart_hub {
         hub.publish(&CartRealtimeEvent::updated(response.clone()));
     }
@@ -558,19 +556,27 @@ mod tests {
             cart_id: "cart-1".into(),
             id_product: "variant-1".into(),
             quantity: 2,
-            operator: "noop".into(),
+            operator: "set".into(),
         };
-        run_cart_quantity_job(
-            &registry,
-            &hub,
-            &job.id,
-            &input,
-            &php_migration_hook_source(),
-        )
-        .await;
+        // Valid PHP JSON that fails host domain-event validation.
+        let bad_source = r"echo json_encode([
+            'event_type' => 'not.a.valid.event',
+            'cart_id' => 'cart-1',
+            'product_id' => 'variant-1',
+            'quantity' => 2,
+            'operator' => 'set',
+        ]);";
+        run_cart_quantity_job(&registry, &hub, &job.id, &input, bad_source).await;
         let finished = registry.get(&job.id).expect("job");
         assert_eq!(finished.status, SandboxJobStatus::Failed);
-        assert!(finished.error.is_some());
+        assert!(
+            finished
+                .error
+                .as_deref()
+                .is_some_and(|message| message.contains("validation failed")),
+            "error={:?}",
+            finished.error
+        );
     }
 
     #[test]
@@ -580,7 +586,11 @@ mod tests {
     }
 
     #[cfg(feature = "persist-sqlx")]
-    async fn seeded_catalog() -> (CatalogRepository, tokio::sync::MutexGuard<'static, ()>) {
+    async fn seeded_catalog() -> (
+        CatalogRepository,
+        sqlx::PgPool,
+        tokio::sync::MutexGuard<'static, ()>,
+    ) {
         use std::sync::LazyLock;
 
         use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
@@ -618,7 +628,7 @@ mod tests {
             .ok();
         migrate(&pool).await.expect("migrate");
         seed_catalog(&pool).await.expect("seed");
-        (SqlxCatalogRepository::new(pool), guard)
+        (SqlxCatalogRepository::new(pool.clone()), pool, guard)
     }
 
     #[cfg(feature = "persist-sqlx")]
@@ -640,7 +650,7 @@ mod tests {
 
         #[tokio::test]
         async fn commit_applies_set_up_down_and_publishes_cart() {
-            let (catalog, _guard) = seeded_catalog().await;
+            let (catalog, _pool, _guard) = seeded_catalog().await;
             let auth = AdminAuthConfig::from_token("secret");
             let registry = SandboxJobRegistry::new();
             let hub = SandboxJobHub::new();
@@ -729,7 +739,7 @@ mod tests {
 
         #[tokio::test]
         async fn apply_cart_quantity_proposal_errors() {
-            let (catalog, _guard) = seeded_catalog().await;
+            let (catalog, pool, _guard) = seeded_catalog().await;
             let missing_cart = apply_cart_quantity_proposal(
                 &catalog,
                 None,
@@ -764,7 +774,7 @@ mod tests {
                 None,
                 &SandboxProposalResponse {
                     event_type: "cart.line_quantity_proposed".into(),
-                    cart_id: cart.id,
+                    cart_id: cart.id.clone(),
                     product_id: HOODIE_VARIANT.into(),
                     quantity: 10,
                     operator: "down".into(),
@@ -772,6 +782,50 @@ mod tests {
             )
             .await;
             assert!(matches!(bad_qty, Err(ApiError::Unprocessable(_))));
+
+            sqlx::query(
+                "CREATE OR REPLACE FUNCTION rustashop_block_cart_line() RETURNS trigger AS $$\
+                 BEGIN RAISE EXCEPTION 'blocked'; END; $$ LANGUAGE plpgsql",
+            )
+            .execute(&pool)
+            .await
+            .expect("fn");
+            sqlx::query(
+                "CREATE TRIGGER rustashop_block_cart_line_trg \
+                 BEFORE INSERT OR UPDATE OR DELETE ON cart_line \
+                 FOR EACH ROW EXECUTE FUNCTION rustashop_block_cart_line()",
+            )
+            .execute(&pool)
+            .await
+            .expect("trigger");
+            let save_blocked = apply_cart_quantity_proposal(
+                &catalog,
+                None,
+                &SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: cart.id.clone(),
+                    product_id: HOODIE_VARIANT.into(),
+                    quantity: 3,
+                    operator: "set".into(),
+                },
+            )
+            .await;
+            assert!(matches!(save_blocked, Err(ApiError::Internal)));
+
+            pool.close().await;
+            let find_closed = apply_cart_quantity_proposal(
+                &catalog,
+                None,
+                &SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: cart.id,
+                    product_id: HOODIE_VARIANT.into(),
+                    quantity: 1,
+                    operator: "set".into(),
+                },
+            )
+            .await;
+            assert!(matches!(find_closed, Err(ApiError::Internal)));
         }
     }
 }
