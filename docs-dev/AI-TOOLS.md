@@ -58,8 +58,9 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 ## Next slices
 
 1. ~~Admin / shop AI UIs calling the same names.~~ Done (#187 / #189).
-2. ~~Provider API-key routing for first-party model calls (keys never in Wasmer guests).~~ Landing (#191): env status + catalog + test under `/v1/{admin}/ai/providers*`.
-3. Autonomous jobs: sandbox + host commit using Serenade messenger when wired.
+2. ~~Provider API-key routing for first-party model calls (keys never in Wasmer guests).~~ Done (#191 / #192).
+3. ~~Autonomous jobs: sandbox + host commit.~~ Done (#207): `POST …/sandbox/jobs` with `job_type=cart_quantity`, then `…/commit` or `…/discard`; WS `job.proposal` / `job.finished`. Serenade messenger remains future (#49).
+4. Expand model provider catalog beyond the MVP four (when ordered).
 
 ### Model provider env (host only)
 

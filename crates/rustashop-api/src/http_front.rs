@@ -46,6 +46,8 @@ const PATCH_ADMIN_ORDER_ROUTE: &str = "patch_admin_order";
 const CREATE_SANDBOX_JOB_ROUTE: &str = "create_sandbox_job";
 const GET_SANDBOX_JOB_ROUTE: &str = "get_sandbox_job";
 const LIST_SANDBOX_AUDIT_ROUTE: &str = "list_sandbox_audit";
+const COMMIT_SANDBOX_JOB_ROUTE: &str = "commit_sandbox_job";
+const DISCARD_SANDBOX_JOB_ROUTE: &str = "discard_sandbox_job";
 const LIST_AI_TOOLS_ROUTE: &str = "list_ai_tools";
 const LIST_SHOP_AI_TOOLS_ROUTE: &str = "list_shop_ai_tools";
 const LIST_AI_PROVIDERS_ROUTE: &str = "list_ai_providers";
@@ -216,9 +218,11 @@ async fn dispatch_route(
             )
             .await
         }
-        CREATE_SANDBOX_JOB_ROUTE | GET_SANDBOX_JOB_ROUTE | LIST_SANDBOX_AUDIT_ROUTE => {
-            dispatch_sandbox_route(route_name, config, &input)
-        }
+        CREATE_SANDBOX_JOB_ROUTE
+        | GET_SANDBOX_JOB_ROUTE
+        | LIST_SANDBOX_AUDIT_ROUTE
+        | COMMIT_SANDBOX_JOB_ROUTE
+        | DISCARD_SANDBOX_JOB_ROUTE => dispatch_sandbox_route(route_name, config, &input).await,
         LIST_AI_TOOLS_ROUTE => list_ai_tools_response(&config.admin_auth, input.bearer),
         LIST_SHOP_AI_TOOLS_ROUTE => list_shop_ai_tools_response(),
         LIST_AI_PROVIDERS_ROUTE => list_ai_providers_response(&config.admin_auth, input.bearer),
@@ -236,7 +240,7 @@ async fn dispatch_route(
     }
 }
 
-fn dispatch_sandbox_route(
+async fn dispatch_sandbox_route(
     route_name: &str,
     config: &CommerceFrontConfig,
     input: &DispatchInput<'_>,
@@ -259,6 +263,25 @@ fn dispatch_sandbox_route(
             &config.admin_auth,
             input.bearer,
             config.sandbox_registry.as_ref(),
+        ),
+        COMMIT_SANDBOX_JOB_ROUTE => {
+            commit_sandbox_job_via_registry(
+                &config.admin_auth,
+                input.bearer,
+                config.sandbox_registry.as_ref(),
+                config.sandbox_hub.as_ref(),
+                config.cart_hub.as_ref(),
+                config.catalog.as_ref(),
+                input.id,
+            )
+            .await
+        }
+        DISCARD_SANDBOX_JOB_ROUTE => discard_sandbox_job_via_registry(
+            &config.admin_auth,
+            input.bearer,
+            config.sandbox_registry.as_ref(),
+            config.sandbox_hub.as_ref(),
+            input.id,
         ),
         _ => Response::new(404).with_body(b"no handler".to_vec()),
     }
@@ -477,6 +500,60 @@ fn list_sandbox_audit_via_registry(
     crate::sandbox_jobs::list_sandbox_audit_response(auth, bearer, registry)
 }
 
+async fn commit_sandbox_job_via_registry(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
+    hub: Option<&crate::sandbox_realtime::SandboxJobHub>,
+    cart_hub: Option<&CartHub>,
+    catalog: Option<&CatalogRepository>,
+    job_id: Option<&str>,
+) -> Response {
+    let Some(registry) = registry else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(hub) = hub else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(catalog) = catalog else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(job_id) = job_id else {
+        return api_error_json_response(&ApiError::NotFound);
+    };
+    crate::sandbox_autonomous::commit_sandbox_job_response(
+        crate::sandbox_autonomous::CommitSandboxJobContext {
+            auth,
+            bearer,
+            registry,
+            hub,
+            cart_hub,
+            catalog,
+            job_id,
+        },
+    )
+    .await
+}
+
+fn discard_sandbox_job_via_registry(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
+    hub: Option<&crate::sandbox_realtime::SandboxJobHub>,
+    job_id: Option<&str>,
+) -> Response {
+    let Some(registry) = registry else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(hub) = hub else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(job_id) = job_id else {
+        return api_error_json_response(&ApiError::NotFound);
+    };
+    crate::sandbox_autonomous::discard_sandbox_job_response(auth, bearer, registry, hub, job_id)
+}
+
 fn front_matcher(admin_prefix: &str) -> UrlMatcher {
     let mut collection = RouteCollection::new();
     add_storefront_routes(&mut collection);
@@ -624,6 +701,22 @@ fn add_sandbox_admin_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Get,
         ))
         .expect("get sandbox job route");
+    let sandbox_commit = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/commit");
+    collection
+        .add(Route::with_method(
+            COMMIT_SANDBOX_JOB_ROUTE,
+            &sandbox_commit,
+            Method::Post,
+        ))
+        .expect("commit sandbox job route");
+    let sandbox_discard = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/discard");
+    collection
+        .add(Route::with_method(
+            DISCARD_SANDBOX_JOB_ROUTE,
+            &sandbox_discard,
+            Method::Post,
+        ))
+        .expect("discard sandbox job route");
     let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
     collection
         .add(Route::with_method(
@@ -702,6 +795,8 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
     let admin_order = format!("/v1/{admin_prefix}/orders/{{id}}");
     let sandbox_jobs = format!("/v1/{admin_prefix}/sandbox/jobs");
     let sandbox_job = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}");
+    let sandbox_commit = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/commit");
+    let sandbox_discard = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/discard");
     let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
     let ai_tools = format!("/v1/{admin_prefix}/ai/tools");
     let ai_providers = format!("/v1/{admin_prefix}/ai/providers");
@@ -738,6 +833,14 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
         .route(&admin_order, actix_web::web::patch().to(serenade_dispatch))
         .route(&sandbox_jobs, actix_web::web::post().to(serenade_dispatch))
         .route(&sandbox_job, actix_web::web::get().to(serenade_dispatch))
+        .route(
+            &sandbox_commit,
+            actix_web::web::post().to(serenade_dispatch),
+        )
+        .route(
+            &sandbox_discard,
+            actix_web::web::post().to(serenade_dispatch),
+        )
         .route(&sandbox_audit, actix_web::web::get().to(serenade_dispatch))
         .route(&ai_tools, actix_web::web::get().to(serenade_dispatch))
         .route(&ai_providers, actix_web::web::get().to(serenade_dispatch))
@@ -1180,8 +1283,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn dispatch_sandbox_unknown_route_is_404() {
+    #[tokio::test]
+    async fn dispatch_sandbox_unknown_route_is_404() {
         let config = CommerceFrontConfig::test_default();
         let input = DispatchInput {
             query: None,
@@ -1191,7 +1294,7 @@ mod tests {
             idempotency: None,
             bearer: None,
         };
-        let response = dispatch_sandbox_route("not_sandbox", &config, &input);
+        let response = dispatch_sandbox_route("not_sandbox", &config, &input).await;
         assert_eq!(response.status(), 404);
     }
 
@@ -1201,5 +1304,226 @@ mod tests {
         let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
         let response = get_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), None);
         assert_eq!(response.status(), 404);
+    }
+
+    #[tokio::test]
+    async fn commit_and_discard_via_registry_cover_missing_deps() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                None,
+                Some(&hub),
+                None,
+                None,
+                Some("j")
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                None,
+                None,
+                None,
+                Some("j")
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                None,
+                None,
+                Some("j")
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                None,
+                None,
+                None
+            )
+            .await
+            .status(),
+            500
+        );
+
+        assert_eq!(
+            discard_sandbox_job_via_registry(&auth, Some("tok"), None, Some(&hub), Some("j"))
+                .status(),
+            500
+        );
+        assert_eq!(
+            discard_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), None, Some("j"))
+                .status(),
+            500
+        );
+        assert_eq!(
+            discard_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), Some(&hub), None)
+                .status(),
+            404
+        );
+    }
+
+    #[cfg(feature = "persist-sqlx")]
+    #[tokio::test]
+    async fn commit_via_registry_missing_job_id_is_not_found() {
+        use rustashop_persist_sqlx::SqlxCatalogRepository;
+        use sqlx::postgres::PgPoolOptions;
+
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://rustashop:rustashop@127.0.0.1:5432/rustashop".into());
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        let catalog = SqlxCatalogRepository::new(pool);
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                None,
+                Some(&catalog),
+                None
+            )
+            .await
+            .status(),
+            404
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_commit_and_discard_routes() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let job = registry.start_job("cart_quantity", "hash", "admin-bearer");
+        registry.set_awaiting_commit(
+            &job.id,
+            crate::sandbox_jobs::SandboxProposalResponse {
+                event_type: "cart.line_quantity_proposed".into(),
+                cart_id: "c1".into(),
+                product_id: "v1".into(),
+                quantity: 1,
+                operator: "set".into(),
+            },
+        );
+        let config = CommerceFrontConfig {
+            admin_auth: auth,
+            sandbox_registry: Some(registry),
+            sandbox_hub: Some(hub),
+            ..CommerceFrontConfig::test_default()
+        };
+        let discard_input = DispatchInput {
+            query: None,
+            id: Some(job.id.as_str()),
+            line_id: None,
+            body: &[],
+            idempotency: None,
+            bearer: Some("tok"),
+        };
+        let discarded =
+            dispatch_sandbox_route(DISCARD_SANDBOX_JOB_ROUTE, &config, &discard_input).await;
+        assert_eq!(discarded.status(), 200);
+
+        let commit_input = DispatchInput {
+            query: None,
+            id: Some("missing"),
+            line_id: None,
+            body: &[],
+            idempotency: None,
+            bearer: Some("tok"),
+        };
+        // Catalog missing → Internal before NotFound on job.
+        let committed =
+            dispatch_sandbox_route(COMMIT_SANDBOX_JOB_ROUTE, &config, &commit_input).await;
+        assert_eq!(committed.status(), 500);
+    }
+
+    #[cfg(feature = "persist-sqlx")]
+    #[actix_web::test]
+    async fn commit_via_registry_dispatches_when_catalog_present() {
+        use rustashop_persist_sqlx::SqlxCatalogRepository;
+        use sqlx::postgres::PgPoolOptions;
+
+        let Ok(url) = std::env::var("DATABASE_URL") else {
+            eprintln!("skip: DATABASE_URL is not set");
+            return;
+        };
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        let catalog = SqlxCatalogRepository::new(pool);
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let job = registry.start_job("cart_quantity", "hash", "admin-bearer");
+        registry.set_awaiting_commit(
+            &job.id,
+            crate::sandbox_jobs::SandboxProposalResponse {
+                event_type: "cart.line_quantity_proposed".into(),
+                cart_id: "11111111-1111-1111-1111-111111111111".into(),
+                product_id: "v1".into(),
+                quantity: 1,
+                operator: "set".into(),
+            },
+        );
+        // Happy path through via_registry deps; cart/schema may be missing → 404 or persist 500.
+        let commit_status = commit_sandbox_job_via_registry(
+            &auth,
+            Some("tok"),
+            Some(&registry),
+            Some(&hub),
+            None,
+            Some(&catalog),
+            Some(&job.id),
+        )
+        .await
+        .status();
+        assert!(
+            commit_status == 404 || commit_status == 500,
+            "unexpected commit status {commit_status}"
+        );
+        let discard_status = discard_sandbox_job_via_registry(
+            &auth,
+            Some("tok"),
+            Some(&registry),
+            Some(&hub),
+            Some(&job.id),
+        )
+        .status();
+        assert!(
+            discard_status == 200 || discard_status == 422,
+            "unexpected discard status {discard_status}"
+        );
     }
 }

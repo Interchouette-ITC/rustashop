@@ -81,7 +81,7 @@ pub struct CartResponse {
 }
 
 impl CartResponse {
-    fn try_from_cart(cart: Cart) -> Result<Self, ApiError> {
+    pub(crate) fn try_from_cart(cart: Cart) -> Result<Self, ApiError> {
         let items_total = cart
             .items_total()
             .map_err(|error| ApiError::from_domain(&error))?;
