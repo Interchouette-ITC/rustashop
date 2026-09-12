@@ -313,20 +313,457 @@ pub fn discard_sandbox_job() {}
 
 #[cfg(test)]
 mod tests {
+    use rustashop_sandbox::php_migration_hook_source;
+
     use super::*;
+    use crate::sandbox_jobs::CreateSandboxJobRequest;
+
+    fn sample_proposal() -> SandboxProposalResponse {
+        SandboxProposalResponse {
+            event_type: "cart.line_quantity_proposed".into(),
+            cart_id: "cart-1".into(),
+            product_id: "variant-1".into(),
+            quantity: 3,
+            operator: "set".into(),
+        }
+    }
+
+    fn create_request(
+        cart_id: Option<&str>,
+        variant_id: Option<&str>,
+        quantity: Option<u32>,
+        operator: Option<&str>,
+    ) -> CreateSandboxJobRequest {
+        CreateSandboxJobRequest {
+            job_type: JOB_TYPE_CART_QUANTITY.into(),
+            currency: None,
+            lines: None,
+            cart_id: cart_id.map(str::to_owned),
+            variant_id: variant_id.map(str::to_owned),
+            quantity,
+            operator: operator.map(str::to_owned),
+        }
+    }
 
     #[test]
     fn resolve_quantity_operators() {
-        assert_eq!(resolve_quantity(2, 3, "set").expect("set"), 3);
-        assert_eq!(resolve_quantity(2, 3, "up").expect("up"), 5);
-        assert_eq!(resolve_quantity(5, 2, "down").expect("down"), 3);
-        assert!(resolve_quantity(1, 1, "down").is_err());
-        assert!(resolve_quantity(1, 1, "nope").is_err());
+        assert_eq!(resolve_quantity(2, 5, "set").unwrap(), 5);
+        assert_eq!(resolve_quantity(2, 3, "up").unwrap(), 5);
+        assert_eq!(resolve_quantity(5, 2, "down").unwrap(), 3);
+        assert!(matches!(
+            resolve_quantity(1, 1, "down"),
+            Err(ApiError::Unprocessable(_))
+        ));
+        assert!(matches!(
+            resolve_quantity(1, 1, "noop"),
+            Err(ApiError::Unprocessable(_))
+        ));
+        assert!(matches!(
+            resolve_quantity(1, u32::MAX, "set"),
+            Err(ApiError::Unprocessable(_))
+        ));
+    }
+
+    #[test]
+    fn proposal_from_draft_maps_fields() {
+        let draft = DomainEventDraft {
+            event_type: "cart.line_quantity_proposed".into(),
+            cart_id: "c1".into(),
+            product_id: "p1".into(),
+            quantity: 4,
+            operator: "up".into(),
+        };
+        let proposal = proposal_from_draft(&draft);
+        assert_eq!(proposal.cart_id, "c1");
+        assert_eq!(proposal.product_id, "p1");
+        assert_eq!(proposal.quantity, 4);
+        assert_eq!(proposal.operator, "up");
+    }
+
+    #[test]
+    fn create_cart_quantity_job_rejects_incomplete_request() {
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let response = create_cart_quantity_job(
+            &registry,
+            &hub,
+            &create_request(Some("cart"), Some("v"), None, Some("set")),
+        );
+        assert_eq!(response.status(), 422);
+    }
+
+    #[test]
+    fn create_cart_quantity_job_rejects_bad_operator() {
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let response = create_cart_quantity_job(
+            &registry,
+            &hub,
+            &create_request(Some("cart"), Some("v"), Some(1), Some("noop")),
+        );
+        assert_eq!(response.status(), 422);
+    }
+
+    #[tokio::test]
+    async fn create_cart_quantity_job_spawns_and_awaits_commit() {
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let response = create_cart_quantity_job(
+            &registry,
+            &hub,
+            &create_request(Some("cart-spawn"), Some("variant-1"), Some(3), Some("set")),
+        );
+        assert_eq!(response.status(), 202);
+        let job: SandboxJobResponse = serde_json::from_slice(response.body()).unwrap();
+        assert_eq!(job.job_type, JOB_TYPE_CART_QUANTITY);
+        for _ in 0..200 {
+            if let Some(current) = registry.get(&job.id)
+                && current.status == SandboxJobStatus::AwaitingCommit
+            {
+                let proposal = current.proposal.expect("proposal");
+                assert_eq!(proposal.operator, "set");
+                assert_eq!(proposal.quantity, 3);
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
+        panic!("job never reached awaiting_commit");
+    }
+
+    #[test]
+    fn discard_sandbox_job_response_branches() {
+        let auth = AdminAuthConfig::from_token("secret");
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+
+        assert_eq!(
+            discard_sandbox_job_response(&auth, None, &registry, &hub, "missing").status(),
+            401
+        );
+        assert_eq!(
+            discard_sandbox_job_response(&auth, Some("secret"), &registry, &hub, "missing")
+                .status(),
+            404
+        );
+
+        let job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+        assert_eq!(
+            discard_sandbox_job_response(&auth, Some("secret"), &registry, &hub, &job.id).status(),
+            422
+        );
+
+        registry.set_awaiting_commit(&job.id, sample_proposal());
+        let discarded =
+            discard_sandbox_job_response(&auth, Some("secret"), &registry, &hub, &job.id);
+        assert_eq!(discarded.status(), 200);
+        let body: SandboxJobResponse = serde_json::from_slice(discarded.body()).unwrap();
+        assert_eq!(body.status, SandboxJobStatus::Discarded);
+    }
+
+    #[cfg(feature = "persist-sqlx")]
+    #[tokio::test]
+    async fn commit_sandbox_job_response_early_returns() {
+        use rustashop_persist_sqlx::SqlxCatalogRepository;
+        use sqlx::postgres::PgPoolOptions;
+
+        let auth = AdminAuthConfig::from_token("secret");
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://rustashop:rustashop@127.0.0.1:5432/rustashop".into());
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        let catalog = SqlxCatalogRepository::new(pool);
+
+        assert_eq!(
+            commit_sandbox_job_response(CommitSandboxJobContext {
+                auth: &auth,
+                bearer: None,
+                registry: &registry,
+                hub: &hub,
+                cart_hub: None,
+                catalog: &catalog,
+                job_id: "missing",
+            })
+            .await
+            .status(),
+            401
+        );
+        assert_eq!(
+            commit_sandbox_job_response(CommitSandboxJobContext {
+                auth: &auth,
+                bearer: Some("secret"),
+                registry: &registry,
+                hub: &hub,
+                cart_hub: None,
+                catalog: &catalog,
+                job_id: "missing",
+            })
+            .await
+            .status(),
+            404
+        );
+
+        let job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+        assert_eq!(
+            commit_sandbox_job_response(CommitSandboxJobContext {
+                auth: &auth,
+                bearer: Some("secret"),
+                registry: &registry,
+                hub: &hub,
+                cart_hub: None,
+                catalog: &catalog,
+                job_id: &job.id,
+            })
+            .await
+            .status(),
+            422
+        );
+
+        registry.set_awaiting_commit_without_proposal(&job.id);
+        assert_eq!(
+            commit_sandbox_job_response(CommitSandboxJobContext {
+                auth: &auth,
+                bearer: Some("secret"),
+                registry: &registry,
+                hub: &hub,
+                cart_hub: None,
+                catalog: &catalog,
+                job_id: &job.id,
+            })
+            .await
+            .status(),
+            422
+        );
+    }
+
+    #[tokio::test]
+    async fn run_cart_quantity_job_validation_failure_finishes_failed() {
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+        let input = LegacyHookInput {
+            hook: CART_UPDATE_QUANTITY_HOOK.into(),
+            cart_id: "cart-1".into(),
+            id_product: "variant-1".into(),
+            quantity: 2,
+            operator: "noop".into(),
+        };
+        run_cart_quantity_job(
+            &registry,
+            &hub,
+            &job.id,
+            &input,
+            &php_migration_hook_source(),
+        )
+        .await;
+        let finished = registry.get(&job.id).expect("job");
+        assert_eq!(finished.status, SandboxJobStatus::Failed);
+        assert!(finished.error.is_some());
     }
 
     #[test]
     fn openapi_stubs_are_callable() {
         commit_sandbox_job();
         discard_sandbox_job();
+    }
+
+    #[cfg(feature = "persist-sqlx")]
+    async fn seeded_catalog() -> (CatalogRepository, tokio::sync::MutexGuard<'static, ()>) {
+        use std::sync::LazyLock;
+
+        use rustashop_persist_sqlx::{SqlxCatalogRepository, migrate, seed_catalog};
+        use sqlx::postgres::PgPoolOptions;
+        use tokio::sync::Mutex;
+
+        static DB_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+        // Same key as carts::cart_response_tests so schema resets serialize in Postgres.
+        const SCHEMA_LOCK: i64 = 874_521;
+
+        let guard = DB_LOCK.lock().await;
+        let url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://rustashop:rustashop@127.0.0.1:5432/rustashop".into());
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        sqlx::query("SELECT pg_advisory_lock($1)")
+            .bind(SCHEMA_LOCK)
+            .execute(&pool)
+            .await
+            .expect("lock");
+        sqlx::query("DROP SCHEMA IF EXISTS public CASCADE")
+            .execute(&pool)
+            .await
+            .expect("drop");
+        sqlx::query("CREATE SCHEMA public")
+            .execute(&pool)
+            .await
+            .expect("create");
+        sqlx::query("GRANT ALL ON SCHEMA public TO PUBLIC")
+            .execute(&pool)
+            .await
+            .ok();
+        migrate(&pool).await.expect("migrate");
+        seed_catalog(&pool).await.expect("seed");
+        (SqlxCatalogRepository::new(pool), guard)
+    }
+
+    #[cfg(feature = "persist-sqlx")]
+    mod persist_tests {
+        use super::*;
+        use crate::carts::{add_cart_line_response, create_cart_response};
+
+        const HOODIE_VARIANT: &str = "33333333-3333-3333-3333-333333333331";
+
+        async fn cart_with_hoodie(catalog: &CatalogRepository, quantity: i32) -> CartResponse {
+            let created = create_cart_response(catalog, None, br#"{"currency":"EUR"}"#).await;
+            assert_eq!(created.status(), 201);
+            let cart: CartResponse = serde_json::from_slice(created.body()).unwrap();
+            let body = format!(r#"{{"variant_id":"{HOODIE_VARIANT}","quantity":{quantity}}}"#);
+            let added = add_cart_line_response(catalog, None, &cart.id, body.as_bytes()).await;
+            assert_eq!(added.status(), 200);
+            serde_json::from_slice(added.body()).unwrap()
+        }
+
+        #[tokio::test]
+        async fn commit_applies_set_up_down_and_publishes_cart() {
+            let (catalog, _guard) = seeded_catalog().await;
+            let auth = AdminAuthConfig::from_token("secret");
+            let registry = SandboxJobRegistry::new();
+            let hub = SandboxJobHub::new();
+            let cart_hub = CartHub::new();
+            let cart = cart_with_hoodie(&catalog, 2).await;
+            let mut rx = cart_hub.subscribe(&cart.id);
+
+            let job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+            registry.set_awaiting_commit(
+                &job.id,
+                SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: cart.id.clone(),
+                    product_id: HOODIE_VARIANT.into(),
+                    quantity: 5,
+                    operator: "set".into(),
+                },
+            );
+            let response = commit_sandbox_job_response(CommitSandboxJobContext {
+                auth: &auth,
+                bearer: Some("secret"),
+                registry: &registry,
+                hub: &hub,
+                cart_hub: Some(&cart_hub),
+                catalog: &catalog,
+                job_id: &job.id,
+            })
+            .await;
+            assert_eq!(response.status(), 200);
+            let body: CommitSandboxJobResponse = serde_json::from_slice(response.body()).unwrap();
+            assert_eq!(body.job.status, SandboxJobStatus::Committed);
+            assert_eq!(body.cart.lines[0].quantity, 5);
+            let event = rx.recv().await.expect("cart event");
+            assert!(event.contains("cart.updated"));
+
+            let up_job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+            registry.set_awaiting_commit(
+                &up_job.id,
+                SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: cart.id.clone(),
+                    product_id: HOODIE_VARIANT.into(),
+                    quantity: 2,
+                    operator: "up".into(),
+                },
+            );
+            let up = commit_sandbox_job_response(CommitSandboxJobContext {
+                auth: &auth,
+                bearer: Some("secret"),
+                registry: &registry,
+                hub: &hub,
+                cart_hub: None,
+                catalog: &catalog,
+                job_id: &up_job.id,
+            })
+            .await;
+            assert_eq!(up.status(), 200);
+            let up_body: CommitSandboxJobResponse = serde_json::from_slice(up.body()).unwrap();
+            assert_eq!(up_body.cart.lines[0].quantity, 7);
+
+            let down_job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+            registry.set_awaiting_commit(
+                &down_job.id,
+                SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: cart.id.clone(),
+                    product_id: HOODIE_VARIANT.into(),
+                    quantity: 1,
+                    operator: "down".into(),
+                },
+            );
+            let down = commit_sandbox_job_response(CommitSandboxJobContext {
+                auth: &auth,
+                bearer: Some("secret"),
+                registry: &registry,
+                hub: &hub,
+                cart_hub: None,
+                catalog: &catalog,
+                job_id: &down_job.id,
+            })
+            .await;
+            assert_eq!(down.status(), 200);
+            let down_body: CommitSandboxJobResponse = serde_json::from_slice(down.body()).unwrap();
+            assert_eq!(down_body.cart.lines[0].quantity, 6);
+        }
+
+        #[tokio::test]
+        async fn apply_cart_quantity_proposal_errors() {
+            let (catalog, _guard) = seeded_catalog().await;
+            let missing_cart = apply_cart_quantity_proposal(
+                &catalog,
+                None,
+                &SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: "11111111-1111-1111-1111-111111111111".into(),
+                    product_id: HOODIE_VARIANT.into(),
+                    quantity: 1,
+                    operator: "set".into(),
+                },
+            )
+            .await;
+            assert!(matches!(missing_cart, Err(ApiError::NotFound)));
+
+            let cart = cart_with_hoodie(&catalog, 2).await;
+            let missing_line = apply_cart_quantity_proposal(
+                &catalog,
+                None,
+                &SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: cart.id.clone(),
+                    product_id: "33333333-3333-3333-3333-333333333399".into(),
+                    quantity: 1,
+                    operator: "set".into(),
+                },
+            )
+            .await;
+            assert!(matches!(missing_line, Err(ApiError::NotFound)));
+
+            let bad_qty = apply_cart_quantity_proposal(
+                &catalog,
+                None,
+                &SandboxProposalResponse {
+                    event_type: "cart.line_quantity_proposed".into(),
+                    cart_id: cart.id,
+                    product_id: HOODIE_VARIANT.into(),
+                    quantity: 10,
+                    operator: "down".into(),
+                },
+            )
+            .await;
+            assert!(matches!(bad_qty, Err(ApiError::Unprocessable(_))));
+        }
     }
 }

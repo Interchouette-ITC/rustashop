@@ -1305,4 +1305,192 @@ mod tests {
         let response = get_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), None);
         assert_eq!(response.status(), 404);
     }
+
+    #[tokio::test]
+    async fn commit_and_discard_via_registry_cover_missing_deps() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                None,
+                Some(&hub),
+                None,
+                None,
+                Some("j")
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                None,
+                None,
+                None,
+                Some("j")
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                None,
+                None,
+                Some("j")
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            commit_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                None,
+                None,
+                None
+            )
+            .await
+            .status(),
+            500
+        );
+
+        assert_eq!(
+            discard_sandbox_job_via_registry(&auth, Some("tok"), None, Some(&hub), Some("j"))
+                .status(),
+            500
+        );
+        assert_eq!(
+            discard_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), None, Some("j"))
+                .status(),
+            500
+        );
+        assert_eq!(
+            discard_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), Some(&hub), None)
+                .status(),
+            404
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_commit_and_discard_routes() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let job = registry.start_job("cart_quantity", "hash", "admin-bearer");
+        registry.set_awaiting_commit(
+            &job.id,
+            crate::sandbox_jobs::SandboxProposalResponse {
+                event_type: "cart.line_quantity_proposed".into(),
+                cart_id: "c1".into(),
+                product_id: "v1".into(),
+                quantity: 1,
+                operator: "set".into(),
+            },
+        );
+        let config = CommerceFrontConfig {
+            admin_auth: auth,
+            sandbox_registry: Some(registry),
+            sandbox_hub: Some(hub),
+            ..CommerceFrontConfig::test_default()
+        };
+        let discard_input = DispatchInput {
+            query: None,
+            id: Some(job.id.as_str()),
+            line_id: None,
+            body: &[],
+            idempotency: None,
+            bearer: Some("tok"),
+        };
+        let discarded =
+            dispatch_sandbox_route(DISCARD_SANDBOX_JOB_ROUTE, &config, &discard_input).await;
+        assert_eq!(discarded.status(), 200);
+
+        let commit_input = DispatchInput {
+            query: None,
+            id: Some("missing"),
+            line_id: None,
+            body: &[],
+            idempotency: None,
+            bearer: Some("tok"),
+        };
+        // Catalog missing → Internal before NotFound on job.
+        let committed =
+            dispatch_sandbox_route(COMMIT_SANDBOX_JOB_ROUTE, &config, &commit_input).await;
+        assert_eq!(committed.status(), 500);
+    }
+
+    #[cfg(feature = "persist-sqlx")]
+    #[actix_web::test]
+    async fn commit_via_registry_dispatches_when_catalog_present() {
+        use rustashop_persist_sqlx::SqlxCatalogRepository;
+        use sqlx::postgres::PgPoolOptions;
+
+        let Ok(url) = std::env::var("DATABASE_URL") else {
+            eprintln!("skip: DATABASE_URL is not set");
+            return;
+        };
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        let catalog = SqlxCatalogRepository::new(pool);
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let job = registry.start_job("cart_quantity", "hash", "admin-bearer");
+        registry.set_awaiting_commit(
+            &job.id,
+            crate::sandbox_jobs::SandboxProposalResponse {
+                event_type: "cart.line_quantity_proposed".into(),
+                cart_id: "11111111-1111-1111-1111-111111111111".into(),
+                product_id: "v1".into(),
+                quantity: 1,
+                operator: "set".into(),
+            },
+        );
+        // Happy path through via_registry deps; cart/schema may be missing → 404 or persist 500.
+        let commit_status = commit_sandbox_job_via_registry(
+            &auth,
+            Some("tok"),
+            Some(&registry),
+            Some(&hub),
+            None,
+            Some(&catalog),
+            Some(&job.id),
+        )
+        .await
+        .status();
+        assert!(
+            commit_status == 404 || commit_status == 500,
+            "unexpected commit status {commit_status}"
+        );
+        let discard_status = discard_sandbox_job_via_registry(
+            &auth,
+            Some("tok"),
+            Some(&registry),
+            Some(&hub),
+            Some(&job.id),
+        )
+        .status();
+        assert!(
+            discard_status == 200 || discard_status == 422,
+            "unexpected discard status {discard_status}"
+        );
+    }
 }

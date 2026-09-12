@@ -277,6 +277,22 @@ impl SandboxJobRegistry {
         drop(guard);
     }
 
+    /// Test helper: awaiting commit with no proposal payload (covers commit guard).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mutex is poisoned.
+    #[cfg(test)]
+    pub fn set_awaiting_commit_without_proposal(&self, job_id: &str) {
+        let mut guard = self.inner.lock().expect("sandbox registry mutex");
+        if let Some(job) = guard.jobs.get_mut(job_id) {
+            job.response.status = SandboxJobStatus::AwaitingCommit;
+            job.response.proposal = None;
+        }
+        Self::touch_audit(&mut guard, job_id, "awaiting_commit");
+        drop(guard);
+    }
+
     fn touch_audit(guard: &mut RegistryInner, job_id: &str, status_label: &str) {
         if let Some(row) = guard
             .audit
@@ -600,6 +616,17 @@ mod tests {
             SandboxJobStatus::Committed
         );
         assert_eq!(registry.list_audit(1)[0].status, "committed");
+        registry.finalize_proposal(&job.id, SandboxJobStatus::Discarded);
+        assert_eq!(
+            registry.get(&job.id).expect("job").status,
+            SandboxJobStatus::Discarded
+        );
+        assert_eq!(registry.list_audit(1)[0].status, "discarded");
+        // Cover status_label arms not reached by finish_job / set_awaiting_commit.
+        registry.finalize_proposal(&job.id, SandboxJobStatus::Running);
+        assert_eq!(registry.list_audit(1)[0].status, "running");
+        registry.finalize_proposal(&job.id, SandboxJobStatus::AwaitingCommit);
+        assert_eq!(registry.list_audit(1)[0].status, "awaiting_commit");
     }
 
     #[test]
