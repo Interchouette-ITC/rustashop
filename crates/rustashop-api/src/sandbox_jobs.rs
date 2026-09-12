@@ -18,16 +18,32 @@ use crate::sandbox_realtime::{SandboxJobEvent, SandboxJobHub};
 
 /// Fixed job type for the Python quote fixture.
 pub const JOB_TYPE_QUOTE: &str = "quote";
+/// Autonomous cart-quantity job (PHP migration guest → host commit).
+pub const JOB_TYPE_CART_QUANTITY: &str = "cart_quantity";
 
 /// Request body for creating a sandbox job.
 #[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct CreateSandboxJobRequest {
-    /// Job type (`quote` only).
+    /// Job type (`quote` or `cart_quantity`).
     pub job_type: String,
     /// Cart currency for the quote fixture.
-    pub currency: String,
-    /// Cart lines for the guest snapshot.
-    pub lines: Vec<SandboxJobLine>,
+    #[serde(default)]
+    pub currency: Option<String>,
+    /// Cart lines for the quote guest snapshot.
+    #[serde(default)]
+    pub lines: Option<Vec<SandboxJobLine>>,
+    /// Target cart id for `cart_quantity`.
+    #[serde(default)]
+    pub cart_id: Option<String>,
+    /// Variant id passed to the migration guest as legacy `id_product`.
+    #[serde(default)]
+    pub variant_id: Option<String>,
+    /// Quantity operand for `cart_quantity`.
+    #[serde(default)]
+    pub quantity: Option<u32>,
+    /// Operator for `cart_quantity` (`up` / `down` / `set`).
+    #[serde(default)]
+    pub operator: Option<String>,
 }
 
 /// One cart line in the create-job body.
@@ -47,10 +63,31 @@ pub struct SandboxJobLine {
 pub enum SandboxJobStatus {
     /// Runner still working.
     Running,
-    /// Guest finished; host validated adjustments.
+    /// Guest finished; host validated adjustments (quote path).
     Succeeded,
+    /// Guest proposal validated; waiting for host commit.
+    AwaitingCommit,
+    /// Host applied the proposal to commerce state.
+    Committed,
+    /// Operator discarded the proposal without mutating commerce.
+    Discarded,
     /// Guest or validation failed.
     Failed,
+}
+
+/// Validated domain-event proposal awaiting host commit.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, Eq)]
+pub struct SandboxProposalResponse {
+    /// Domain event type.
+    pub event_type: String,
+    /// Target cart id.
+    pub cart_id: String,
+    /// Variant id (legacy `id_product` in the guest ABI).
+    pub product_id: String,
+    /// Quantity operand.
+    pub quantity: u32,
+    /// Operator (`up` / `down` / `set`).
+    pub operator: String,
 }
 
 /// Public job view.
@@ -64,9 +101,12 @@ pub struct SandboxJobResponse {
     pub status: SandboxJobStatus,
     /// Fingerprint of the fixture source used.
     pub source_hash: String,
-    /// Host-validated adjustments when succeeded.
+    /// Host-validated adjustments when quote succeeded.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub adjustments: Option<Vec<SandboxAdjustmentResponse>>,
+    /// Validated proposal when awaiting commit / after commit.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proposal: Option<SandboxProposalResponse>,
     /// Error message when failed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
@@ -159,6 +199,7 @@ impl SandboxJobRegistry {
             status: SandboxJobStatus::Running,
             source_hash: source_hash.to_owned(),
             adjustments: None,
+            proposal: None,
             error: None,
         };
         let audit = SandboxAuditRecord {
@@ -180,7 +221,7 @@ impl SandboxJobRegistry {
         response
     }
 
-    /// Updates job + matching audit row.
+    /// Updates job + matching audit row after a terminal quote/failure outcome.
     ///
     /// # Panics
     ///
@@ -202,18 +243,48 @@ impl SandboxJobRegistry {
             });
             job.response.error = error;
         }
-        let status_label = match status {
-            SandboxJobStatus::Running => "running",
-            SandboxJobStatus::Succeeded => "succeeded",
-            SandboxJobStatus::Failed => "failed",
-        };
+        Self::touch_audit(&mut guard, job_id, status_label(status));
+        drop(guard);
+    }
+
+    /// Stores a validated proposal and moves the job to [`SandboxJobStatus::AwaitingCommit`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mutex is poisoned.
+    pub fn set_awaiting_commit(&self, job_id: &str, proposal: SandboxProposalResponse) {
+        let mut guard = self.inner.lock().expect("sandbox registry mutex");
+        if let Some(job) = guard.jobs.get_mut(job_id) {
+            job.response.status = SandboxJobStatus::AwaitingCommit;
+            job.response.proposal = Some(proposal);
+            job.response.error = None;
+        }
+        Self::touch_audit(&mut guard, job_id, "awaiting_commit");
+        drop(guard);
+    }
+
+    /// Marks a proposal job as committed or discarded.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the mutex is poisoned.
+    pub fn finalize_proposal(&self, job_id: &str, status: SandboxJobStatus) {
+        let mut guard = self.inner.lock().expect("sandbox registry mutex");
+        if let Some(job) = guard.jobs.get_mut(job_id) {
+            job.response.status = status;
+        }
+        Self::touch_audit(&mut guard, job_id, status_label(status));
+        drop(guard);
+    }
+
+    fn touch_audit(guard: &mut RegistryInner, job_id: &str, status_label: &str) {
         if let Some(row) = guard
             .audit
             .iter_mut()
             .rev()
             .find(|row| row.job_id == job_id)
         {
-            row.status = status_label.to_string();
+            status_label.clone_into(&mut row.status);
         }
     }
 
@@ -244,6 +315,17 @@ impl SandboxJobRegistry {
     }
 }
 
+const fn status_label(status: SandboxJobStatus) -> &'static str {
+    match status {
+        SandboxJobStatus::Running => "running",
+        SandboxJobStatus::Succeeded => "succeeded",
+        SandboxJobStatus::AwaitingCommit => "awaiting_commit",
+        SandboxJobStatus::Committed => "committed",
+        SandboxJobStatus::Discarded => "discarded",
+        SandboxJobStatus::Failed => "failed",
+    }
+}
+
 fn new_job_id() -> String {
     let mut bytes = [0_u8; 16];
     getrandom::fill(&mut bytes).expect("getrandom");
@@ -271,25 +353,26 @@ pub fn source_hash(source: &str) -> String {
     format!("{:016x}", hasher.finish())
 }
 
-fn cart_from_request(body: &CreateSandboxJobRequest) -> CartSnapshot {
-    CartSnapshot {
-        currency: body.currency.clone(),
-        lines: body
-            .lines
+fn cart_from_request(body: &CreateSandboxJobRequest) -> Option<CartSnapshot> {
+    let currency = body.currency.as_ref()?.clone();
+    let lines = body.lines.as_ref()?;
+    Some(CartSnapshot {
+        currency: currency.clone(),
+        lines: lines
             .iter()
             .map(|line| CartLine {
                 sku: line.sku.clone(),
                 quantity: line.quantity,
                 unit_price: Money {
                     amount_minor: line.unit_price_minor,
-                    currency: body.currency.clone(),
+                    currency: currency.clone(),
                 },
             })
             .collect(),
-    }
+    })
 }
 
-/// Creates a quote job, spawns the Wasmer runner, returns the running job JSON.
+/// Creates a quote or autonomous cart-quantity job and returns the running job JSON.
 pub fn create_sandbox_job_response(
     auth: &AdminAuthConfig,
     bearer: Option<&str>,
@@ -308,12 +391,28 @@ pub fn create_sandbox_job_response(
             ));
         }
     };
-    if request.job_type != JOB_TYPE_QUOTE {
-        return api_error_json_response(&ApiError::Unprocessable(
-            "unsupported job_type (use quote)".into(),
-        ));
+    match request.job_type.as_str() {
+        JOB_TYPE_QUOTE => create_quote_job(registry, hub, &request),
+        JOB_TYPE_CART_QUANTITY => {
+            crate::sandbox_autonomous::create_cart_quantity_job(registry, hub, &request)
+        }
+        _ => api_error_json_response(&ApiError::Unprocessable(
+            "unsupported job_type (use quote or cart_quantity)".into(),
+        )),
     }
-    if request.currency.trim().is_empty() || request.lines.is_empty() {
+}
+
+fn create_quote_job(
+    registry: &SandboxJobRegistry,
+    hub: &SandboxJobHub,
+    request: &CreateSandboxJobRequest,
+) -> Response {
+    let Some(cart) = cart_from_request(request) else {
+        return api_error_json_response(&ApiError::Unprocessable(
+            "currency and at least one line are required".into(),
+        ));
+    };
+    if cart.currency.trim().is_empty() || cart.lines.is_empty() {
         return api_error_json_response(&ApiError::Unprocessable(
             "currency and at least one line are required".into(),
         ));
@@ -323,7 +422,6 @@ pub fn create_sandbox_job_response(
     let hash = source_hash(source);
     let job = registry.start_job(JOB_TYPE_QUOTE, &hash, "admin-bearer");
     let job_id = job.id.clone();
-    let cart = cart_from_request(&request);
     let registry_runner = registry.clone();
     let hub_runner = hub.clone();
 
@@ -477,6 +575,31 @@ mod tests {
         assert_eq!(registry.list_audit(1)[0].status, "failed");
         registry.finish_job("missing", SandboxJobStatus::Running, None, None);
         assert!(registry.get("missing").is_none());
+    }
+
+    #[test]
+    fn registry_awaiting_commit_and_finalize() {
+        let registry = SandboxJobRegistry::new();
+        let job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+        registry.set_awaiting_commit(
+            &job.id,
+            SandboxProposalResponse {
+                event_type: "cart.line_quantity_proposed".into(),
+                cart_id: "c1".into(),
+                product_id: "v1".into(),
+                quantity: 2,
+                operator: "set".into(),
+            },
+        );
+        let waiting = registry.get(&job.id).expect("job");
+        assert_eq!(waiting.status, SandboxJobStatus::AwaitingCommit);
+        assert!(waiting.proposal.is_some());
+        registry.finalize_proposal(&job.id, SandboxJobStatus::Committed);
+        assert_eq!(
+            registry.get(&job.id).expect("job").status,
+            SandboxJobStatus::Committed
+        );
+        assert_eq!(registry.list_audit(1)[0].status, "committed");
     }
 
     #[test]

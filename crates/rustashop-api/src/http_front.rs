@@ -46,6 +46,8 @@ const PATCH_ADMIN_ORDER_ROUTE: &str = "patch_admin_order";
 const CREATE_SANDBOX_JOB_ROUTE: &str = "create_sandbox_job";
 const GET_SANDBOX_JOB_ROUTE: &str = "get_sandbox_job";
 const LIST_SANDBOX_AUDIT_ROUTE: &str = "list_sandbox_audit";
+const COMMIT_SANDBOX_JOB_ROUTE: &str = "commit_sandbox_job";
+const DISCARD_SANDBOX_JOB_ROUTE: &str = "discard_sandbox_job";
 const LIST_AI_TOOLS_ROUTE: &str = "list_ai_tools";
 const LIST_SHOP_AI_TOOLS_ROUTE: &str = "list_shop_ai_tools";
 const LIST_AI_PROVIDERS_ROUTE: &str = "list_ai_providers";
@@ -216,9 +218,11 @@ async fn dispatch_route(
             )
             .await
         }
-        CREATE_SANDBOX_JOB_ROUTE | GET_SANDBOX_JOB_ROUTE | LIST_SANDBOX_AUDIT_ROUTE => {
-            dispatch_sandbox_route(route_name, config, &input)
-        }
+        CREATE_SANDBOX_JOB_ROUTE
+        | GET_SANDBOX_JOB_ROUTE
+        | LIST_SANDBOX_AUDIT_ROUTE
+        | COMMIT_SANDBOX_JOB_ROUTE
+        | DISCARD_SANDBOX_JOB_ROUTE => dispatch_sandbox_route(route_name, config, &input).await,
         LIST_AI_TOOLS_ROUTE => list_ai_tools_response(&config.admin_auth, input.bearer),
         LIST_SHOP_AI_TOOLS_ROUTE => list_shop_ai_tools_response(),
         LIST_AI_PROVIDERS_ROUTE => list_ai_providers_response(&config.admin_auth, input.bearer),
@@ -236,7 +240,7 @@ async fn dispatch_route(
     }
 }
 
-fn dispatch_sandbox_route(
+async fn dispatch_sandbox_route(
     route_name: &str,
     config: &CommerceFrontConfig,
     input: &DispatchInput<'_>,
@@ -259,6 +263,25 @@ fn dispatch_sandbox_route(
             &config.admin_auth,
             input.bearer,
             config.sandbox_registry.as_ref(),
+        ),
+        COMMIT_SANDBOX_JOB_ROUTE => {
+            commit_sandbox_job_via_registry(
+                &config.admin_auth,
+                input.bearer,
+                config.sandbox_registry.as_ref(),
+                config.sandbox_hub.as_ref(),
+                config.cart_hub.as_ref(),
+                config.catalog.as_ref(),
+                input.id,
+            )
+            .await
+        }
+        DISCARD_SANDBOX_JOB_ROUTE => discard_sandbox_job_via_registry(
+            &config.admin_auth,
+            input.bearer,
+            config.sandbox_registry.as_ref(),
+            config.sandbox_hub.as_ref(),
+            input.id,
         ),
         _ => Response::new(404).with_body(b"no handler".to_vec()),
     }
@@ -477,6 +500,60 @@ fn list_sandbox_audit_via_registry(
     crate::sandbox_jobs::list_sandbox_audit_response(auth, bearer, registry)
 }
 
+async fn commit_sandbox_job_via_registry(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
+    hub: Option<&crate::sandbox_realtime::SandboxJobHub>,
+    cart_hub: Option<&CartHub>,
+    catalog: Option<&CatalogRepository>,
+    job_id: Option<&str>,
+) -> Response {
+    let Some(registry) = registry else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(hub) = hub else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(catalog) = catalog else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(job_id) = job_id else {
+        return api_error_json_response(&ApiError::NotFound);
+    };
+    crate::sandbox_autonomous::commit_sandbox_job_response(
+        crate::sandbox_autonomous::CommitSandboxJobContext {
+            auth,
+            bearer,
+            registry,
+            hub,
+            cart_hub,
+            catalog,
+            job_id,
+        },
+    )
+    .await
+}
+
+fn discard_sandbox_job_via_registry(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
+    hub: Option<&crate::sandbox_realtime::SandboxJobHub>,
+    job_id: Option<&str>,
+) -> Response {
+    let Some(registry) = registry else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(hub) = hub else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(job_id) = job_id else {
+        return api_error_json_response(&ApiError::NotFound);
+    };
+    crate::sandbox_autonomous::discard_sandbox_job_response(auth, bearer, registry, hub, job_id)
+}
+
 fn front_matcher(admin_prefix: &str) -> UrlMatcher {
     let mut collection = RouteCollection::new();
     add_storefront_routes(&mut collection);
@@ -624,6 +701,22 @@ fn add_sandbox_admin_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Get,
         ))
         .expect("get sandbox job route");
+    let sandbox_commit = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/commit");
+    collection
+        .add(Route::with_method(
+            COMMIT_SANDBOX_JOB_ROUTE,
+            &sandbox_commit,
+            Method::Post,
+        ))
+        .expect("commit sandbox job route");
+    let sandbox_discard = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/discard");
+    collection
+        .add(Route::with_method(
+            DISCARD_SANDBOX_JOB_ROUTE,
+            &sandbox_discard,
+            Method::Post,
+        ))
+        .expect("discard sandbox job route");
     let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
     collection
         .add(Route::with_method(
@@ -702,6 +795,8 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
     let admin_order = format!("/v1/{admin_prefix}/orders/{{id}}");
     let sandbox_jobs = format!("/v1/{admin_prefix}/sandbox/jobs");
     let sandbox_job = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}");
+    let sandbox_commit = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/commit");
+    let sandbox_discard = format!("/v1/{admin_prefix}/sandbox/jobs/{{id}}/discard");
     let sandbox_audit = format!("/v1/{admin_prefix}/sandbox/audit");
     let ai_tools = format!("/v1/{admin_prefix}/ai/tools");
     let ai_providers = format!("/v1/{admin_prefix}/ai/providers");
@@ -738,6 +833,14 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
         .route(&admin_order, actix_web::web::patch().to(serenade_dispatch))
         .route(&sandbox_jobs, actix_web::web::post().to(serenade_dispatch))
         .route(&sandbox_job, actix_web::web::get().to(serenade_dispatch))
+        .route(
+            &sandbox_commit,
+            actix_web::web::post().to(serenade_dispatch),
+        )
+        .route(
+            &sandbox_discard,
+            actix_web::web::post().to(serenade_dispatch),
+        )
         .route(&sandbox_audit, actix_web::web::get().to(serenade_dispatch))
         .route(&ai_tools, actix_web::web::get().to(serenade_dispatch))
         .route(&ai_providers, actix_web::web::get().to(serenade_dispatch))
@@ -1180,8 +1283,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn dispatch_sandbox_unknown_route_is_404() {
+    #[tokio::test]
+    async fn dispatch_sandbox_unknown_route_is_404() {
         let config = CommerceFrontConfig::test_default();
         let input = DispatchInput {
             query: None,
@@ -1191,7 +1294,7 @@ mod tests {
             idempotency: None,
             bearer: None,
         };
-        let response = dispatch_sandbox_route("not_sandbox", &config, &input);
+        let response = dispatch_sandbox_route("not_sandbox", &config, &input).await;
         assert_eq!(response.status(), 404);
     }
 

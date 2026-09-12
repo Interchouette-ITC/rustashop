@@ -21,6 +21,7 @@ mod openapi;
 mod products;
 mod realtime;
 mod request_param;
+mod sandbox_autonomous;
 mod sandbox_jobs;
 mod sandbox_realtime;
 mod sandbox_ws;
@@ -63,9 +64,11 @@ pub use products::{
     get_product, list_products,
 };
 pub use realtime::{CartHub, CartRealtimeEvent};
+pub use sandbox_autonomous::{CommitSandboxJobResponse, commit_sandbox_job, discard_sandbox_job};
 pub use sandbox_jobs::{
     CreateSandboxJobRequest, SandboxAuditRecord, SandboxJobRegistry, SandboxJobResponse,
-    SandboxJobStatus, create_sandbox_job, get_sandbox_job, list_sandbox_audit,
+    SandboxJobStatus, SandboxProposalResponse, create_sandbox_job, get_sandbox_job,
+    list_sandbox_audit,
 };
 pub use sandbox_realtime::SandboxJobHub;
 

@@ -14,10 +14,12 @@ export { AdminOrdersApi } from './admin-orders.api';
 export { AdminProductsApi } from './admin-products.api';
 export { AdminSandboxApi } from './admin-sandbox.api';
 export type {
+  CommitSandboxJobDto,
   SandboxAdjustmentDto,
   SandboxAuditDto,
   SandboxJobDto,
   SandboxJobLineDto,
+  SandboxProposalDto,
 } from './admin-sandbox.api';
 export {
   ORDER_STATUSES,

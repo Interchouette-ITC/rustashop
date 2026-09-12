@@ -16,13 +16,30 @@ export interface SandboxAdjustmentDto {
   currency: string;
 }
 
+export interface SandboxProposalDto {
+  event_type: string;
+  cart_id: string;
+  product_id: string;
+  quantity: number;
+  operator: string;
+}
+
 export interface SandboxJobDto {
   id: string;
   job_type: string;
   status: string;
   source_hash: string;
   adjustments?: SandboxAdjustmentDto[];
+  proposal?: SandboxProposalDto;
   error?: string;
+}
+
+export interface CommitSandboxJobDto {
+  job: SandboxJobDto;
+  cart: {
+    id: string;
+    lines: { id: string; variant_id: string; quantity: number }[];
+  };
 }
 
 export interface SandboxAuditDto {
@@ -44,6 +61,48 @@ export class AdminSandboxApi {
       this.api.http.post<SandboxJobDto>(
         this.api.adminUrl('sandbox/jobs'),
         { job_type: 'quote', currency, lines },
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+    );
+  }
+
+  createCartQuantityJob(
+    token: string,
+    cartId: string,
+    variantId: string,
+    quantity: number,
+    operator: 'up' | 'down' | 'set',
+  ): Promise<SandboxJobDto> {
+    return firstValueFrom(
+      this.api.http.post<SandboxJobDto>(
+        this.api.adminUrl('sandbox/jobs'),
+        {
+          job_type: 'cart_quantity',
+          cart_id: cartId,
+          variant_id: variantId,
+          quantity,
+          operator,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+    );
+  }
+
+  commitJob(token: string, id: string): Promise<CommitSandboxJobDto> {
+    return firstValueFrom(
+      this.api.http.post<CommitSandboxJobDto>(
+        this.api.adminUrl(`sandbox/jobs/${id}/commit`),
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+    );
+  }
+
+  discardJob(token: string, id: string): Promise<SandboxJobDto> {
+    return firstValueFrom(
+      this.api.http.post<SandboxJobDto>(
+        this.api.adminUrl(`sandbox/jobs/${id}/discard`),
+        {},
         { headers: { Authorization: `Bearer ${token}` } },
       ),
     );

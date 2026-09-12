@@ -39,6 +39,8 @@ Wasm plugins and Wasmer jobs do not open sockets to browsers. They:
 2. Host emits realtime events if the domain state changed.
 3. Admin may subscribe to **sandbox job** events (stdout chunks, exit, artifacts) over the same gateway.
 
+Autonomous `cart_quantity` jobs emit `job.log`, `job.proposal`, then `job.finished` (`committed` / `discarded` / `error`). A successful host commit also publishes `cart.updated` on the cart hub.
+
 ## Build early / defer
 
 **Build early (alongside or just after cart HTTP):**

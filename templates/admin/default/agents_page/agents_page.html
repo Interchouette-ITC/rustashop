@@ -35,6 +35,52 @@
     </div>
 
     <div class="admin__panel mt-3">
+      <h2 class="admin__title">Autonomous job</h2>
+      <p class="admin__tagline">
+        Sandbox PHP guest proposes a cart quantity change; host commit applies it. Cart is unchanged until Commit.
+      </p>
+      <button
+        type="button"
+        class="btn btn-primary btn-sm"
+        (click)="runAutonomousDemo()"
+        [disabled]="busy()"
+      >
+        Start cart_quantity demo
+      </button>
+      @if (autoJob(); as job) {
+        <p class="admin__tagline mt-2">
+          Job <code>{{ job.id }}</code> - {{ job.status }}
+          @if (job.proposal; as proposal) {
+            - propose {{ proposal.operator }} {{ proposal.quantity }} on
+            <code>{{ proposal.cart_id }}</code>
+          }
+        </p>
+        <pre class="admin__tagline mt-2" style="white-space: pre-wrap">{{ autoLogText() }}</pre>
+        <div class="mt-2 d-flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm"
+            (click)="commitAutonomous()"
+            [disabled]="busy() || job.status !== 'awaiting_commit'"
+          >
+            Commit
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline-secondary btn-sm"
+            (click)="discardAutonomous()"
+            [disabled]="busy() || job.status !== 'awaiting_commit'"
+          >
+            Discard
+          </button>
+        </div>
+        @if (autoCartSummary(); as summary) {
+          <p class="admin__tagline mt-2">{{ summary }}</p>
+        }
+      }
+    </div>
+
+    <div class="admin__panel mt-3">
       <h2 class="admin__title">Tool catalog</h2>
       <button type="button" class="btn btn-outline-secondary btn-sm mb-2" (click)="reloadTools()" [disabled]="busy()">
         Refresh tools

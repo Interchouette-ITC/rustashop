@@ -1012,6 +1012,140 @@
           }
         ]
       }
+    },
+    "/v1/{admin_api_prefix}/sandbox/jobs/{id}/commit": {
+      "post": {
+        "tags": [
+          "crate::sandbox_autonomous"
+        ],
+        "summary": "`POST /v1/{admin_api_prefix}/sandbox/jobs/{id}/commit` `OpenAPI` stub.",
+        "operationId": "commit_sandbox_job",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitSandboxJobResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown job or cart line",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not awaiting commit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
+    "/v1/{admin_api_prefix}/sandbox/jobs/{id}/discard": {
+      "post": {
+        "tags": [
+          "crate::sandbox_autonomous"
+        ],
+        "summary": "`POST /v1/{admin_api_prefix}/sandbox/jobs/{id}/discard` `OpenAPI` stub.",
+        "operationId": "discard_sandbox_job",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Job id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Discarded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SandboxJobResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown job",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not awaiting commit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1359,6 +1493,24 @@
           }
         }
       },
+      "CommitSandboxJobResponse": {
+        "type": "object",
+        "description": "Commit response: updated job + cart snapshot after host apply.",
+        "required": [
+          "job",
+          "cart"
+        ],
+        "properties": {
+          "cart": {
+            "$ref": "#/components/schemas/CartResponse",
+            "description": "Cart after host-mediated mutation."
+          },
+          "job": {
+            "$ref": "#/components/schemas/SandboxJobResponse",
+            "description": "Job after commit."
+          }
+        }
+      },
       "CreateCartRequest": {
         "type": "object",
         "description": "Body for `POST /v1/carts`.",
@@ -1376,25 +1528,59 @@
         "type": "object",
         "description": "Request body for creating a sandbox job.",
         "required": [
-          "job_type",
-          "currency",
-          "lines"
+          "job_type"
         ],
         "properties": {
+          "cart_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Target cart id for `cart_quantity`."
+          },
           "currency": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Cart currency for the quote fixture."
           },
           "job_type": {
             "type": "string",
-            "description": "Job type (`quote` only)."
+            "description": "Job type (`quote` or `cart_quantity`)."
           },
           "lines": {
-            "type": "array",
+            "type": [
+              "array",
+              "null"
+            ],
             "items": {
               "$ref": "#/components/schemas/SandboxJobLine"
             },
-            "description": "Cart lines for the guest snapshot."
+            "description": "Cart lines for the quote guest snapshot."
+          },
+          "operator": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Operator for `cart_quantity` (`up` / `down` / `set`)."
+          },
+          "quantity": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Quantity operand for `cart_quantity`.",
+            "minimum": 0
+          },
+          "variant_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Variant id passed to the migration guest as legacy `id_product`."
           }
         }
       },
@@ -1843,7 +2029,7 @@
             "items": {
               "$ref": "#/components/schemas/SandboxAdjustmentResponse"
             },
-            "description": "Host-validated adjustments when succeeded."
+            "description": "Host-validated adjustments when quote succeeded."
           },
           "error": {
             "type": [
@@ -1859,6 +2045,17 @@
           "job_type": {
             "type": "string",
             "description": "Job type."
+          },
+          "proposal": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SandboxProposalResponse",
+                "description": "Validated proposal when awaiting commit / after commit."
+              }
+            ]
           },
           "source_hash": {
             "type": "string",
@@ -1876,8 +2073,46 @@
         "enum": [
           "running",
           "succeeded",
+          "awaiting_commit",
+          "committed",
+          "discarded",
           "failed"
         ]
+      },
+      "SandboxProposalResponse": {
+        "type": "object",
+        "description": "Validated domain-event proposal awaiting host commit.",
+        "required": [
+          "event_type",
+          "cart_id",
+          "product_id",
+          "quantity",
+          "operator"
+        ],
+        "properties": {
+          "cart_id": {
+            "type": "string",
+            "description": "Target cart id."
+          },
+          "event_type": {
+            "type": "string",
+            "description": "Domain event type."
+          },
+          "operator": {
+            "type": "string",
+            "description": "Operator (`up` / `down` / `set`)."
+          },
+          "product_id": {
+            "type": "string",
+            "description": "Variant id (legacy `id_product` in the guest ABI)."
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Quantity operand.",
+            "minimum": 0
+          }
+        }
       },
       "UpdateCartLineRequest": {
         "type": "object",
