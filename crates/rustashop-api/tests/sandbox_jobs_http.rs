@@ -13,6 +13,7 @@ use rustashop_api::{
     routes,
 };
 use rustashop_persist::CatalogRepository;
+use rustashop_sandbox::WASMER_TEST_GATE;
 use serde_json::json;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -20,6 +21,7 @@ const ADMIN_TOKEN: &str = "sandbox-admin-token";
 
 #[actix_web::test]
 async fn sandbox_jobs_require_bearer_and_run_quote() {
+    let _wasmer = WASMER_TEST_GATE.lock().await;
     let registry = SandboxJobRegistry::new();
     let hub = SandboxJobHub::new();
     let app = test::init_service(
@@ -225,6 +227,7 @@ async fn sandbox_job_ws_streams_finished_event() {
         return;
     };
     let (catalog, _db_lock) = exclusive_seeded_catalog().await;
+    let _wasmer = WASMER_TEST_GATE.lock().await;
     let hub = SandboxJobHub::new();
     let registry = SandboxJobRegistry::new();
     let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
@@ -306,6 +309,7 @@ async fn autonomous_cart_quantity_awaits_commit_then_mutates_cart() {
         return;
     };
     let (catalog, _db_lock) = exclusive_seeded_catalog().await;
+    let _wasmer = WASMER_TEST_GATE.lock().await;
     let registry = SandboxJobRegistry::new();
     let hub = SandboxJobHub::new();
     let cart_hub = CartHub::new();
@@ -398,6 +402,7 @@ async fn autonomous_cart_quantity_discard_leaves_cart() {
         return;
     };
     let (catalog, _db_lock) = exclusive_seeded_catalog().await;
+    let _wasmer = WASMER_TEST_GATE.lock().await;
     let registry = SandboxJobRegistry::new();
     let hub = SandboxJobHub::new();
     let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);

@@ -674,6 +674,7 @@ mod tests {
 
     #[tokio::test]
     async fn create_quote_job_spawns_runner() {
+        let _wasmer = rustashop_sandbox::WASMER_TEST_GATE.lock().await;
         let auth = AdminAuthConfig::from_token("tok");
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
@@ -684,8 +685,9 @@ mod tests {
         let job: SandboxJobResponse = serde_json::from_slice(response.body()).expect("job json");
         let mut events = hub.subscribe(&job.id);
         let mut finished = false;
-        for _ in 0..120 {
-            tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(120);
+        while tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             while let Ok(raw) = events.try_recv() {
                 let value: serde_json::Value = serde_json::from_str(&raw).expect("json");
                 if value["type"] == "job.finished" {
@@ -695,14 +697,21 @@ mod tests {
             if let Some(done) = registry.get(&job.id)
                 && done.status != SandboxJobStatus::Running
             {
-                assert_eq!(done.status, SandboxJobStatus::Succeeded);
-                break;
+                assert_eq!(
+                    done.status,
+                    SandboxJobStatus::Succeeded,
+                    "error={:?}",
+                    done.error
+                );
+                let _ = finished;
+                return;
             }
         }
         let done = registry.get(&job.id).expect("job");
-        assert_eq!(done.status, SandboxJobStatus::Succeeded);
-        // Hub events may race if the guest finishes before subscribe; registry is the source of truth.
-        let _ = finished;
+        panic!(
+            "quote job stuck in {:?}; error={:?}",
+            done.status, done.error
+        );
     }
 
     #[test]
@@ -714,6 +723,7 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn run_quote_job_maps_guest_and_validation_failures() {
+        let _wasmer = rustashop_sandbox::WASMER_TEST_GATE.lock().await;
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
         let cart = CartSnapshot {

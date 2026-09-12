@@ -10,7 +10,7 @@ mod types;
 mod validate;
 
 pub use host::{
-    JS_PACKAGE_URL, PHP_PACKAGE_URL, PYTHON_PACKAGE_URL, invoke_js_quote,
+    JS_PACKAGE_URL, PHP_PACKAGE_URL, PYTHON_PACKAGE_URL, WASMER_TEST_GATE, invoke_js_quote,
     invoke_php_migration_hook, invoke_php_quote, invoke_python_quote, invoke_rust_wasi_quote,
     php_migration_hook_source, quote_fixture_source, quote_js_fixture_source,
     quote_php_fixture_source, rust_quote_wasm_path,
