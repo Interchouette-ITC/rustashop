@@ -14,6 +14,22 @@ pub const DEFAULT_LOCAL_LLM_URL: &str = "http://127.0.0.1:11434";
 pub const OPENAI_API_KEY_ENV: &str = "OPENAI_API_KEY";
 /// Env: Anthropic API key (`ANTHROPIC_API_KEY`).
 pub const ANTHROPIC_API_KEY_ENV: &str = "ANTHROPIC_API_KEY";
+/// Env: Groq API key.
+pub const GROQ_API_KEY_ENV: &str = "GROQ_API_KEY";
+/// Env: `Mistral` API key.
+pub const MISTRAL_API_KEY_ENV: &str = "MISTRAL_API_KEY";
+/// Env: `DeepSeek` API key.
+pub const DEEPSEEK_API_KEY_ENV: &str = "DEEPSEEK_API_KEY";
+/// Env: `OpenRouter` API key.
+pub const OPENROUTER_API_KEY_ENV: &str = "OPENROUTER_API_KEY";
+/// Env: Together API key.
+pub const TOGETHER_API_KEY_ENV: &str = "TOGETHER_API_KEY";
+/// Env: Fireworks API key.
+pub const FIREWORKS_API_KEY_ENV: &str = "FIREWORKS_API_KEY";
+/// Env: xAI API key.
+pub const XAI_API_KEY_ENV: &str = "XAI_API_KEY";
+/// Env: Google Gemini API key (OpenAI-compatible endpoint).
+pub const GOOGLE_API_KEY_ENV: &str = "GOOGLE_API_KEY";
 /// Env: local LLM base URL.
 pub const LOCAL_LLM_URL_ENV: &str = "RUSTASHOP_LOCAL_LLM_URL";
 /// Env: default provider id for first-party routing.
@@ -66,7 +82,7 @@ pub struct AiProviderSpec {
     pub env_base_url: &'static str,
 }
 
-/// MVP catalog (four providers).
+/// Provider catalog (local + cloud + OpenAI-compatible set + custom).
 pub const PROVIDER_CATALOG: &[AiProviderSpec] = &[
     AiProviderSpec {
         id: "local",
@@ -93,6 +109,78 @@ pub const PROVIDER_CATALOG: &[AiProviderSpec] = &[
         kind: AiProviderKind::Anthropic,
         default_base_url: "https://api.anthropic.com",
         env_api_key: ANTHROPIC_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "groq",
+        display_name: "Groq",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://api.groq.com/openai/v1",
+        env_api_key: GROQ_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "mistral",
+        display_name: "Mistral",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://api.mistral.ai/v1",
+        env_api_key: MISTRAL_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "deepseek",
+        display_name: "DeepSeek",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://api.deepseek.com/v1",
+        env_api_key: DEEPSEEK_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "openrouter",
+        display_name: "OpenRouter",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://openrouter.ai/api/v1",
+        env_api_key: OPENROUTER_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "together",
+        display_name: "Together",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://api.together.xyz/v1",
+        env_api_key: TOGETHER_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "fireworks",
+        display_name: "Fireworks",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://api.fireworks.ai/inference/v1",
+        env_api_key: FIREWORKS_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "xai",
+        display_name: "xAI",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://api.x.ai/v1",
+        env_api_key: XAI_API_KEY_ENV,
+        env_base_url: "",
+    },
+    AiProviderSpec {
+        id: "google",
+        display_name: "Google Gemini",
+        group: "cloud",
+        kind: AiProviderKind::OpenaiCompatible,
+        default_base_url: "https://generativelanguage.googleapis.com/v1beta/openai/",
+        env_api_key: GOOGLE_API_KEY_ENV,
         env_base_url: "",
     },
     AiProviderSpec {
@@ -513,6 +601,14 @@ mod tests {
         unsafe {
             std::env::remove_var(OPENAI_API_KEY_ENV);
             std::env::remove_var(ANTHROPIC_API_KEY_ENV);
+            std::env::remove_var(GROQ_API_KEY_ENV);
+            std::env::remove_var(MISTRAL_API_KEY_ENV);
+            std::env::remove_var(DEEPSEEK_API_KEY_ENV);
+            std::env::remove_var(OPENROUTER_API_KEY_ENV);
+            std::env::remove_var(TOGETHER_API_KEY_ENV);
+            std::env::remove_var(FIREWORKS_API_KEY_ENV);
+            std::env::remove_var(XAI_API_KEY_ENV);
+            std::env::remove_var(GOOGLE_API_KEY_ENV);
             std::env::remove_var(LOCAL_LLM_URL_ENV);
             std::env::remove_var(DEFAULT_PROVIDER_ENV);
             std::env::remove_var(CUSTOM_LLM_URL_ENV);
@@ -521,10 +617,29 @@ mod tests {
     }
 
     #[test]
-    fn catalog_has_four_entries_without_secrets() {
+    fn catalog_lists_core_and_openai_compatible_without_secrets() {
         let catalog = providers_catalog();
-        assert_eq!(catalog.providers.len(), 4);
-        assert!(catalog.providers.iter().any(|p| p.id == "openai"));
+        assert_eq!(catalog.providers.len(), PROVIDER_CATALOG.len());
+        assert!(catalog.providers.len() > 4);
+        for id in [
+            "local",
+            "openai",
+            "anthropic",
+            "groq",
+            "mistral",
+            "deepseek",
+            "openrouter",
+            "together",
+            "fireworks",
+            "xai",
+            "google",
+            "custom",
+        ] {
+            assert!(
+                catalog.providers.iter().any(|p| p.id == id),
+                "missing catalog id {id}"
+            );
+        }
         assert_eq!(
             catalog
                 .providers
@@ -551,6 +666,15 @@ mod tests {
                 .expect("anthropic")
                 .kind,
             "anthropic"
+        );
+        assert_eq!(
+            catalog
+                .providers
+                .iter()
+                .find(|p| p.id == "groq")
+                .expect("groq")
+                .env_api_key,
+            GROQ_API_KEY_ENV
         );
         assert_eq!(
             catalog
@@ -596,6 +720,35 @@ mod tests {
         );
         list_ai_providers();
         test_ai_provider();
+        clear_provider_env();
+    }
+
+    #[test]
+    fn status_masks_groq_key() {
+        let _guard = lock_env();
+        clear_provider_env();
+        // SAFETY: ENV_LOCK held.
+        unsafe {
+            std::env::set_var(GROQ_API_KEY_ENV, "gsk-zzzz9999");
+        }
+        let status = providers_status();
+        let groq = status
+            .providers
+            .iter()
+            .find(|p| p.id == "groq")
+            .expect("groq row");
+        assert!(groq.available);
+        assert_eq!(groq.source, AiCredentialSource::Env);
+        assert_eq!(groq.hint.as_deref(), Some("…9999"));
+        assert_eq!(
+            groq.base_url.as_deref(),
+            Some("https://api.groq.com/openai/v1")
+        );
+        assert!(
+            !serde_json::to_string(groq)
+                .expect("json")
+                .contains("gsk-zzzz9999")
+        );
         clear_provider_env();
     }
 
