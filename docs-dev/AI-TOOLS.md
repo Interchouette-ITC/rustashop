@@ -60,7 +60,7 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 1. ~~Admin / shop AI UIs calling the same names.~~ Done (#187 / #189).
 2. ~~Provider API-key routing for first-party model calls (keys never in Wasmer guests).~~ Done (#191 / #192).
 3. ~~Autonomous jobs: sandbox + host commit.~~ Done (#207): `POST …/sandbox/jobs` with `job_type=cart_quantity`, then `…/commit` or `…/discard`; WS `job.proposal` / `job.finished`. Serenade messenger remains future (#49).
-4. Expand model provider catalog beyond the MVP four (when ordered).
+4. ~~Expand model provider catalog beyond the MVP four.~~ Done (#209): OpenAI-compatible cloud set + `custom`.
 
 ### Model provider env (host only)
 
@@ -68,8 +68,16 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 | --- | --- |
 | `OPENAI_API_KEY` | OpenAI |
 | `ANTHROPIC_API_KEY` | Anthropic |
+| `GROQ_API_KEY` | Groq |
+| `MISTRAL_API_KEY` | Mistral |
+| `DEEPSEEK_API_KEY` | DeepSeek |
+| `OPENROUTER_API_KEY` | OpenRouter |
+| `TOGETHER_API_KEY` | Together |
+| `FIREWORKS_API_KEY` | Fireworks |
+| `XAI_API_KEY` | xAI |
+| `GOOGLE_API_KEY` | Google Gemini (OpenAI-compatible endpoint) |
 | `RUSTASHOP_LOCAL_LLM_URL` | Local OpenAI-compatible base (default `http://127.0.0.1:11434`) |
-| `RUSTASHOP_AI_DEFAULT_PROVIDER` | Default id (`local` / `openai` / `anthropic` / `custom`) |
+| `RUSTASHOP_AI_DEFAULT_PROVIDER` | Default catalog id (`local`, `openai`, `anthropic`, `groq`, …, `custom`) |
 | `RUSTASHOP_CUSTOM_LLM_URL` | Custom OpenAI-compatible base |
 | `RUSTASHOP_CUSTOM_LLM_API_KEY` | Custom OpenAI-compatible key |
 

@@ -60,5 +60,6 @@ rustashop
 4. **Done (#47):** MCP HTTP surface on **Axum**, tools from the same catalog
 5. ~~Autonomous job runner (sandbox + host commit).~~ **Done** (#207): `cart_quantity` job → `awaiting_commit` + host commit/discard; WS `job.proposal` / `job.finished`
 6. ~~Model provider config~~ **Done** (#191 / #192): env status + masked catalog; never in Wasmer guests
+7. ~~Expand provider catalog~~ **Done** (#209): OpenAI-compatible cloud set beyond the MVP four
 
 Track under the AI epic on GitHub (`area:ai`).
