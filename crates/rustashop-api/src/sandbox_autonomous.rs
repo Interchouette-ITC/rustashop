@@ -579,6 +579,32 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn run_cart_quantity_job_guest_failure_finishes_failed() {
+        let _wasmer = rustashop_sandbox::WASMER_TEST_GATE.lock().await;
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+        let input = LegacyHookInput {
+            hook: CART_UPDATE_QUANTITY_HOOK.into(),
+            cart_id: "cart-1".into(),
+            id_product: "variant-1".into(),
+            quantity: 2,
+            operator: "set".into(),
+        };
+        run_cart_quantity_job(&registry, &hub, &job.id, &input, "this is not php{{{{").await;
+        let finished = registry.get(&job.id).expect("job");
+        assert_eq!(finished.status, SandboxJobStatus::Failed);
+        assert!(
+            finished
+                .error
+                .as_deref()
+                .is_some_and(|message| message.contains("guest failed")),
+            "error={:?}",
+            finished.error
+        );
+    }
+
     #[test]
     fn openapi_stubs_are_callable() {
         commit_sandbox_job();
