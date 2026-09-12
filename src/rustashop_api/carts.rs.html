@@ -81,7 +81,7 @@
 <a href=#81 id=81 data-nosnippet>81</a>}
 <a href=#82 id=82 data-nosnippet>82</a>
 <a href=#83 id=83 data-nosnippet>83</a><span class="kw">impl </span>CartResponse {
-<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">fn </span>try_from_cart(cart: Cart) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ApiError&gt; {
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>try_from_cart(cart: Cart) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ApiError&gt; {
 <a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span>items_total = cart
 <a href=#86 id=86 data-nosnippet>86</a>            .items_total()
 <a href=#87 id=87 data-nosnippet>87</a>            .map_err(|error| ApiError::from_domain(<span class="kw-2">&amp;</span>error))<span class="question-mark">?</span>;
