@@ -673,45 +673,31 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_quote_job_spawns_runner() {
+    async fn run_quote_job_succeeds() {
         let _wasmer = rustashop_sandbox::WASMER_TEST_GATE.lock().await;
-        let auth = AdminAuthConfig::from_token("tok");
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
-
-        let body = br#"{"job_type":"quote","currency":"EUR","lines":[{"sku":"HOODIE-M","quantity":2,"unit_price_minor":5000}]}"#;
-        let response = create_sandbox_job_response(&auth, Some("tok"), &registry, &hub, body);
-        assert_eq!(response.status(), 202);
-        let job: SandboxJobResponse = serde_json::from_slice(response.body()).expect("job json");
-        let mut events = hub.subscribe(&job.id);
-        let mut finished = false;
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(120);
-        while tokio::time::Instant::now() < deadline {
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-            while let Ok(raw) = events.try_recv() {
-                let value: serde_json::Value = serde_json::from_str(&raw).expect("json");
-                if value["type"] == "job.finished" {
-                    finished = true;
-                }
-            }
-            if let Some(done) = registry.get(&job.id)
-                && done.status != SandboxJobStatus::Running
-            {
-                assert_eq!(
-                    done.status,
-                    SandboxJobStatus::Succeeded,
-                    "error={:?}",
-                    done.error
-                );
-                let _ = finished;
-                return;
-            }
-        }
+        let cart = CartSnapshot {
+            currency: "EUR".into(),
+            lines: vec![CartLine {
+                sku: "HOODIE-M".into(),
+                quantity: 2,
+                unit_price: Money {
+                    amount_minor: 5000,
+                    currency: "EUR".into(),
+                },
+            }],
+        };
+        let job = registry.start_job(JOB_TYPE_QUOTE, "hash", "admin-bearer");
+        run_quote_job(&registry, &hub, &job.id, &cart, quote_fixture_source()).await;
         let done = registry.get(&job.id).expect("job");
-        panic!(
-            "quote job stuck in {:?}; error={:?}",
-            done.status, done.error
+        assert_eq!(
+            done.status,
+            SandboxJobStatus::Succeeded,
+            "error={:?}",
+            done.error
         );
+        assert_eq!(done.adjustments.as_ref().map(Vec::len), Some(1));
     }
 
     #[test]

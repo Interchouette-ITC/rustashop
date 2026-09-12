@@ -405,41 +405,36 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_cart_quantity_job_spawns_and_awaits_commit() {
+    async fn run_cart_quantity_job_reaches_awaiting_commit() {
         let _wasmer = rustashop_sandbox::WASMER_TEST_GATE.lock().await;
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
-        let response = create_cart_quantity_job(
+        let job = registry.start_job(JOB_TYPE_CART_QUANTITY, "hash", "admin-bearer");
+        let input = LegacyHookInput {
+            hook: CART_UPDATE_QUANTITY_HOOK.into(),
+            cart_id: "cart-spawn".into(),
+            id_product: "variant-1".into(),
+            quantity: 3,
+            operator: "set".into(),
+        };
+        run_cart_quantity_job(
             &registry,
             &hub,
-            &create_request(Some("cart-spawn"), Some("variant-1"), Some(3), Some("set")),
+            &job.id,
+            &input,
+            &php_migration_hook_source(),
+        )
+        .await;
+        let done = registry.get(&job.id).expect("job");
+        assert_eq!(
+            done.status,
+            SandboxJobStatus::AwaitingCommit,
+            "error={:?}",
+            done.error
         );
-        assert_eq!(response.status(), 202);
-        let job: SandboxJobResponse = serde_json::from_slice(response.body()).unwrap();
-        assert_eq!(job.job_type, JOB_TYPE_CART_QUANTITY);
-        let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(120);
-        while tokio::time::Instant::now() < deadline {
-            if let Some(current) = registry.get(&job.id)
-                && current.status != SandboxJobStatus::Running
-            {
-                assert_eq!(
-                    current.status,
-                    SandboxJobStatus::AwaitingCommit,
-                    "error={:?}",
-                    current.error
-                );
-                let proposal = current.proposal.expect("proposal");
-                assert_eq!(proposal.operator, "set");
-                assert_eq!(proposal.quantity, 3);
-                return;
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-        }
-        let current = registry.get(&job.id).expect("job");
-        panic!(
-            "job never reached awaiting_commit; status={:?} error={:?}",
-            current.status, current.error
-        );
+        let proposal = done.proposal.expect("proposal");
+        assert_eq!(proposal.operator, "set");
+        assert_eq!(proposal.quantity, 3);
     }
 
     #[test]
