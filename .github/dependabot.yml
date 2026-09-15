@@ -5,58 +5,83 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    reviewers:
-      - gRoussac
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+    groups:
+      cargo:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: npm
     directory: /shops/angular
     schedule:
       interval: weekly
       day: monday
-    reviewers:
-      - gRoussac
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+    groups:
+      shops-angular:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: npm
     directory: /admin/angular
     schedule:
       interval: weekly
       day: monday
-    reviewers:
-      - gRoussac
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+    groups:
+      admin-angular:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: npm
     directory: /install
     schedule:
       interval: weekly
       day: monday
-    reviewers:
-      - gRoussac
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+    groups:
+      install:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
       day: monday
-    reviewers:
-      - gRoussac
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "*"
         update-types:
           - "version-update:semver-major"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
