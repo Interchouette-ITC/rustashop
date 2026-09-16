@@ -1,6 +1,12 @@
-//! Admin bearer token gate for `/v1/{admin_api_prefix}/*`.
+//! Admin bearer gate via Serenade security (`Authenticator` + voters).
+
+use std::sync::Arc;
 
 use serenade_http::Headers;
+use serenade_security::{
+    AccessDecisionManager, Authenticator, InMemoryUser, RoleVoter, SecurityError,
+    UsernamePasswordToken,
+};
 
 use crate::error::ApiError;
 
@@ -10,10 +16,29 @@ pub const ADMIN_TOKEN_ENV: &str = "RUSTASHOP_ADMIN_API_TOKEN";
 /// Alternate env name from the admin API issue (`ADMIN_API_TOKEN`).
 pub const ADMIN_TOKEN_ENV_ALT: &str = "ADMIN_API_TOKEN";
 
+/// Access subject for operator routes (`RoleVoter` → `ROLE_ADMIN`).
+pub const ADMIN_AREA_SUBJECT: &str = "admin.area";
+
 /// Expected admin bearer token (empty rejects all admin calls).
-#[derive(Clone, Debug, Default)]
+#[derive(Clone)]
 pub struct AdminAuthConfig {
-    token: String,
+    authenticator: Arc<dyn Authenticator>,
+    expected_empty: bool,
+    access: Arc<AccessDecisionManager>,
+}
+
+impl std::fmt::Debug for AdminAuthConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AdminAuthConfig")
+            .field("configured", &!self.expected_empty)
+            .finish_non_exhaustive()
+    }
+}
+
+impl Default for AdminAuthConfig {
+    fn default() -> Self {
+        Self::from_token("")
+    }
 }
 
 impl AdminAuthConfig {
@@ -23,39 +48,85 @@ impl AdminAuthConfig {
         let token = std::env::var(ADMIN_TOKEN_ENV)
             .or_else(|_| std::env::var(ADMIN_TOKEN_ENV_ALT))
             .unwrap_or_default();
-        Self { token }
+        Self::from_token(token)
     }
 
     /// Builds a config with an explicit token (tests).
     #[must_use]
     pub fn from_token(token: impl Into<String>) -> Self {
+        let expected = token.into();
+        let expected_empty = expected.is_empty();
+        let authenticator: Arc<dyn Authenticator> = Arc::new(AdminBearerAuthenticator { expected });
+        let mut access = AccessDecisionManager::new();
+        access.add_voter(RoleVoter::new("ROLE_ADMIN", ADMIN_AREA_SUBJECT));
         Self {
-            token: token.into(),
+            authenticator,
+            expected_empty,
+            access: Arc::new(access),
         }
     }
 
     /// Whether a non-empty token is configured.
     #[must_use]
     pub const fn is_configured(&self) -> bool {
-        !self.token.is_empty()
+        !self.expected_empty
     }
 
-    /// Requires a bearer secret matching the configured token.
+    /// Serenade authenticator for the async HTTP firewall.
+    #[must_use]
+    pub fn authenticator(&self) -> Arc<dyn Authenticator> {
+        Arc::clone(&self.authenticator)
+    }
+
+    /// Requires a bearer secret matching the configured token and `admin.area` grant.
     ///
     /// # Errors
     ///
-    /// Returns unauthorized when the token is unset, missing, or wrong.
+    /// Returns unauthorized when the token is unset, missing, wrong, or access is denied.
     pub fn authorize_bearer(&self, presented: Option<&str>) -> Result<(), ApiError> {
-        if self.token.is_empty() {
-            return Err(ApiError::Unauthorized);
-        }
-        let Some(presented) = presented else {
-            return Err(ApiError::Unauthorized);
-        };
-        if presented != self.token {
-            return Err(ApiError::Unauthorized);
-        }
+        let credentials = presented.map(|token| format!("Bearer {token}"));
+        let token = self
+            .authenticator
+            .authenticate(credentials.as_deref())
+            .map_err(|_| ApiError::Unauthorized)?;
+        self.access
+            .decide(&token, ADMIN_AREA_SUBJECT)
+            .map_err(|_| ApiError::Unauthorized)?;
         Ok(())
+    }
+}
+
+/// Serenade [`Authenticator`] for the shared admin API bearer secret.
+#[derive(Clone, Debug)]
+pub struct AdminBearerAuthenticator {
+    expected: String,
+}
+
+impl Authenticator for AdminBearerAuthenticator {
+    fn authenticate(
+        &self,
+        credentials: Option<&str>,
+    ) -> Result<UsernamePasswordToken, SecurityError> {
+        if self.expected.is_empty() {
+            return Err(SecurityError::Authentication {
+                message: "admin token unset".to_owned(),
+            });
+        }
+        let Some(raw) = credentials else {
+            return Err(SecurityError::Authentication {
+                message: "missing credentials".to_owned(),
+            });
+        };
+        let key = raw.strip_prefix("Bearer ").unwrap_or(raw).trim();
+        if key.is_empty() || key != self.expected {
+            return Err(SecurityError::Authentication {
+                message: "invalid admin bearer".to_owned(),
+            });
+        }
+        Ok(UsernamePasswordToken::authenticated(
+            InMemoryUser::new("admin", vec!["ROLE_ADMIN".to_owned()]),
+            key,
+        ))
     }
 }
 
@@ -73,6 +144,7 @@ pub fn bearer_from_headers(headers: &Headers) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serenade_security::TokenInterface;
 
     #[test]
     fn from_token_is_configured() {
@@ -92,11 +164,19 @@ mod tests {
         unsafe {
             std::env::set_var(ADMIN_TOKEN_ENV_ALT, "alt-secret");
         }
-        assert_eq!(AdminAuthConfig::from_env().token, "alt-secret");
+        assert!(
+            AdminAuthConfig::from_env()
+                .authorize_bearer(Some("alt-secret"))
+                .is_ok()
+        );
         unsafe {
             std::env::set_var(ADMIN_TOKEN_ENV, "preferred");
         }
-        assert_eq!(AdminAuthConfig::from_env().token, "preferred");
+        assert!(
+            AdminAuthConfig::from_env()
+                .authorize_bearer(Some("preferred"))
+                .is_ok()
+        );
         unsafe {
             std::env::remove_var(ADMIN_TOKEN_ENV);
             std::env::remove_var(ADMIN_TOKEN_ENV_ALT);
@@ -112,6 +192,16 @@ mod tests {
             config.authorize_bearer(presented),
             Err(ApiError::Unauthorized)
         ));
+    }
+
+    #[test]
+    fn authenticator_accepts_full_authorization_header() {
+        let auth = AdminBearerAuthenticator {
+            expected: "secret".to_owned(),
+        };
+        let token = auth.authenticate(Some("Bearer secret")).expect("ok");
+        assert!(token.is_authenticated());
+        assert_eq!(token.user().expect("user").user_identifier(), "admin");
     }
 
     #[test]

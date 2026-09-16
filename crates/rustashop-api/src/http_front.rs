@@ -16,6 +16,7 @@ use crate::admin_orders::{
 use crate::admin_prefix::DEFAULT_ADMIN_API_PREFIX;
 use crate::admin_products::{ListAdminProductsQuery, list_admin_products_response};
 use crate::ai_tools::{list_ai_tools_response, list_shop_ai_tools_response};
+use crate::async_firewall::AsyncFirewallMiddleware;
 use crate::carts::{
     add_cart_line_response, create_cart_response, delete_cart_line_response, get_cart_response,
     update_cart_line_response,
@@ -101,6 +102,7 @@ impl CommerceFrontConfig {
 #[must_use]
 pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
     let routes = front_matcher(&config.admin_prefix);
+    let authenticator = config.admin_auth.authenticator();
     let mut kernel = AsyncHttpKernel::from_async_fn(move |request: &mut Request| {
         let config = config.clone();
         let outcome = routes.apply(request);
@@ -132,7 +134,11 @@ pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
             }
         })
     });
+    // First pushed = outermost: request-id, then Serenade-style firewall (anonymous OK).
     kernel.push_middleware(AsyncRequestIdMiddleware);
+    kernel.push_middleware(
+        AsyncFirewallMiddleware::new("Authorization", authenticator).allow_anonymous(true),
+    );
     kernel
 }
 
