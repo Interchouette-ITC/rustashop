@@ -96,6 +96,18 @@ impl Modify for AdminSecurityAddon {
         crate::model_providers::AiProviderTestResponse,
         ErrorBody
     )),
+    tags(
+        (name = "health", description = "Process liveness"),
+        (name = "openapi", description = "Published OpenAPI document"),
+        (name = "products", description = "Storefront catalog"),
+        (name = "carts", description = "Cart CRUD"),
+        (name = "checkout", description = "Place order from cart"),
+        (name = "admin-orders", description = "Operator order list and status"),
+        (name = "admin-products", description = "Operator product list"),
+        (name = "sandbox", description = "Sandbox jobs and audit"),
+        (name = "ai-tools", description = "Commerce AI tool catalog"),
+        (name = "ai-providers", description = "Model provider status and probes")
+    ),
     modifiers(&AdminSecurityAddon)
 )]
 pub struct ApiDoc;
@@ -129,6 +141,7 @@ pub fn openapi_json_response() -> serenade_http::Response {
 #[utoipa::path(
     get,
     path = "/openapi.json",
+    tag = "openapi",
     responses((status = 200, description = "OpenAPI document"))
 )]
 #[allow(clippy::missing_const_for_fn)]
@@ -163,5 +176,25 @@ mod tests {
         assert_ne!(doc.info.version, "");
         let servers = doc.servers.expect("servers");
         assert_eq!(servers[0].url, "http://127.0.0.1:8080");
+    }
+
+    #[test]
+    fn openapi_uses_human_tags() {
+        let doc = ApiDoc::openapi();
+        let tags = doc.tags.expect("document tags");
+        let names: Vec<&str> = tags.iter().map(|tag| tag.name.as_str()).collect();
+        assert!(names.contains(&"products"));
+        assert!(names.contains(&"carts"));
+        assert!(names.iter().all(|name| !name.contains("::")));
+        let product_get = doc
+            .paths
+            .paths
+            .get("/v1/products")
+            .and_then(|item| item.get.as_ref())
+            .expect("GET /v1/products");
+        assert_eq!(
+            product_get.tags.as_deref(),
+            Some(["products".to_owned()].as_slice())
+        );
     }
 }

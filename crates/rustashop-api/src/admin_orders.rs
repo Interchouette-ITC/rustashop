@@ -3,6 +3,8 @@
 use rustashop_domain::OrderState;
 use rustashop_persist::CatalogRepository;
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports)]
+use serde_json::json;
 use serenade_contracts::PageRequest;
 use serenade_http::Response;
 use utoipa::{IntoParams, ToSchema};
@@ -60,8 +62,10 @@ pub struct OrderListResponse {
 
 /// Body for admin order status PATCH.
 #[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({"status": "shipped"}))]
 pub struct PatchOrderStatusRequest {
     /// Fulfillment status: `placed`, `paid`, `shipped`, or `cancelled`.
+    #[schema(example = "shipped")]
     pub status: String,
 }
 
@@ -128,6 +132,7 @@ pub async fn patch_admin_order_response(
 #[utoipa::path(
     get,
     path = "/v1/{admin_api_prefix}/orders",
+    tag = "admin-orders",
     params(ListOrdersQuery),
     security(("admin_bearer" = [])),
     responses(
@@ -142,6 +147,7 @@ pub fn list_admin_orders() {}
 #[utoipa::path(
     patch,
     path = "/v1/{admin_api_prefix}/orders/{id}",
+    tag = "admin-orders",
     params(("id" = String, Path, description = "Order id")),
     request_body = PatchOrderStatusRequest,
     security(("admin_bearer" = [])),

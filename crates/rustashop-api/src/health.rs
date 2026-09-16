@@ -1,6 +1,8 @@
 //! Liveness probe.
 
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports)]
+use serde_json::json;
 use utoipa::ToSchema;
 
 /// JSON body for `GET /healthz`.
@@ -37,7 +39,11 @@ pub fn health_json_body() -> Vec<u8> {
 #[utoipa::path(
     get,
     path = "/healthz",
-    responses((status = 200, description = "Process is up", body = HealthResponse))
+    tag = "health",
+    responses(
+        (status = 200, description = "Process is up", body = HealthResponse,
+            example = json!({"status": "ok", "kernel": "serenade"}))
+    )
 )]
 #[allow(clippy::missing_const_for_fn)]
 pub fn healthz() {}

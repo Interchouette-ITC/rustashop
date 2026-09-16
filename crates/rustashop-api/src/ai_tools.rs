@@ -80,6 +80,7 @@ pub fn list_ai_tools_response(auth: &AdminAuthConfig, bearer: Option<&str>) -> R
 #[utoipa::path(
     get,
     path = "/v1/ai/tools",
+    tag = "ai-tools",
     responses(
         (status = 200, description = "Shop-scoped commerce AI tool catalog", body = [AiToolResponse])
     )
@@ -91,6 +92,7 @@ pub fn list_shop_ai_tools() {}
 #[utoipa::path(
     get,
     path = "/v1/{admin_api_prefix}/ai/tools",
+    tag = "ai-tools",
     security(("admin_bearer" = [])),
     responses(
         (status = 200, description = "Commerce AI tool catalog", body = [AiToolResponse]),
