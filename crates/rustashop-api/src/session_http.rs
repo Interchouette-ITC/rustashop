@@ -396,4 +396,257 @@ mod tests {
         assert!(is_form_urlencoded(&headers));
         assert!(!is_form_urlencoded(&Headers::new()));
     }
+
+    struct FailCsrf;
+
+    impl CsrfTokenManager for FailCsrf {
+        fn get_token(
+            &self,
+            _token_id: &str,
+        ) -> Result<CsrfToken, serenade_security::SecurityError> {
+            Err(serenade_security::SecurityError::CsrfGeneration)
+        }
+
+        fn is_token_valid(&self, _token: &CsrfToken) -> bool {
+            false
+        }
+    }
+
+    #[test]
+    fn csrf_manager_from_env_builds() {
+        let _guard = crate::install_env::INSTALL_PROCESS_ENV_LOCK
+            .lock()
+            .expect("lock");
+        unsafe {
+            std::env::remove_var(CSRF_SECRET_ENV);
+            std::env::remove_var(ADMIN_TOKEN_ENV);
+        }
+        let mgr = csrf_manager_from_env();
+        assert!(mgr.get_token(SESSION_FORM_CSRF_ID).is_ok());
+        unsafe {
+            std::env::set_var(ADMIN_TOKEN_ENV, "admin-token-as-csrf-fallback!!!!!!");
+        }
+        let mgr = csrf_manager_from_env();
+        assert!(mgr.get_token(SESSION_FORM_CSRF_ID).is_ok());
+        unsafe {
+            std::env::set_var(CSRF_SECRET_ENV, "csrf-secret-from-env-32bytes!!!!");
+        }
+        let mgr = csrf_manager_from_env();
+        assert!(mgr.get_token(SESSION_FORM_CSRF_ID).is_ok());
+        unsafe {
+            std::env::remove_var(CSRF_SECRET_ENV);
+            std::env::remove_var(ADMIN_TOKEN_ENV);
+        }
+    }
+
+    #[test]
+    fn forms_return_500_when_csrf_generation_fails() {
+        let fail = FailCsrf;
+        assert!(!fail.is_token_valid(&CsrfToken::new("x", "y")));
+        assert_eq!(session_login_form_response(&fail).status(), 500);
+        assert_eq!(session_logout_form_response(&fail).status(), 500);
+        let dir = std::env::temp_dir().join(format!("rs-session-fail-csrf-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let index = crate::install_fs::install_dist_index(&dir);
+        std::fs::create_dir_all(index.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&index, "ok").expect("write");
+        assert_eq!(install_form_get_response(Some(&dir), &fail).status(), 500);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn try_browser_security_route_dispatches_and_unknown() {
+        let csrf = test_csrf();
+        let auth = AdminAuthConfig::from_token("secret");
+        let mut request = Request::new(Method::Get, "/session");
+        assert_eq!(
+            try_browser_security_route("session_status", &mut request, &auth, &csrf, None)
+                .expect("status")
+                .status(),
+            200
+        );
+        assert_eq!(
+            try_browser_security_route("session_login_get", &mut request, &auth, &csrf, None)
+                .expect("login get")
+                .status(),
+            200
+        );
+        assert_eq!(
+            try_browser_security_route("session_logout_get", &mut request, &auth, &csrf, None)
+                .expect("logout get")
+                .status(),
+            200
+        );
+        let token = csrf.get_token(SESSION_FORM_CSRF_ID).expect("csrf");
+        let body = format!("token=secret&{CSRF_FIELD_NAME}={}", token.value());
+        let mut login = request_with_session(Method::Post, "/session/login", body.into_bytes());
+        assert_eq!(
+            try_browser_security_route("session_login_post", &mut login, &auth, &csrf, None)
+                .expect("login post")
+                .status(),
+            200
+        );
+        let logout_token = csrf.get_token(SESSION_FORM_CSRF_ID).expect("csrf");
+        let logout_body = format!("{CSRF_FIELD_NAME}={}", logout_token.value());
+        let mut logout =
+            request_with_session(Method::Post, "/session/logout", logout_body.into_bytes());
+        assert_eq!(
+            try_browser_security_route("session_logout_post", &mut logout, &auth, &csrf, None)
+                .expect("logout post")
+                .status(),
+            200
+        );
+        assert!(try_browser_security_route("nope", &mut request, &auth, &csrf, None).is_none());
+    }
+
+    #[test]
+    fn session_login_unauthorized_and_missing_session() {
+        let csrf = test_csrf();
+        let auth = AdminAuthConfig::from_token("secret");
+        let token = csrf.get_token(SESSION_FORM_CSRF_ID).expect("csrf");
+        let body = format!("token=wrong&{CSRF_FIELD_NAME}={}", token.value());
+        let mut request = request_with_session(Method::Post, "/session/login", body.into_bytes());
+        assert_eq!(
+            session_login_post_response(&mut request, &auth, &csrf).status(),
+            401
+        );
+
+        let token = csrf.get_token(SESSION_FORM_CSRF_ID).expect("csrf");
+        let body = format!("token=secret&{CSRF_FIELD_NAME}={}", token.value());
+        let mut bare = Request::new(Method::Post, "/session/login").with_body(body.into_bytes());
+        assert_eq!(
+            session_login_post_response(&mut bare, &auth, &csrf).status(),
+            500
+        );
+    }
+
+    #[test]
+    fn session_logout_rejects_bad_csrf_and_missing_session() {
+        let csrf = test_csrf();
+        let mut request =
+            request_with_session(Method::Post, "/session/logout", b"_token=bad".to_vec());
+        assert_eq!(
+            session_logout_post_response(&mut request, &csrf).status(),
+            403
+        );
+
+        let token = csrf.get_token(SESSION_FORM_CSRF_ID).expect("csrf");
+        let body = format!("{CSRF_FIELD_NAME}={}", token.value());
+        let mut bare = Request::new(Method::Post, "/session/logout").with_body(body.into_bytes());
+        assert_eq!(session_logout_post_response(&mut bare, &csrf).status(), 500);
+    }
+
+    #[test]
+    fn install_form_get_and_post_with_artefacts() {
+        let csrf = test_csrf();
+        let dir = std::env::temp_dir().join(format!(
+            "rs-session-install-ok-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("time")
+                .as_nanos()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        let index = crate::install_fs::install_dist_index(&dir);
+        std::fs::create_dir_all(index.parent().expect("parent")).expect("mkdir");
+        std::fs::write(&index, "<!doctype html>").expect("write");
+
+        let get = install_form_get_response(Some(&dir), &csrf);
+        assert_eq!(get.status(), 200);
+        assert!(String::from_utf8_lossy(get.body()).contains("/install/form"));
+
+        let token = csrf.get_token(INSTALL_FORM_CSRF_ID).expect("csrf");
+        let body = format!("{CSRF_FIELD_NAME}={}", token.value());
+        let request =
+            Request::new(Method::Post, "/install/form").with_body(body.clone().into_bytes());
+        assert_eq!(
+            install_form_post_response(Some(&dir), &request, &csrf).status(),
+            200
+        );
+        assert_eq!(
+            install_form_post_response(None, &request, &csrf).status(),
+            404
+        );
+        let bad = Request::new(Method::Post, "/install/form").with_body(b"_token=nope".to_vec());
+        assert_eq!(
+            install_form_post_response(Some(&dir), &bad, &csrf).status(),
+            403
+        );
+        let empty = std::env::temp_dir().join(format!("rs-session-empty-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&empty);
+        std::fs::create_dir_all(&empty).expect("mkdir");
+        assert_eq!(
+            install_form_post_response(Some(&empty), &request, &csrf).status(),
+            404
+        );
+
+        assert_eq!(
+            try_browser_security_route(
+                "install_form_get",
+                &mut Request::new(Method::Get, "/install/form"),
+                &AdminAuthConfig::from_token(""),
+                &csrf,
+                Some(&dir),
+            )
+            .expect("dispatch")
+            .status(),
+            200
+        );
+        assert_eq!(
+            try_browser_security_route(
+                "install_form_post",
+                &mut Request::new(Method::Post, "/install/form").with_body(body.into_bytes()),
+                &AdminAuthConfig::from_token(""),
+                &csrf,
+                Some(&dir),
+            )
+            .expect("dispatch post")
+            .status(),
+            200
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&empty);
+    }
+
+    #[test]
+    fn parse_form_body_skips_empty_keys_and_decodes_plus() {
+        let map = parse_form_body(b"&=skip&name=a+b&bare&x=%ZZ&y=a%&z=%2f");
+        assert!(!map.contains_key(""));
+        assert_eq!(map.get("name").map(String::as_str), Some("a b"));
+        assert!(map.contains_key("bare"));
+        assert_eq!(map.get("x").map(String::as_str), Some("%ZZ"));
+        assert_eq!(map.get("y").map(String::as_str), Some("a%"));
+        assert_eq!(map.get("z").map(String::as_str), Some("/"));
+    }
+
+    #[tokio::test]
+    async fn commerce_kernel_serves_session_login_html() {
+        use crate::http_front::{CommerceFrontConfig, commerce_http_kernel};
+        use serenade_http::AsyncHttpKernel;
+
+        let kernel: AsyncHttpKernel = commerce_http_kernel(CommerceFrontConfig::test_default());
+        let response = kernel
+            .handle(Request::new(Method::Get, "/session/login"))
+            .await;
+        assert_eq!(response.status(), 200);
+        let body = String::from_utf8_lossy(response.body());
+        assert!(body.contains("text/html") || response.headers().get("content-type").is_some());
+        assert!(body.contains(CSRF_FIELD_NAME));
+        assert!(body.contains("/session/login"));
+
+        let status = kernel.handle(Request::new(Method::Get, "/session")).await;
+        assert_eq!(status.status(), 200);
+        assert!(String::from_utf8_lossy(status.body()).contains("firewall_authenticated="));
+
+        let logout = kernel
+            .handle(Request::new(Method::Get, "/session/logout"))
+            .await;
+        assert_eq!(logout.status(), 200);
+        assert!(String::from_utf8_lossy(logout.body()).contains("/session/logout"));
+
+        let health = kernel.handle(Request::new(Method::Get, "/healthz")).await;
+        assert_eq!(health.status(), 200);
+    }
 }
