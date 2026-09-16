@@ -25,6 +25,8 @@ path = "src/bin/install.rs"
 default = ["persist-sqlx", "openapi-ui"]
 ## Mount Swagger UI / Redoc / RapiDoc / Scalar via `serenade-openapi` Actix helpers.
 openapi-ui = ["serenade-openapi/actix"]
+## OpenTelemetry bridge via `serenade-observability` (OTLP/HTTP when endpoint set).
+otel = ["serenade-observability/otel"]
 persist-sqlx = [
     "rustashop-persist/persist-sqlx",
     "dep:rustashop-persist-sqlx",
@@ -53,12 +55,13 @@ serde_json = { workspace = true }
 serenade-contracts = { workspace = true }
 serenade-http = { workspace = true }
 serenade-http-actix = { workspace = true }
+serenade-kernel = { workspace = true }
+serenade-observability = { workspace = true }
 serenade-openapi = { workspace = true }
 sqlx = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 utoipa = { workspace = true }
 
 [dev-dependencies]

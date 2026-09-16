@@ -10,8 +10,9 @@ fuzz/target/
 fuzz/corpus/
 fuzz/artifacts/
 fuzz/coverage/
-# Wasmer package / compiled-module cache (rustashop-sandbox)
-/.wasmer/
+# Local Serenade observability file sink
+/var/log/
+
 install/node_modules/
 install/dist/
 install/coverage/

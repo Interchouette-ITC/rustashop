@@ -26,7 +26,7 @@ Shop markup/SCSS: `templates/shop/default/`. Hosts: `shops/angular`, `shops/lept
 Admin markup/SCSS: `templates/admin/default/`. Host: `admin/angular`.
 Kinds (`shop` | `admin`) must not be mixed; see [`../templates/README.md`](../templates/README.md).
 
-Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, `config/packages`). Commerce HTTP binds through Serenade `listen` / `AsyncHttpKernel` (Actix adapter).
+Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, `config/packages`). Commerce HTTP binds through Serenade `listen` / `AsyncHttpKernel` (Actix adapter). Ops probes and request ids: [`../docs-dev/HTTP_OPS.md`](../docs-dev/HTTP_OPS.md).
 
 ## Crates (today)
 

@@ -14,6 +14,7 @@ const RESERVED: &[&str] = &[
     "carts",
     "checkout",
     "healthz",
+    "readyz",
     "openapi.json",
     "swagger-ui",
     "install",
