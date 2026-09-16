@@ -27,6 +27,8 @@ default = ["persist-sqlx", "openapi-ui"]
 openapi-ui = ["serenade-openapi/actix"]
 ## OpenTelemetry bridge via `serenade-observability` (OTLP/HTTP when endpoint set).
 otel = ["serenade-observability/otel"]
+## Durable sandbox job queue via Redis (`RUSTASHOP_MESSENGER_REDIS_URL`).
+messenger-redis = ["serenade-messenger/redis"]
 persist-sqlx = [
     "rustashop-persist/persist-sqlx",
     "dep:rustashop-persist-sqlx",
@@ -60,6 +62,7 @@ serenade-observability = { workspace = true }
 serenade-openapi = { workspace = true }
 serenade-security = { workspace = true }
 serenade-session = { workspace = true }
+serenade-messenger = { workspace = true }
 sqlx = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

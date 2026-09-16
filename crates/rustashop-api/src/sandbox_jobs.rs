@@ -14,6 +14,7 @@ use utoipa::ToSchema;
 
 use crate::admin_auth::AdminAuthConfig;
 use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
+use crate::sandbox_messenger::{SandboxJobMessenger, SandboxJobWork, enqueue_sandbox_job};
 use crate::sandbox_realtime::{SandboxJobEvent, SandboxJobHub};
 
 /// Fixed job type for the Python quote fixture.
@@ -389,11 +390,12 @@ fn cart_from_request(body: &CreateSandboxJobRequest) -> Option<CartSnapshot> {
 }
 
 /// Creates a quote or autonomous cart-quantity job and returns the running job JSON.
-pub fn create_sandbox_job_response(
+pub async fn create_sandbox_job_response(
     auth: &AdminAuthConfig,
     bearer: Option<&str>,
     registry: &SandboxJobRegistry,
     hub: &SandboxJobHub,
+    messenger: &SandboxJobMessenger,
     body: &[u8],
 ) -> Response {
     if let Err(error) = auth.authorize_bearer(bearer) {
@@ -408,9 +410,10 @@ pub fn create_sandbox_job_response(
         }
     };
     match request.job_type.as_str() {
-        JOB_TYPE_QUOTE => create_quote_job(registry, hub, &request),
+        JOB_TYPE_QUOTE => create_quote_job(registry, hub, messenger, &request).await,
         JOB_TYPE_CART_QUANTITY => {
-            crate::sandbox_autonomous::create_cart_quantity_job(registry, hub, &request)
+            crate::sandbox_autonomous::create_cart_quantity_job(registry, hub, messenger, &request)
+                .await
         }
         _ => api_error_json_response(&ApiError::Unprocessable(
             "unsupported job_type (use quote or cart_quantity)".into(),
@@ -418,9 +421,10 @@ pub fn create_sandbox_job_response(
     }
 }
 
-fn create_quote_job(
+async fn create_quote_job(
     registry: &SandboxJobRegistry,
     hub: &SandboxJobHub,
+    messenger: &SandboxJobMessenger,
     request: &CreateSandboxJobRequest,
 ) -> Response {
     let Some(cart) = cart_from_request(request) else {
@@ -437,13 +441,24 @@ fn create_quote_job(
     let source = quote_fixture_source();
     let hash = source_hash(source);
     let job = registry.start_job(JOB_TYPE_QUOTE, &hash, "admin-bearer");
-    let job_id = job.id.clone();
-    let registry_runner = registry.clone();
-    let hub_runner = hub.clone();
-
-    tokio::spawn(async move {
-        run_quote_job(&registry_runner, &hub_runner, &job_id, &cart, source).await;
-    });
+    let work = SandboxJobWork::Quote {
+        job_id: job.id.clone(),
+        cart,
+        source: source.to_owned(),
+    };
+    if let Err(message) = enqueue_sandbox_job(messenger, work).await {
+        hub.publish(&SandboxJobEvent::log(
+            &job.id,
+            format!("enqueue failed: {message}"),
+        ));
+        registry.finish_job(
+            &job.id,
+            SandboxJobStatus::Failed,
+            None,
+            Some(format!("enqueue failed: {message}")),
+        );
+        return api_error_json_response(&ApiError::Internal);
+    }
 
     json_response(202, &job)
 }
@@ -522,7 +537,7 @@ pub fn get_sandbox_job() {}
 #[allow(clippy::missing_const_for_fn)]
 pub fn list_sandbox_audit() {}
 
-async fn run_quote_job(
+pub async fn run_quote_job(
     registry: &SandboxJobRegistry,
     hub: &SandboxJobHub,
     job_id: &str,
@@ -632,18 +647,30 @@ mod tests {
         assert_eq!(registry.list_audit(1)[0].status, "awaiting_commit");
     }
 
-    #[test]
-    fn create_get_list_response_auth_and_validation() {
+    #[tokio::test]
+    async fn create_get_list_response_auth_and_validation() {
         let auth = AdminAuthConfig::from_token("tok");
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
+        let messenger = SandboxJobMessenger::new();
 
         assert_eq!(
-            create_sandbox_job_response(&auth, None, &registry, &hub, b"{}").status(),
+            create_sandbox_job_response(&auth, None, &registry, &hub, &messenger, b"{}")
+                .await
+                .status(),
             401
         );
         assert_eq!(
-            create_sandbox_job_response(&auth, Some("tok"), &registry, &hub, b"not-json").status(),
+            create_sandbox_job_response(
+                &auth,
+                Some("tok"),
+                &registry,
+                &hub,
+                &messenger,
+                b"not-json"
+            )
+            .await
+            .status(),
             422
         );
         assert_eq!(
@@ -652,8 +679,10 @@ mod tests {
                 Some("tok"),
                 &registry,
                 &hub,
+                &messenger,
                 br#"{"job_type":"other","currency":"EUR","lines":[{"sku":"a","quantity":1,"unit_price_minor":1}]}"#
             )
+            .await
             .status(),
             422
         );
@@ -663,8 +692,10 @@ mod tests {
                 Some("tok"),
                 &registry,
                 &hub,
+                &messenger,
                 br#"{"job_type":"quote"}"#
             )
+            .await
             .status(),
             422
         );
@@ -674,8 +705,10 @@ mod tests {
                 Some("tok"),
                 &registry,
                 &hub,
+                &messenger,
                 br#"{"job_type":"quote","currency":"","lines":[]}"#
             )
+            .await
             .status(),
             422
         );

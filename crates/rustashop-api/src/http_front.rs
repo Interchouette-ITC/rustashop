@@ -88,6 +88,8 @@ pub struct CommerceFrontConfig {
     pub sandbox_hub: Option<crate::sandbox_realtime::SandboxJobHub>,
     /// Optional in-process sandbox job + audit registry.
     pub sandbox_registry: Option<crate::sandbox_jobs::SandboxJobRegistry>,
+    /// Optional Serenade messenger for sandbox job enqueue.
+    pub sandbox_messenger: Option<crate::sandbox_messenger::SandboxJobMessenger>,
     /// Shared readiness flag for `GET /readyz` (flip before HTTP drain).
     pub readiness: Readiness,
 }
@@ -104,6 +106,7 @@ impl CommerceFrontConfig {
             cart_hub: None,
             sandbox_hub: None,
             sandbox_registry: None,
+            sandbox_messenger: None,
             readiness: Readiness::new(),
         }
     }
@@ -288,13 +291,17 @@ async fn dispatch_sandbox_route(
     input: &DispatchInput<'_>,
 ) -> Response {
     match route_name {
-        CREATE_SANDBOX_JOB_ROUTE => create_sandbox_job_via_registry(
-            &config.admin_auth,
-            input.bearer,
-            config.sandbox_registry.as_ref(),
-            config.sandbox_hub.as_ref(),
-            input.body,
-        ),
+        CREATE_SANDBOX_JOB_ROUTE => {
+            create_sandbox_job_via_registry(
+                &config.admin_auth,
+                input.bearer,
+                config.sandbox_registry.as_ref(),
+                config.sandbox_hub.as_ref(),
+                config.sandbox_messenger.as_ref(),
+                input.body,
+            )
+            .await
+        }
         GET_SANDBOX_JOB_ROUTE => get_sandbox_job_via_registry(
             &config.admin_auth,
             input.bearer,
@@ -500,11 +507,12 @@ async fn patch_admin_order_via_catalog(
     patch_admin_order_response(auth, bearer, catalog, order_id, body).await
 }
 
-fn create_sandbox_job_via_registry(
+async fn create_sandbox_job_via_registry(
     auth: &AdminAuthConfig,
     bearer: Option<&str>,
     registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
     hub: Option<&crate::sandbox_realtime::SandboxJobHub>,
+    messenger: Option<&crate::sandbox_messenger::SandboxJobMessenger>,
     body: &[u8],
 ) -> Response {
     let Some(registry) = registry else {
@@ -513,7 +521,11 @@ fn create_sandbox_job_via_registry(
     let Some(hub) = hub else {
         return api_error_json_response(&ApiError::Internal);
     };
-    crate::sandbox_jobs::create_sandbox_job_response(auth, bearer, registry, hub, body)
+    let Some(messenger) = messenger else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    crate::sandbox_jobs::create_sandbox_job_response(auth, bearer, registry, hub, messenger, body)
+        .await
 }
 
 fn get_sandbox_job_via_registry(

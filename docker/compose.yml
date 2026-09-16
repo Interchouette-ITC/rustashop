@@ -31,6 +31,18 @@ services:
       postgres:
         condition: service_healthy
 
+  redis:
+    profiles: ["messenger"]
+    image: redis:7-alpine
+    container_name: rustashop-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build:
       context: ..
@@ -41,6 +53,9 @@ services:
       DATABASE_URL: postgres://rustashop:rustashop@postgres:5432/rustashop
       RUSTASHOP_BIND: 0.0.0.0:8080
       RUSTASHOP_ROOT: /app
+      # Durable sandbox jobs (API must be built with messenger-redis):
+      # RUSTASHOP_MESSENGER_REDIS_URL: redis://redis:6379/0
+      # RUSTASHOP_MESSENGER_REDIS_LIST: rustashop:sandbox:jobs
     ports:
       - "8080:8080"
     depends_on:

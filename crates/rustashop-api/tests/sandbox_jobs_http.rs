@@ -8,9 +8,9 @@ use actix_web::{App, test, web};
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
     AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
-    CommitSandboxJobResponse, DEFAULT_ADMIN_API_PREFIX, SandboxJobHub, SandboxJobRegistry,
-    SandboxJobResponse, SandboxJobStatus, bind_commerce_server, commerce_app, commerce_http_kernel,
-    routes,
+    CommitSandboxJobResponse, DEFAULT_ADMIN_API_PREFIX, SandboxJobHub, SandboxJobMessenger,
+    SandboxJobRegistry, SandboxJobResponse, SandboxJobStatus, bind_commerce_server, commerce_app,
+    commerce_http_kernel, routes, spawn_configured_worker,
 };
 use rustashop_persist::CatalogRepository;
 use rustashop_sandbox::WASMER_TEST_GATE;
@@ -24,12 +24,15 @@ async fn sandbox_jobs_require_bearer_and_run_quote() {
     let _wasmer = WASMER_TEST_GATE.lock().await;
     let registry = SandboxJobRegistry::new();
     let hub = SandboxJobHub::new();
+    let messenger = SandboxJobMessenger::new();
+    let _worker = spawn_configured_worker(&messenger, registry.clone(), hub.clone());
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(commerce_http_kernel(CommerceFrontConfig {
                 admin_auth: AdminAuthConfig::from_token(ADMIN_TOKEN),
                 sandbox_hub: Some(hub.clone()),
                 sandbox_registry: Some(registry.clone()),
+                sandbox_messenger: Some(messenger),
                 readiness: serenade_http::Readiness::new(),
                 ..CommerceFrontConfig::test_default()
             })))
@@ -233,11 +236,14 @@ async fn sandbox_job_ws_streams_finished_event() {
     let _wasmer = WASMER_TEST_GATE.lock().await;
     let hub = SandboxJobHub::new();
     let registry = SandboxJobRegistry::new();
+    let messenger = SandboxJobMessenger::new();
+    let _worker = spawn_configured_worker(&messenger, registry.clone(), hub.clone());
     let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
     let kernel = commerce_http_kernel(CommerceFrontConfig {
         admin_auth: auth.clone(),
         sandbox_hub: Some(hub.clone()),
         sandbox_registry: Some(registry),
+        sandbox_messenger: Some(messenger),
         readiness: serenade_http::Readiness::new(),
         ..CommerceFrontConfig::test_default()
     });
@@ -316,6 +322,8 @@ async fn autonomous_cart_quantity_awaits_commit_then_mutates_cart() {
     let _wasmer = WASMER_TEST_GATE.lock().await;
     let registry = SandboxJobRegistry::new();
     let hub = SandboxJobHub::new();
+    let messenger = SandboxJobMessenger::new();
+    let _worker = spawn_configured_worker(&messenger, registry.clone(), hub.clone());
     let cart_hub = CartHub::new();
     let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
     let app = test::init_service(
@@ -326,6 +334,7 @@ async fn autonomous_cart_quantity_awaits_commit_then_mutates_cart() {
                 cart_hub: Some(cart_hub),
                 sandbox_hub: Some(hub),
                 sandbox_registry: Some(registry),
+                sandbox_messenger: Some(messenger),
                 readiness: serenade_http::Readiness::new(),
                 ..CommerceFrontConfig::test_default()
             })))
@@ -410,6 +419,8 @@ async fn autonomous_cart_quantity_discard_leaves_cart() {
     let _wasmer = WASMER_TEST_GATE.lock().await;
     let registry = SandboxJobRegistry::new();
     let hub = SandboxJobHub::new();
+    let messenger = SandboxJobMessenger::new();
+    let _worker = spawn_configured_worker(&messenger, registry.clone(), hub.clone());
     let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
     let app = test::init_service(
         App::new()
@@ -418,6 +429,7 @@ async fn autonomous_cart_quantity_discard_leaves_cart() {
                 admin_auth: auth,
                 sandbox_hub: Some(hub),
                 sandbox_registry: Some(registry),
+                sandbox_messenger: Some(messenger),
                 readiness: serenade_http::Readiness::new(),
                 ..CommerceFrontConfig::test_default()
             })))

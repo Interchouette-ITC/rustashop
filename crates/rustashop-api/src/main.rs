@@ -3,8 +3,9 @@
 use rustashop_api::{
     ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, AdminApiPrefix, AdminAuthConfig,
     BIND_ENV, CartHub, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
-    INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobRegistry, bind_address, bind_commerce_server,
-    commerce_http_kernel, install_artefacts_present, shop_root,
+    INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobMessenger, SandboxJobRegistry, bind_address,
+    bind_commerce_server, commerce_http_kernel, install_artefacts_present, shop_root,
+    spawn_configured_worker,
 };
 use serenade_http::Readiness;
 use serenade_http_actix::await_bound;
@@ -143,6 +144,12 @@ async fn run() -> std::io::Result<()> {
     let hub = CartHub::new();
     let sandbox_hub = SandboxJobHub::new();
     let sandbox_registry = SandboxJobRegistry::new();
+    let sandbox_messenger = SandboxJobMessenger::new();
+    let _sandbox_worker = spawn_configured_worker(
+        &sandbox_messenger,
+        sandbox_registry.clone(),
+        sandbox_hub.clone(),
+    );
     let admin_auth = AdminAuthConfig::from_env();
     let admin_prefix = AdminApiPrefix::from_env();
     if admin_auth.is_configured() {
@@ -171,6 +178,7 @@ async fn run() -> std::io::Result<()> {
         cart_hub: Some(hub.clone()),
         sandbox_hub: Some(sandbox_hub.clone()),
         sandbox_registry: Some(sandbox_registry),
+        sandbox_messenger: Some(sandbox_messenger),
         readiness: readiness.clone(),
     });
     let bound = bind_commerce_server(
