@@ -1,6 +1,18 @@
 # Paths excluded from Codecov totals (bins, generated adapters, templates).
 # Use plain folder paths (Codecov treats entries as regex; avoid ** bombs).
 # Upload token stays in GitHub Actions secrets, not here.
+#
+# Two coverage jobs upload per code commit (`rust` + `javascript`). Wait for both
+# before PR comments / statuses so an early JS-only upload cannot green `codecov/patch`.
+codecov:
+  require_ci_to_pass: true
+  notify:
+    after_n_builds: 2
+    wait_for_ci: true
+
+comment:
+  after_n_builds: 2
+
 coverage:
   status:
     project:
@@ -8,11 +20,18 @@ coverage:
         target: 100%
         threshold: 0%
         informational: false
+        # Patch/project gate on Rust lines; do not emit status until the `rust` flag uploads.
+        flags:
+          - rust
+        flag_coverage_not_uploaded_behavior: exclude
     patch:
       default:
         target: 100%
         threshold: 0%
         informational: false
+        flags:
+          - rust
+        flag_coverage_not_uploaded_behavior: exclude
 
 ignore:
   - "crates/rustashop-api/src/bin"
