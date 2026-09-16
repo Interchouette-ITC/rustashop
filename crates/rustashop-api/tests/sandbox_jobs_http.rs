@@ -30,6 +30,7 @@ async fn sandbox_jobs_require_bearer_and_run_quote() {
                 admin_auth: AdminAuthConfig::from_token(ADMIN_TOKEN),
                 sandbox_hub: Some(hub.clone()),
                 sandbox_registry: Some(registry.clone()),
+                readiness: serenade_http::Readiness::new(),
                 ..CommerceFrontConfig::test_default()
             })))
             .configure(routes),
@@ -171,6 +172,7 @@ async fn sandbox_create_without_hub_returns_internal() {
             .app_data(web::Data::new(commerce_http_kernel(CommerceFrontConfig {
                 admin_auth: AdminAuthConfig::from_token(ADMIN_TOKEN),
                 sandbox_registry: Some(SandboxJobRegistry::new()),
+                readiness: serenade_http::Readiness::new(),
                 ..CommerceFrontConfig::test_default()
             })))
             .configure(routes),
@@ -202,6 +204,7 @@ async fn sandbox_job_ws_rejects_bad_token() {
         admin_auth: auth.clone(),
         sandbox_hub: Some(hub.clone()),
         sandbox_registry: Some(SandboxJobRegistry::new()),
+        readiness: serenade_http::Readiness::new(),
         ..CommerceFrontConfig::test_default()
     });
     let app = test::init_service(commerce_app(CommerceListenData {
@@ -235,6 +238,7 @@ async fn sandbox_job_ws_streams_finished_event() {
         admin_auth: auth.clone(),
         sandbox_hub: Some(hub.clone()),
         sandbox_registry: Some(registry),
+        readiness: serenade_http::Readiness::new(),
         ..CommerceFrontConfig::test_default()
     });
     let bound = bind_commerce_server(
@@ -322,6 +326,7 @@ async fn autonomous_cart_quantity_awaits_commit_then_mutates_cart() {
                 cart_hub: Some(cart_hub),
                 sandbox_hub: Some(hub),
                 sandbox_registry: Some(registry),
+                readiness: serenade_http::Readiness::new(),
                 ..CommerceFrontConfig::test_default()
             })))
             .configure(routes),
@@ -413,6 +418,7 @@ async fn autonomous_cart_quantity_discard_leaves_cart() {
                 admin_auth: auth,
                 sandbox_hub: Some(hub),
                 sandbox_registry: Some(registry),
+                readiness: serenade_http::Readiness::new(),
                 ..CommerceFrontConfig::test_default()
             })))
             .configure(routes),

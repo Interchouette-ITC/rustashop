@@ -4,7 +4,8 @@ use std::path::PathBuf;
 
 use rustashop_persist::CatalogRepository;
 use serenade_http::{
-    AsyncHttpKernel, Method, Request, Response, Route, RouteCollection, UrlMatcher, box_future,
+    AsyncHttpKernel, AsyncRequestIdMiddleware, Method, Readiness, Request, Response, Route,
+    RouteCollection, UrlMatcher, box_future, readyz,
 };
 use serenade_http_actix::{conversion_error, from_actix, to_actix};
 
@@ -31,6 +32,7 @@ use crate::products::{ListProductsQuery, get_product_response, list_products_res
 use crate::realtime::CartHub;
 
 const HEALTHZ_ROUTE: &str = "healthz";
+const READYZ_ROUTE: &str = "readyz";
 const LIST_PRODUCTS_ROUTE: &str = "list_products";
 const GET_PRODUCT_ROUTE: &str = "get_product";
 const CREATE_CART_ROUTE: &str = "create_cart";
@@ -74,6 +76,8 @@ pub struct CommerceFrontConfig {
     pub sandbox_hub: Option<crate::sandbox_realtime::SandboxJobHub>,
     /// Optional in-process sandbox job + audit registry.
     pub sandbox_registry: Option<crate::sandbox_jobs::SandboxJobRegistry>,
+    /// Shared readiness flag for `GET /readyz` (flip before HTTP drain).
+    pub readiness: Readiness,
 }
 
 impl CommerceFrontConfig {
@@ -88,6 +92,7 @@ impl CommerceFrontConfig {
             cart_hub: None,
             sandbox_hub: None,
             sandbox_registry: None,
+            readiness: Readiness::new(),
         }
     }
 }
@@ -96,7 +101,7 @@ impl CommerceFrontConfig {
 #[must_use]
 pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
     let routes = front_matcher(&config.admin_prefix);
-    AsyncHttpKernel::from_async_fn(move |request: &mut Request| {
+    let mut kernel = AsyncHttpKernel::from_async_fn(move |request: &mut Request| {
         let config = config.clone();
         let outcome = routes.apply(request);
         let query = request
@@ -126,7 +131,9 @@ pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
                 Err(error) => Err(error),
             }
         })
-    })
+    });
+    kernel.push_middleware(AsyncRequestIdMiddleware);
+    kernel
 }
 
 struct DispatchInput<'req> {
@@ -145,6 +152,7 @@ async fn dispatch_route(
 ) -> Response {
     match route_name {
         HEALTHZ_ROUTE => healthz_response(),
+        READYZ_ROUTE => readyz(config.readiness.is_ready()),
         LIST_PRODUCTS_ROUTE => {
             list_products_via_catalog(config.catalog.as_ref(), input.query).await
         }
@@ -570,6 +578,9 @@ fn add_storefront_routes(collection: &mut RouteCollection) {
         .add(Route::with_method(HEALTHZ_ROUTE, "/healthz", Method::Get))
         .expect("healthz route");
     collection
+        .add(Route::with_method(READYZ_ROUTE, "/readyz", Method::Get))
+        .expect("readyz route");
+    collection
         .add(Route::with_method(
             LIST_PRODUCTS_ROUTE,
             "/v1/products",
@@ -803,6 +814,7 @@ pub fn configure_serenade_front(cfg: &mut actix_web::web::ServiceConfig, admin_p
     let ai_providers_catalog = format!("/v1/{admin_prefix}/ai/providers/catalog");
     let ai_providers_test = format!("/v1/{admin_prefix}/ai/providers/test");
     cfg.route("/healthz", actix_web::web::get().to(serenade_dispatch))
+        .route("/readyz", actix_web::web::get().to(serenade_dispatch))
         .route("/v1/products", actix_web::web::get().to(serenade_dispatch))
         .route(
             "/v1/products/{id}",
@@ -890,6 +902,59 @@ mod tests {
         let body: HealthResponse = actix_test::read_body_json(resp).await;
         assert_eq!(body.status, "ok");
         assert_eq!(body.kernel, rustashop::kernel_status());
+    }
+
+    #[actix_web::test]
+    async fn readyz_via_serenade_kernel() {
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(test_kernel())
+                .configure(|cfg| configure_serenade_front(cfg, DEFAULT_ADMIN_API_PREFIX)),
+        )
+        .await;
+        let req = actix_test::TestRequest::get().uri("/readyz").to_request();
+        let resp = actix_test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+        let body = actix_test::read_body(resp).await;
+        assert_eq!(body.as_ref(), b"ready");
+    }
+
+    #[actix_web::test]
+    async fn readyz_not_ready_returns_503() {
+        let config = CommerceFrontConfig::test_default();
+        config.readiness.mark_not_ready();
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(web::Data::new(commerce_http_kernel(config)))
+                .configure(|cfg| configure_serenade_front(cfg, DEFAULT_ADMIN_API_PREFIX)),
+        )
+        .await;
+        let req = actix_test::TestRequest::get().uri("/readyz").to_request();
+        let resp = actix_test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 503);
+        let body = actix_test::read_body(resp).await;
+        assert_eq!(body.as_ref(), b"not ready");
+    }
+
+    #[actix_web::test]
+    async fn request_id_echoed_on_healthz() {
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(test_kernel())
+                .configure(|cfg| configure_serenade_front(cfg, DEFAULT_ADMIN_API_PREFIX)),
+        )
+        .await;
+        let req = actix_test::TestRequest::get()
+            .uri("/healthz")
+            .insert_header(("x-request-id", "dogfood-w1"))
+            .to_request();
+        let resp = actix_test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+        let echoed = resp
+            .headers()
+            .get("x-request-id")
+            .and_then(|v| v.to_str().ok());
+        assert_eq!(echoed, Some("dogfood-w1"));
     }
 
     #[actix_web::test]
@@ -1438,6 +1503,7 @@ mod tests {
         let config = CommerceFrontConfig {
             admin_auth: auth,
             sandbox_registry: Some(registry),
+            readiness: serenade_http::Readiness::new(),
             sandbox_hub: Some(hub),
             ..CommerceFrontConfig::test_default()
         };

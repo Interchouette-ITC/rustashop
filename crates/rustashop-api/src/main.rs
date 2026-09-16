@@ -6,9 +6,11 @@ use rustashop_api::{
     INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobRegistry, bind_address, bind_commerce_server,
     commerce_http_kernel, install_artefacts_present, shop_root,
 };
+use serenade_http::Readiness;
 use serenade_http_actix::await_bound;
+use serenade_kernel::Environment;
+use serenade_observability::{LoggingConfig, LoggingGuard, init};
 use tracing::{error, info};
-use tracing_subscriber::{EnvFilter, fmt};
 
 /// Compile-time persistence backend label for startup logs.
 #[cfg(feature = "persist-sqlx")]
@@ -18,15 +20,44 @@ const PERSIST_BACKEND: &str = "sqlx";
 #[cfg(feature = "persist-seaorm")]
 const PERSIST_BACKEND: &str = "seaorm";
 
-fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,sqlx::query=warn,actix_server=warn"));
-    fmt()
-        .with_env_filter(filter)
-        .with_target(false)
-        .with_ansi(true)
-        .with_writer(std::io::stdout)
-        .init();
+/// Installs Serenade process logging (`var/log` + stderr). Keep the returned
+/// value alive until process exit so file / `OTel` sinks flush.
+fn init_logging() -> Result<LoggingHandles, serenade_observability::ObservabilityError> {
+    let env_name = std::env::var("RUSTASHOP_ENV").unwrap_or_else(|_| "dev".to_owned());
+    let environment = Environment::from_name(&env_name).unwrap_or(Environment::Dev);
+    let mut config = LoggingConfig::for_environment(&environment, "var/log");
+    if config.filter_directives.is_none()
+        && std::env::var_os("SERENADE_LOG").is_none()
+        && std::env::var_os("RUST_LOG").is_none()
+    {
+        config.filter_directives = Some("info,sqlx::query=warn,actix_server=warn".to_owned());
+    }
+    #[cfg(feature = "otel")]
+    {
+        use serenade_observability::{OtelConfig, init_with_otel};
+        let mut otel = OtelConfig::new("rustashop-api");
+        if let Ok(endpoint) = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT") {
+            otel = otel.with_endpoint(endpoint);
+        }
+        let (logging, otel_guard) = init_with_otel(&config, &otel)?;
+        return Ok(LoggingHandles {
+            _logging: logging,
+            _otel: Some(otel_guard),
+        });
+    }
+    #[cfg(not(feature = "otel"))]
+    {
+        Ok(LoggingHandles {
+            _logging: init(&config)?,
+        })
+    }
+}
+
+/// Holds logging (and optional `OTel`) guards for the process lifetime.
+struct LoggingHandles {
+    _logging: LoggingGuard,
+    #[cfg(feature = "otel")]
+    _otel: Option<serenade_observability::OtelGuard>,
 }
 
 /// Redacts the password in a Postgres URL for safe logging.
@@ -82,7 +113,8 @@ async fn run() -> std::io::Result<()> {
         rustashop::kernel_status()
     );
 
-    info!("health: http://{bind}/healthz");
+    info!("health: http://{bind}/healthz (JSON liveness)");
+    info!("ready: http://{bind}/readyz (LB readiness)");
     info!("openapi: http://{bind}/openapi.json");
     #[cfg(feature = "openapi-ui")]
     {
@@ -130,6 +162,7 @@ async fn run() -> std::io::Result<()> {
         info!("admin: custom API prefix active ({ADMIN_API_PREFIX_ENV})");
     }
 
+    let readiness = Readiness::new();
     let http_kernel = commerce_http_kernel(CommerceFrontConfig {
         catalog: Some(catalog.clone()),
         admin_auth: admin_auth.clone(),
@@ -138,6 +171,7 @@ async fn run() -> std::io::Result<()> {
         cart_hub: Some(hub.clone()),
         sandbox_hub: Some(sandbox_hub.clone()),
         sandbox_registry: Some(sandbox_registry),
+        readiness: readiness.clone(),
     });
     let bound = bind_commerce_server(
         &bind,
@@ -151,6 +185,7 @@ async fn run() -> std::io::Result<()> {
     .map_err(|error| bind_error(&bind, &error))?;
     info!("listening on http://{bind} (Serenade listen + cart/sandbox WS)");
     let result = await_bound(bound.server).await;
+    readiness.mark_not_ready();
     if let Err(error) = kernel.shutdown() {
         tracing::warn!("serenade kernel shutdown: {error}");
     }
@@ -159,7 +194,13 @@ async fn run() -> std::io::Result<()> {
 
 #[tokio::main]
 async fn main() {
-    init_tracing();
+    let _logging = match init_logging() {
+        Ok(handles) => handles,
+        Err(error) => {
+            eprintln!("logging init failed: {error}");
+            std::process::exit(1);
+        }
+    };
     if let Err(error) = run().await {
         error!("{error}");
         std::process::exit(1);

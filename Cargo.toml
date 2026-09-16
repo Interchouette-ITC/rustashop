@@ -42,6 +42,7 @@ serenade-di = { git = "https://github.com/Interchouette-ITC/Serenade.git", branc
 serenade-http = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-http-actix = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-openapi = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-observability = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-component-host = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-sandbox = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 actix-web = "4"
