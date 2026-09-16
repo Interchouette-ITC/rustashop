@@ -51,7 +51,7 @@ Serenade boots in the `rustashop` crate (`FrameworkBundle` + `RustashopBundle`, 
 | Commerce API | **Serenade HttpKernel** (Actix listen adapter) + cart WebSocket | Catalog, cart, checkout, orders, admin REST; `GET /v1/carts/{id}/ws` push |
 | MCP / tools | **Axum** | Streamable MCP and narrow agent endpoints |
 
-Both share domain and persist. OpenAPI is generated with **utoipa** (`/openapi.json`). Regenerated file: `openapi/openapi.json` via `make openapi`.
+Both share domain and persist. OpenAPI is generated with **utoipa** (`/openapi.json`). Explorers mount via Serenade `serenade-openapi`. Regenerated file: `openapi/openapi.json` via `make openapi`. See [`API.md`](API.md).
 
 ## Request path (commerce)
 
