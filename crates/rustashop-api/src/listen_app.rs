@@ -32,7 +32,7 @@ pub struct CommerceListenData {
     pub admin_prefix: String,
 }
 
-/// Builds the production Actix app: WS routes + Serenade kernel catch-all.
+/// Builds the production Actix app: optional `OpenAPI` explorers, WS routes, kernel catch-all.
 #[must_use]
 pub fn commerce_app(
     data: CommerceListenData,
@@ -46,13 +46,15 @@ pub fn commerce_app(
     >,
 > {
     let sandbox_ws_path = format!("/v1/{}/sandbox/jobs/{{id}}/ws", data.admin_prefix);
-    App::new()
+    let app = App::new()
         .app_data(data.kernel)
         .app_data(data.cart_hub)
         .app_data(data.catalog)
         .app_data(data.sandbox_hub)
-        .app_data(data.admin_auth)
-        .route("/v1/carts/{id}/ws", web::get().to(cart_ws))
+        .app_data(data.admin_auth);
+    #[cfg(feature = "openapi-ui")]
+    let app = app.configure(|cfg| crate::openapi::configure_openapi_ui(cfg, None));
+    app.route("/v1/carts/{id}/ws", web::get().to(cart_ws))
         .route(&sandbox_ws_path, web::get().to(sandbox_job_ws))
         .default_service(web::to(kernel_service))
 }
