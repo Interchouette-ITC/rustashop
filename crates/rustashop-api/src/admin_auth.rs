@@ -184,13 +184,8 @@ mod tests {
         impl Authenticator for UserOnlyAuth {
             fn authenticate(
                 &self,
-                credentials: Option<&str>,
+                _credentials: Option<&str>,
             ) -> Result<UsernamePasswordToken, SecurityError> {
-                if credentials.is_none() {
-                    return Err(SecurityError::Authentication {
-                        message: "missing".to_owned(),
-                    });
-                }
                 Ok(UsernamePasswordToken::authenticated(
                     InMemoryUser::new("user", vec!["ROLE_USER".to_owned()]),
                     "x",
