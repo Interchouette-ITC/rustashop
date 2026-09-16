@@ -58,6 +58,7 @@ serenade-http-actix = { workspace = true }
 serenade-kernel = { workspace = true }
 serenade-observability = { workspace = true }
 serenade-openapi = { workspace = true }
+serenade-security = { workspace = true }
 sqlx = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }

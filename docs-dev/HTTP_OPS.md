@@ -13,6 +13,10 @@ Probes and request correlation on `rustashop-api` listen.
 
 `AsyncRequestIdMiddleware` on the Serenade `AsyncHttpKernel` propagates or generates `x-request-id` and stores it on the request attributes. Dispatch logs may include `request_id` on the `serenade::request` target.
 
+## Admin security
+
+Commerce kernel runs an async firewall (Serenade `Authenticator` + `_security_token` attribute) with anonymous allowed for public routes. Admin routes still require `Authorization: Bearer <token>` matching `RUSTASHOP_ADMIN_API_TOKEN` / `ADMIN_API_TOKEN`, checked via `AccessDecisionManager` / `RoleVoter` on subject `admin.area`. The Angular admin SPA keeps bearer auth.
+
 ## Logging
 
 Process logging goes through `serenade-observability` (`LoggingConfig` + `init`). Default sinks: stderr and rolling files under `var/log/` (stem from `RUSTASHOP_ENV`, default `dev`). Filter: `SERENADE_LOG` or `RUST_LOG`.

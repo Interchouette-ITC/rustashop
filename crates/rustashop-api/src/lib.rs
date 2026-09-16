@@ -5,6 +5,7 @@ mod admin_orders;
 mod admin_prefix;
 mod admin_products;
 mod ai_tools;
+mod async_firewall;
 mod cart_ws;
 mod cart_ws_session;
 mod carts;
