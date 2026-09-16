@@ -84,6 +84,13 @@ async fn run() -> std::io::Result<()> {
 
     info!("health: http://{bind}/healthz");
     info!("openapi: http://{bind}/openapi.json");
+    #[cfg(feature = "openapi-ui")]
+    {
+        info!("openapi UI: http://{bind}/swagger-ui/");
+        info!("openapi UI: http://{bind}/redoc");
+        info!("openapi UI: http://{bind}/rapidoc");
+        info!("openapi UI: http://{bind}/scalar");
+    }
     if install_artefacts_present(&root) {
         info!(
             "install API: /install/api/* (artefacts under {}/{INSTALL_DIR_NAME}/dist; rename to {INSTALL_OFF_DIR_NAME} after success)",

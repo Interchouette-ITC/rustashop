@@ -22,7 +22,9 @@ name = "rustashop-install"
 path = "src/bin/install.rs"
 
 [features]
-default = ["persist-sqlx"]
+default = ["persist-sqlx", "openapi-ui"]
+## Mount Swagger UI / Redoc / RapiDoc / Scalar via `serenade-openapi` Actix helpers.
+openapi-ui = ["serenade-openapi/actix"]
 persist-sqlx = [
     "rustashop-persist/persist-sqlx",
     "dep:rustashop-persist-sqlx",
@@ -51,13 +53,13 @@ serde_json = { workspace = true }
 serenade-contracts = { workspace = true }
 serenade-http = { workspace = true }
 serenade-http-actix = { workspace = true }
+serenade-openapi = { workspace = true }
 sqlx = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 utoipa = { workspace = true }
-utoipa-swagger-ui = { workspace = true }
 
 [dev-dependencies]
 actix-web = { workspace = true }

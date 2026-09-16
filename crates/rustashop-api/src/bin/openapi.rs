@@ -5,10 +5,8 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
-use utoipa::OpenApi;
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let json = serde_json::to_string_pretty(&rustashop_api::ApiDoc::openapi())?;
+    let json = serde_json::to_string_pretty(&rustashop_api::published_openapi(None))?;
     if let Some(path) = env::args().nth(1) {
         write_spec(Path::new(&path), json.as_bytes())?;
     } else {

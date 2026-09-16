@@ -58,7 +58,9 @@ pub use model_providers::{
     AiProviderTestResponse, AiProvidersCatalogResponse, AiProvidersStatusResponse,
     list_ai_providers, list_ai_providers_catalog, test_ai_provider,
 };
-pub use openapi::{ApiDoc, openapi_json, swagger_ui};
+#[cfg(feature = "openapi-ui")]
+pub use openapi::configure_openapi_ui;
+pub use openapi::{ApiDoc, openapi_json, published_openapi};
 pub use products::{
     ProductDetailResponse, ProductListResponse, ProductResponse, ProductVariantResponse,
     get_product, list_products,
@@ -89,12 +91,13 @@ pub fn routes(cfg: &mut web::ServiceConfig) {
     configure_app(cfg, &AdminApiPrefix::from_env());
 }
 
-/// Registers test-only Actix extras (`Swagger` UI, install static files).
+/// Registers Actix extras used by integration tests (`OpenAPI` explorers + install static).
 ///
-/// Production binds via Serenade `listen` only. JSON commerce routes use
-/// [`configure_serenade_front`] (or the kernel matcher under listen).
+/// Production listen mounts explorers inside [`commerce_app`] when feature `openapi-ui`
+/// is enabled. JSON commerce routes use [`configure_serenade_front`].
 pub fn configure_routes(cfg: &mut web::ServiceConfig) {
-    cfg.service(swagger_ui());
+    #[cfg(feature = "openapi-ui")]
+    configure_openapi_ui(cfg, None);
     install_routes::configure_install_from_env(cfg);
 }
 
@@ -189,8 +192,9 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "openapi-ui")]
     #[actix_web::test]
-    async fn swagger_ui_serves_html() {
+    async fn openapi_ui_explorers_serve_html() {
         let app = test::init_service(
             App::new()
                 .app_data(web::Data::new(commerce_http_kernel(
@@ -199,9 +203,47 @@ mod tests {
                 .configure(routes),
         )
         .await;
-        let req = test::TestRequest::get().uri("/swagger-ui/").to_request();
-        let resp = test::call_service(&app, req).await;
-        assert!(resp.status().is_success());
+        for uri in ["/swagger-ui/", "/redoc", "/rapidoc", "/scalar"] {
+            let req = test::TestRequest::get().uri(uri).to_request();
+            let resp = test::call_service(&app, req).await;
+            assert!(resp.status().is_success(), "{uri} status={}", resp.status());
+        }
+    }
+
+    #[cfg(all(feature = "openapi-ui", feature = "persist-sqlx"))]
+    #[actix_web::test]
+    async fn commerce_app_serves_openapi_ui_and_json() {
+        let Ok(database_url) = std::env::var("DATABASE_URL") else {
+            eprintln!("skip: DATABASE_URL is not set");
+            return;
+        };
+        let pool = sqlx::postgres::PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&database_url)
+            .await
+            .expect("connect");
+        let catalog = rustashop_persist::CatalogRepository::new(pool);
+        let kernel = commerce_http_kernel(CommerceFrontConfig::test_default());
+        let app = test::init_service(commerce_app(CommerceListenData {
+            kernel: web::Data::new(kernel),
+            cart_hub: web::Data::new(CartHub::new()),
+            catalog: web::Data::new(catalog),
+            sandbox_hub: web::Data::new(SandboxJobHub::new()),
+            admin_auth: web::Data::new(AdminAuthConfig::from_token("")),
+            admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
+        }))
+        .await;
+        for uri in [
+            "/swagger-ui/",
+            "/redoc",
+            "/rapidoc",
+            "/scalar",
+            "/openapi.json",
+        ] {
+            let req = test::TestRequest::get().uri(uri).to_request();
+            let resp = test::call_service(&app, req).await;
+            assert!(resp.status().is_success(), "{uri} status={}", resp.status());
+        }
     }
 
     #[actix_web::test]

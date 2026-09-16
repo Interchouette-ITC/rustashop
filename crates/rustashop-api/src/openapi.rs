@@ -1,8 +1,7 @@
-//! `OpenAPI` document and Swagger UI for the Actix API.
+//! `OpenAPI` document for the Actix commerce API.
 
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
-use utoipa_swagger_ui::SwaggerUi;
 
 use crate::admin_orders::{OrderListResponse, PatchOrderStatusRequest};
 use crate::carts::{
@@ -101,10 +100,29 @@ impl Modify for AdminSecurityAddon {
 )]
 pub struct ApiDoc;
 
+/// Builds the commerce `OpenAPI` document with title, version, and optional server.
+#[must_use]
+pub fn published_openapi(server_url: Option<&str>) -> utoipa::openapi::OpenApi {
+    let mut openapi = ApiDoc::openapi();
+    let description = openapi.info.description.clone();
+    let contact = openapi.info.contact.clone();
+    let license = openapi.info.license.clone();
+    serenade_openapi::finalize_openapi(
+        &mut openapi,
+        "rustashop-api",
+        env!("CARGO_PKG_VERSION"),
+        server_url,
+    );
+    openapi.info.description = description;
+    openapi.info.contact = contact;
+    openapi.info.license = license;
+    openapi
+}
+
 /// Serenade JSON body for `GET /openapi.json`.
 #[must_use]
 pub fn openapi_json_response() -> serenade_http::Response {
-    json_response(200, &ApiDoc::openapi())
+    json_response(200, &published_openapi(None))
 }
 
 /// `GET /openapi.json` `OpenAPI` path (served by the Serenade HTTP front controller).
@@ -116,10 +134,12 @@ pub fn openapi_json_response() -> serenade_http::Response {
 #[allow(clippy::missing_const_for_fn)]
 pub fn openapi_json() {}
 
-/// Swagger UI at `/swagger-ui/`, pointed at `/openapi.json`.
-#[must_use]
-pub fn swagger_ui() -> SwaggerUi {
-    SwaggerUi::new("/swagger-ui/{_:.*}").url("/openapi.json", ApiDoc::openapi())
+/// Registers explorer UIs (feature `openapi-ui`) on an Actix service config.
+#[cfg(feature = "openapi-ui")]
+pub fn configure_openapi_ui(cfg: &mut actix_web::web::ServiceConfig, server_url: Option<&str>) {
+    let openapi = published_openapi(server_url);
+    let paths = serenade_openapi::OpenApiUiPaths::new();
+    serenade_openapi::configure_actix_ui(cfg, openapi, &paths);
 }
 
 #[cfg(test)]
@@ -134,5 +154,14 @@ mod tests {
     #[test]
     fn openapi_json_response_is_ok() {
         assert_eq!(openapi_json_response().status(), 200);
+    }
+
+    #[test]
+    fn published_openapi_sets_info() {
+        let doc = published_openapi(Some("http://127.0.0.1:8080"));
+        assert_eq!(doc.info.title, "rustashop-api");
+        assert_ne!(doc.info.version, "");
+        let servers = doc.servers.expect("servers");
+        assert_eq!(servers[0].url, "http://127.0.0.1:8080");
     }
 }
