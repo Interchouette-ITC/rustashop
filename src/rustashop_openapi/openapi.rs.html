@@ -5,25 +5,23 @@
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>std::io::{<span class="self">self</span>, Write};
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>std::path::Path;
 <a href=#7 id=7 data-nosnippet>7</a>
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span>utoipa::OpenApi;
-<a href=#9 id=9 data-nosnippet>9</a>
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">fn </span>main() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
-<a href=#11 id=11 data-nosnippet>11</a>    <span class="kw">let </span>json = serde_json::to_string_pretty(<span class="kw-2">&amp;</span>rustashop_api::ApiDoc::openapi())<span class="question-mark">?</span>;
-<a href=#12 id=12 data-nosnippet>12</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = env::args().nth(<span class="number">1</span>) {
-<a href=#13 id=13 data-nosnippet>13</a>        write_spec(Path::new(<span class="kw-2">&amp;</span>path), json.as_bytes())<span class="question-mark">?</span>;
-<a href=#14 id=14 data-nosnippet>14</a>    } <span class="kw">else </span>{
-<a href=#15 id=15 data-nosnippet>15</a>        io::stdout().write_all(json.as_bytes())<span class="question-mark">?</span>;
-<a href=#16 id=16 data-nosnippet>16</a>        io::stdout().write_all(<span class="string">b"\n"</span>)<span class="question-mark">?</span>;
-<a href=#17 id=17 data-nosnippet>17</a>    }
-<a href=#18 id=18 data-nosnippet>18</a>    <span class="prelude-val">Ok</span>(())
-<a href=#19 id=19 data-nosnippet>19</a>}
-<a href=#20 id=20 data-nosnippet>20</a>
-<a href=#21 id=21 data-nosnippet>21</a><span class="kw">fn </span>write_spec(path: <span class="kw-2">&amp;</span>Path, bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;()&gt; {
-<a href=#22 id=22 data-nosnippet>22</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = path.parent()
-<a href=#23 id=23 data-nosnippet>23</a>        &amp;&amp; !parent.as_os_str().is_empty()
-<a href=#24 id=24 data-nosnippet>24</a>    {
-<a href=#25 id=25 data-nosnippet>25</a>        fs::create_dir_all(parent)<span class="question-mark">?</span>;
-<a href=#26 id=26 data-nosnippet>26</a>    }
-<a href=#27 id=27 data-nosnippet>27</a>    fs::write(path, bytes)
-<a href=#28 id=28 data-nosnippet>28</a>}
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">fn </span>main() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>std::error::Error&gt;&gt; {
+<a href=#9 id=9 data-nosnippet>9</a>    <span class="kw">let </span>json = serde_json::to_string_pretty(<span class="kw-2">&amp;</span>rustashop_api::published_openapi(<span class="prelude-val">None</span>))<span class="question-mark">?</span>;
+<a href=#10 id=10 data-nosnippet>10</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(path) = env::args().nth(<span class="number">1</span>) {
+<a href=#11 id=11 data-nosnippet>11</a>        write_spec(Path::new(<span class="kw-2">&amp;</span>path), json.as_bytes())<span class="question-mark">?</span>;
+<a href=#12 id=12 data-nosnippet>12</a>    } <span class="kw">else </span>{
+<a href=#13 id=13 data-nosnippet>13</a>        io::stdout().write_all(json.as_bytes())<span class="question-mark">?</span>;
+<a href=#14 id=14 data-nosnippet>14</a>        io::stdout().write_all(<span class="string">b"\n"</span>)<span class="question-mark">?</span>;
+<a href=#15 id=15 data-nosnippet>15</a>    }
+<a href=#16 id=16 data-nosnippet>16</a>    <span class="prelude-val">Ok</span>(())
+<a href=#17 id=17 data-nosnippet>17</a>}
+<a href=#18 id=18 data-nosnippet>18</a>
+<a href=#19 id=19 data-nosnippet>19</a><span class="kw">fn </span>write_spec(path: <span class="kw-2">&amp;</span>Path, bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;()&gt; {
+<a href=#20 id=20 data-nosnippet>20</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(parent) = path.parent()
+<a href=#21 id=21 data-nosnippet>21</a>        &amp;&amp; !parent.as_os_str().is_empty()
+<a href=#22 id=22 data-nosnippet>22</a>    {
+<a href=#23 id=23 data-nosnippet>23</a>        fs::create_dir_all(parent)<span class="question-mark">?</span>;
+<a href=#24 id=24 data-nosnippet>24</a>    }
+<a href=#25 id=25 data-nosnippet>25</a>    fs::write(path, bytes)
+<a href=#26 id=26 data-nosnippet>26</a>}
 </code></pre></div></section></main></body></html>
