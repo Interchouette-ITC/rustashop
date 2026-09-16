@@ -31,6 +31,10 @@ use crate::model_providers::{
 use crate::openapi::openapi_json_response;
 use crate::products::{ListProductsQuery, get_product_response, list_products_response};
 use crate::realtime::CartHub;
+use crate::session_http::{csrf_manager_from_env, try_browser_security_route};
+use serenade_security::AsyncSessionTokenMiddleware;
+use serenade_session::{AsyncSessionMiddleware, CookieSession, MemorySessionStore, SessionStore};
+use std::sync::Arc;
 
 const HEALTHZ_ROUTE: &str = "healthz";
 const READYZ_ROUTE: &str = "readyz";
@@ -58,6 +62,13 @@ const LIST_AI_PROVIDERS_CATALOG_ROUTE: &str = "list_ai_providers_catalog";
 const TEST_AI_PROVIDER_ROUTE: &str = "test_ai_provider";
 const INSTALL_STATUS_ROUTE: &str = "install_status";
 const INSTALL_COMPLETE_ROUTE: &str = "install_complete";
+const INSTALL_FORM_GET_ROUTE: &str = "install_form_get";
+const INSTALL_FORM_POST_ROUTE: &str = "install_form_post";
+const SESSION_STATUS_ROUTE: &str = "session_status";
+const SESSION_LOGIN_GET_ROUTE: &str = "session_login_get";
+const SESSION_LOGIN_POST_ROUTE: &str = "session_login_post";
+const SESSION_LOGOUT_GET_ROUTE: &str = "session_logout_get";
+const SESSION_LOGOUT_POST_ROUTE: &str = "session_logout_post";
 const QUERY_STRING_ATTR: &str = "query_string";
 
 /// Inputs for [`commerce_http_kernel`].
@@ -103,9 +114,24 @@ impl CommerceFrontConfig {
 pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
     let routes = front_matcher(&config.admin_prefix);
     let authenticator = config.admin_auth.authenticator();
+    let csrf = csrf_manager_from_env();
+    let session_cookies =
+        CookieSession::new(Arc::new(MemorySessionStore::new()) as Arc<dyn SessionStore>);
     let mut kernel = AsyncHttpKernel::from_async_fn(move |request: &mut Request| {
         let config = config.clone();
+        let csrf = Arc::clone(&csrf);
         let outcome = routes.apply(request);
+        if let Ok(found) = &outcome
+            && let Some(response) = try_browser_security_route(
+                found.route_name(),
+                request,
+                &config.admin_auth,
+                csrf.as_ref(),
+                config.install_root.as_deref(),
+            )
+        {
+            return box_future(async move { Ok(response) });
+        }
         let query = request
             .attributes()
             .get::<String>(QUERY_STRING_ATTR)
@@ -134,8 +160,10 @@ pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
             }
         })
     });
-    // First pushed = outermost: request-id, then Serenade-style firewall (anonymous OK).
+    // First pushed = outermost.
     kernel.push_middleware(AsyncRequestIdMiddleware);
+    kernel.push_middleware(AsyncSessionMiddleware::new(session_cookies));
+    kernel.push_middleware(AsyncSessionTokenMiddleware::new());
     kernel.push_middleware(
         AsyncFirewallMiddleware::new("Authorization", authenticator).allow_anonymous(true),
     );
@@ -699,6 +727,55 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Post,
         ))
         .expect("install complete route");
+    collection
+        .add(Route::with_method(
+            INSTALL_FORM_GET_ROUTE,
+            "/install/form",
+            Method::Get,
+        ))
+        .expect("install form get route");
+    collection
+        .add(Route::with_method(
+            INSTALL_FORM_POST_ROUTE,
+            "/install/form",
+            Method::Post,
+        ))
+        .expect("install form post route");
+    collection
+        .add(Route::with_method(
+            SESSION_STATUS_ROUTE,
+            "/session",
+            Method::Get,
+        ))
+        .expect("session status route");
+    collection
+        .add(Route::with_method(
+            SESSION_LOGIN_GET_ROUTE,
+            "/session/login",
+            Method::Get,
+        ))
+        .expect("session login get route");
+    collection
+        .add(Route::with_method(
+            SESSION_LOGIN_POST_ROUTE,
+            "/session/login",
+            Method::Post,
+        ))
+        .expect("session login post route");
+    collection
+        .add(Route::with_method(
+            SESSION_LOGOUT_GET_ROUTE,
+            "/session/logout",
+            Method::Get,
+        ))
+        .expect("session logout get route");
+    collection
+        .add(Route::with_method(
+            SESSION_LOGOUT_POST_ROUTE,
+            "/session/logout",
+            Method::Post,
+        ))
+        .expect("session logout post route");
 }
 
 fn add_sandbox_admin_routes(collection: &mut RouteCollection, admin_prefix: &str) {

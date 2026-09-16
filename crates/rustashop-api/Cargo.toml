@@ -59,6 +59,7 @@ serenade-kernel = { workspace = true }
 serenade-observability = { workspace = true }
 serenade-openapi = { workspace = true }
 serenade-security = { workspace = true }
+serenade-session = { workspace = true }
 sqlx = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
