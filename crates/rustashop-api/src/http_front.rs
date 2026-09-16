@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use rustashop_persist::CatalogRepository;
 use serenade_http::{
     AsyncHttpKernel, AsyncRequestIdMiddleware, Method, Readiness, Request, Response, Route,
-    RouteCollection, UrlMatcher, box_future, readyz, request_id,
+    RouteCollection, UrlMatcher, box_future, readyz,
 };
 use serenade_http_actix::{conversion_error, from_actix, to_actix};
 
@@ -113,15 +113,7 @@ pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
         let body = request.body().to_vec();
         let idempotency = idempotency_key_from_headers(request.headers());
         let bearer = bearer_from_headers(request.headers());
-        let corr = request_id(request).map(str::to_owned);
         box_future(async move {
-            if let Some(corr) = corr.as_deref() {
-                tracing::debug!(
-                    target: serenade_observability::REQUEST,
-                    request_id = %corr,
-                    "commerce dispatch"
-                );
-            }
             match outcome {
                 Ok(found) => Ok(dispatch_route(
                     found.route_name(),
@@ -925,6 +917,23 @@ mod tests {
         assert!(resp.status().is_success());
         let body = actix_test::read_body(resp).await;
         assert_eq!(body.as_ref(), b"ready");
+    }
+
+    #[actix_web::test]
+    async fn readyz_not_ready_returns_503() {
+        let config = CommerceFrontConfig::test_default();
+        config.readiness.mark_not_ready();
+        let app = actix_test::init_service(
+            App::new()
+                .app_data(web::Data::new(commerce_http_kernel(config)))
+                .configure(|cfg| configure_serenade_front(cfg, DEFAULT_ADMIN_API_PREFIX)),
+        )
+        .await;
+        let req = actix_test::TestRequest::get().uri("/readyz").to_request();
+        let resp = actix_test::call_service(&app, req).await;
+        assert_eq!(resp.status(), 503);
+        let body = actix_test::read_body(resp).await;
+        assert_eq!(body.as_ref(), b"not ready");
     }
 
     #[actix_web::test]
