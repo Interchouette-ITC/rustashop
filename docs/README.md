@@ -22,14 +22,14 @@ One **Rust** commerce API. **Angular** or **rangular** clients on the same OpenA
 
 AI is on the product map (discovery, shopping agents, catalog assist, pricing, support, MCP), not glued on later. See [`../docs-dev/AI-NATIVE.md`](../docs-dev/AI-NATIVE.md).
 
-**Status today:** catalog + cart + checkout HTTP, OpenAPI / Swagger UI, local Postgres (Docker), two shop hosts on shared templates, and an Angular admin sample (orders list + status PATCH). Payments and realtime are next.
+**Status today:** catalog + cart + checkout HTTP, OpenAPI explorers, local Postgres (Docker), two shop hosts on shared templates, and an Angular admin sample (orders list + status PATCH). Payments and realtime are next.
 
 ## What you get today
 
 | Piece            | Role                                                                                                                                                |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Commerce API** | Actix-web: products, carts, checkout → orders; money as integers                                                                                    |
-| **OpenAPI**      | utoipa + Swagger UI at `/swagger-ui/`; `make openapi` writes `openapi/openapi.json`                                                                 |
+| **OpenAPI**      | utoipa document at `/openapi.json`; explorers at `/swagger-ui/`, `/redoc`, `/rapidoc`, `/scalar`; `make openapi` writes `openapi/openapi.json` |
 | **Persistence**  | Postgres; SQLx default, SeaORM feature path; Docker compose                                                                                         |
 | **Templates**    | `templates/shop/default/` (shops) and `templates/admin/default/` (operator BO)                                                                           |
 | **UI A**         | `shops/angular` - Angular storefront (catalog, cart, checkout)                                                                                      |
@@ -58,7 +58,7 @@ curl http://127.0.0.1:8080/healthz
 curl http://127.0.0.1:8080/v1/products
 ```
 
-Swagger UI: `http://127.0.0.1:8080/swagger-ui/`. Do not bind port `8080` twice.
+Swagger UI: `http://127.0.0.1:8080/swagger-ui/` (also `/redoc`, `/rapidoc`, `/scalar`). Do not bind port `8080` twice.
 
 ### Shop fronts (API already running)
 
@@ -97,6 +97,8 @@ Detail: [`../docs-dev/DOMAINS.md`](../docs-dev/DOMAINS.md).
 
 | Doc                                              | Topic                                     |
 | ------------------------------------------------ | ----------------------------------------- |
+| [`API.md`](API.md)                               | `/v1` HTTP, auth, OpenAPI dump, curl      |
+| [`UI.md`](UI.md)                                 | Angular vs Leptos+rangular; one API       |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md)             | Crates, HTTP split, request path          |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md)             | Make targets, lint bar, PR habits         |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)       | Community standards                       |
@@ -124,8 +126,8 @@ Detail: [`../docs-dev/DOMAINS.md`](../docs-dev/DOMAINS.md).
 | --- | --- |
 | [Rust](https://www.rust-lang.org/) | Commerce API, workers, and Wasm shop host |
 | [Tokio](https://tokio.rs/) | Async runtime |
-| [Actix Web](https://actix.rs/) | Commerce HTTP API, OpenAPI, Swagger UI |
-| [utoipa](https://github.com/juhaku/utoipa) | OpenAPI types and `/swagger-ui/` |
+| [Actix Web](https://actix.rs/) | Commerce HTTP API and OpenAPI explorers |
+| [utoipa](https://github.com/juhaku/utoipa) | OpenAPI types, dump, and explorer UIs |
 | [SQLx](https://github.com/launchbadge/sqlx) | Default Postgres persistence (no ORM) |
 | [SeaORM](https://www.sea-ql.org/SeaORM/) | Alternate ORM persistence path |
 | [PostgreSQL](https://www.postgresql.org/) | System of record |
