@@ -480,6 +480,7 @@ pub fn list_sandbox_audit_response(
 #[utoipa::path(
     post,
     path = "/v1/{admin_api_prefix}/sandbox/jobs",
+    tag = "sandbox",
     request_body = CreateSandboxJobRequest,
     security(("admin_bearer" = [])),
     responses(
@@ -495,6 +496,7 @@ pub fn create_sandbox_job() {}
 #[utoipa::path(
     get,
     path = "/v1/{admin_api_prefix}/sandbox/jobs/{id}",
+    tag = "sandbox",
     params(("id" = String, Path, description = "Job id")),
     security(("admin_bearer" = [])),
     responses(
@@ -510,6 +512,7 @@ pub fn get_sandbox_job() {}
 #[utoipa::path(
     get,
     path = "/v1/{admin_api_prefix}/sandbox/audit",
+    tag = "sandbox",
     security(("admin_bearer" = [])),
     responses(
         (status = 200, description = "Audit rows", body = Vec<SandboxAuditRecord>),

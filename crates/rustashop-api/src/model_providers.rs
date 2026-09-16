@@ -546,6 +546,7 @@ pub fn test_ai_provider_response(
 #[utoipa::path(
     get,
     path = "/v1/{admin_api_prefix}/ai/providers",
+    tag = "ai-providers",
     security(("admin_bearer" = [])),
     responses(
         (status = 200, description = "Model provider status (masked)", body = AiProvidersStatusResponse),
@@ -559,6 +560,7 @@ pub fn list_ai_providers() {}
 #[utoipa::path(
     get,
     path = "/v1/{admin_api_prefix}/ai/providers/catalog",
+    tag = "ai-providers",
     security(("admin_bearer" = [])),
     responses(
         (status = 200, description = "Model provider catalog (env names only)", body = AiProvidersCatalogResponse),
@@ -572,6 +574,7 @@ pub fn list_ai_providers_catalog() {}
 #[utoipa::path(
     post,
     path = "/v1/{admin_api_prefix}/ai/providers/test",
+    tag = "ai-providers",
     security(("admin_bearer" = [])),
     request_body = AiProviderTestRequest,
     responses(

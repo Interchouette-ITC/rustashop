@@ -175,6 +175,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/{admin_api_prefix}/ai/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `OpenAPI` stub: list provider status. */
+        get: operations["list_ai_providers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/ai/providers/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** `OpenAPI` stub: static catalog. */
+        get: operations["list_ai_providers_catalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/ai/providers/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `OpenAPI` stub: test provider. */
+        post: operations["test_ai_provider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/{admin_api_prefix}/ai/tools": {
         parameters: {
             query?: never;
@@ -294,19 +345,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/{admin_api_prefix}/sandbox/jobs/{id}/commit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `POST /v1/{admin_api_prefix}/sandbox/jobs/{id}/commit` `OpenAPI` stub. */
+        post: operations["commit_sandbox_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/{admin_api_prefix}/sandbox/jobs/{id}/discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** `POST /v1/{admin_api_prefix}/sandbox/jobs/{id}/discard` `OpenAPI` stub. */
+        post: operations["discard_sandbox_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** @description Body for `POST /v1/carts/{id}/lines`. */
+        /**
+         * @description Body for `POST /v1/carts/{id}/lines`.
+         * @example {
+         *       "quantity": 1,
+         *       "variant_id": "33333333-3333-3333-3333-333333333331"
+         *     }
+         */
         AddCartLineRequest: {
             /**
              * Format: int32
              * @description Quantity greater than zero.
+             * @example 1
              */
             quantity: number;
-            /** @description Variant to add. */
+            /**
+             * @description Variant to add.
+             * @example 33333333-3333-3333-3333-333333333331
+             */
             variant_id: string;
+        };
+        /**
+         * @description Where a credential was resolved from (never the secret itself).
+         * @enum {string}
+         */
+        AiCredentialSource: "env" | "default" | "none";
+        /** @description One catalog row for the admin UI (no secrets). */
+        AiProviderCatalogItem: {
+            /** @description Default base URL when known. */
+            default_base_url: string;
+            /** @description Display label. */
+            display_name: string;
+            /** @description Env var name for the API key (may be empty). */
+            env_api_key: string;
+            /** @description Env var name for base URL (may be empty). */
+            env_base_url: string;
+            /** @description Group. */
+            group: string;
+            /** @description Stable id. */
+            id: string;
+            /** @description Protocol kind label. */
+            kind: string;
+        };
+        /** @description Status of one provider after env resolution. */
+        AiProviderStatus: {
+            /** @description Whether credentials / local URL resolve. */
+            available: boolean;
+            /** @description Resolved base URL when applicable (no key). */
+            base_url?: string | null;
+            /** @description Display label. */
+            display_name: string;
+            /** @description Safe hint (last-4 of key, or host:port for local). Never a full secret. */
+            hint?: string | null;
+            /** @description Stable id. */
+            id: string;
+            /** @description Whether this id is the configured default provider. */
+            is_default: boolean;
+            /** @description Credential source (`env` / `default` / `none`). */
+            source: components["schemas"]["AiCredentialSource"];
+        };
+        /** @description Body for `POST …/ai/providers/test`. */
+        AiProviderTestRequest: {
+            /** @description Provider id to probe. */
+            provider_id: string;
+        };
+        /** @description Result of a provider connectivity / config test. */
+        AiProviderTestResponse: {
+            /** @description Error when not ok. */
+            error?: string | null;
+            /** @description Whether the probe succeeded. */
+            ok: boolean;
+            /** @description Provider id tested. */
+            provider_id: string;
+        };
+        /** @description List payload for `GET …/ai/providers/catalog`. */
+        AiProvidersCatalogResponse: {
+            /** @description Static catalog rows. */
+            providers: components["schemas"]["AiProviderCatalogItem"][];
+        };
+        /** @description List payload for `GET …/ai/providers`. */
+        AiProvidersStatusResponse: {
+            /** @description Default provider id from env (or first available). */
+            default_provider_id?: string | null;
+            /** @description Status rows in catalog order. */
+            providers: components["schemas"]["AiProviderStatus"][];
         };
         /** @description One tool row for agent discovery (shop or admin). */
         AiToolResponse: {
@@ -362,24 +522,58 @@ export interface components {
             /** @description Session token. */
             token: string;
         };
-        /** @description Body for `POST /v1/checkout`. */
+        /**
+         * @description Body for `POST /v1/checkout`.
+         * @example {
+         *       "cart_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+         *     }
+         */
         CheckoutRequest: {
-            /** @description Cart to convert into an order. */
+            /**
+             * @description Cart to convert into an order.
+             * @example aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+             */
             cart_id: string;
         };
-        /** @description Body for `POST /v1/carts`. */
+        /** @description Commit response: updated job + cart snapshot after host apply. */
+        CommitSandboxJobResponse: {
+            /** @description Cart after host-mediated mutation. */
+            cart: components["schemas"]["CartResponse"];
+            /** @description Job after commit. */
+            job: components["schemas"]["SandboxJobResponse"];
+        };
+        /**
+         * @description Body for `POST /v1/carts`.
+         * @example {
+         *       "currency": "EUR"
+         *     }
+         */
         CreateCartRequest: {
-            /** @description ISO currency for the cart (default `EUR`). */
+            /**
+             * @description ISO currency for the cart (default `EUR`).
+             * @example EUR
+             */
             currency?: string | null;
         };
         /** @description Request body for creating a sandbox job. */
         CreateSandboxJobRequest: {
+            /** @description Target cart id for `cart_quantity`. */
+            cart_id?: string | null;
             /** @description Cart currency for the quote fixture. */
-            currency: string;
-            /** @description Job type (`quote` only). */
+            currency?: string | null;
+            /** @description Job type (`quote` or `cart_quantity`). */
             job_type: string;
-            /** @description Cart lines for the guest snapshot. */
-            lines: components["schemas"]["SandboxJobLine"][];
+            /** @description Cart lines for the quote guest snapshot. */
+            lines?: components["schemas"]["SandboxJobLine"][] | null;
+            /** @description Operator for `cart_quantity` (`up` / `down` / `set`). */
+            operator?: string | null;
+            /**
+             * Format: int32
+             * @description Quantity operand for `cart_quantity`.
+             */
+            quantity?: number | null;
+            /** @description Variant id passed to the migration guest as legacy `id_product`. */
+            variant_id?: string | null;
         };
         /** @description JSON error body (message + stable machine code). */
         ErrorBody: {
@@ -395,14 +589,24 @@ export interface components {
             /** @description Liveness status. */
             status: string;
         };
-        /** @description Money JSON for cart responses. */
+        /**
+         * @description Money JSON for cart responses.
+         * @example {
+         *       "amount_minor": 4500,
+         *       "currency": "EUR"
+         *     }
+         */
         MoneyResponse: {
             /**
              * Format: int64
              * @description Amount in minor units.
+             * @example 4500
              */
             amount_minor: number;
-            /** @description ISO currency code. */
+            /**
+             * @description ISO currency code.
+             * @example EUR
+             */
             currency: string;
         };
         /** @description Order line JSON. */
@@ -451,9 +655,17 @@ export interface components {
             /** @description Payable total. */
             total: components["schemas"]["MoneyResponse"];
         };
-        /** @description Body for admin order status PATCH. */
+        /**
+         * @description Body for admin order status PATCH.
+         * @example {
+         *       "status": "shipped"
+         *     }
+         */
         PatchOrderStatusRequest: {
-            /** @description Fulfillment status: `placed`, `paid`, `shipped`, or `cancelled`. */
+            /**
+             * @description Fulfillment status: `placed`, `paid`, `shipped`, or `cancelled`.
+             * @example shipped
+             */
             status: string;
         };
         /** @description Product detail including purchasable variants. */
@@ -478,19 +690,41 @@ export interface components {
             /** @description Page of products. */
             items: components["schemas"]["ProductResponse"][];
         };
-        /** @description Product JSON returned by list routes (no variants). */
+        /**
+         * @description Product JSON returned by list routes (no variants).
+         * @example {
+         *       "category_id": "11111111-1111-1111-1111-111111111111",
+         *       "description": "Soft cotton hoodie",
+         *       "enabled": true,
+         *       "id": "22222222-2222-2222-2222-222222222221",
+         *       "name": "Hoodie",
+         *       "slug": "hoodie"
+         *     }
+         */
         ProductResponse: {
             /** @description Optional category id. */
             category_id?: string | null;
             /** @description Optional long description. */
             description?: string | null;
-            /** @description Whether the product is offered for sale. */
+            /**
+             * @description Whether the product is offered for sale.
+             * @example true
+             */
             enabled: boolean;
-            /** @description Stable identifier. */
+            /**
+             * @description Stable identifier.
+             * @example 22222222-2222-2222-2222-222222222221
+             */
             id: string;
-            /** @description Display name. */
+            /**
+             * @description Display name.
+             * @example Hoodie
+             */
             name: string;
-            /** @description Unique URL slug. */
+            /**
+             * @description Unique URL slug.
+             * @example hoodie
+             */
             slug: string;
         };
         /** @description Variant JSON nested under product detail. */
@@ -558,7 +792,7 @@ export interface components {
         };
         /** @description Public job view. */
         SandboxJobResponse: {
-            /** @description Host-validated adjustments when succeeded. */
+            /** @description Host-validated adjustments when quote succeeded. */
             adjustments?: components["schemas"]["SandboxAdjustmentResponse"][] | null;
             /** @description Error message when failed. */
             error?: string | null;
@@ -566,6 +800,7 @@ export interface components {
             id: string;
             /** @description Job type. */
             job_type: string;
+            proposal?: null | components["schemas"]["SandboxProposalResponse"];
             /** @description Fingerprint of the fixture source used. */
             source_hash: string;
             /** @description Lifecycle status. */
@@ -575,12 +810,34 @@ export interface components {
          * @description Job status returned to the admin UI.
          * @enum {string}
          */
-        SandboxJobStatus: "running" | "succeeded" | "failed";
-        /** @description Body for `PATCH /v1/carts/{id}/lines/{line_id}`. */
+        SandboxJobStatus: "running" | "succeeded" | "awaiting_commit" | "committed" | "discarded" | "failed";
+        /** @description Validated domain-event proposal awaiting host commit. */
+        SandboxProposalResponse: {
+            /** @description Target cart id. */
+            cart_id: string;
+            /** @description Domain event type. */
+            event_type: string;
+            /** @description Operator (`up` / `down` / `set`). */
+            operator: string;
+            /** @description Variant id (legacy `id_product` in the guest ABI). */
+            product_id: string;
+            /**
+             * Format: int32
+             * @description Quantity operand.
+             */
+            quantity: number;
+        };
+        /**
+         * @description Body for `PATCH /v1/carts/{id}/lines/{line_id}`.
+         * @example {
+         *       "quantity": 2
+         *     }
+         */
         UpdateCartLineRequest: {
             /**
              * Format: int32
              * @description Replacement quantity greater than zero.
+             * @example 2
              */
             quantity: number;
         };
@@ -608,6 +865,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "kernel": "serenade",
+                     *       "status": "ok"
+                     *     }
+                     */
                     "application/json": components["schemas"]["HealthResponse"];
                 };
             };
@@ -670,6 +933,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "currency": "EUR",
+                     *       "customer_id": null,
+                     *       "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                     *       "items_total": {
+                     *         "amount_minor": 0,
+                     *         "currency": "EUR"
+                     *       },
+                     *       "lines": [],
+                     *       "status": "open",
+                     *       "token": "cart-token-example"
+                     *     }
+                     */
                     "application/json": components["schemas"]["CartResponse"];
                 };
             };
@@ -864,6 +1141,41 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "cart_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                     *       "currency": "EUR",
+                     *       "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                     *       "items_total": {
+                     *         "amount_minor": 4500,
+                     *         "currency": "EUR"
+                     *       },
+                     *       "lines": [
+                     *         {
+                     *           "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                     *           "line_total": {
+                     *             "amount_minor": 4500,
+                     *             "currency": "EUR"
+                     *           },
+                     *           "product_name": "Hoodie",
+                     *           "quantity": 1,
+                     *           "unit_price": {
+                     *             "amount_minor": 4500,
+                     *             "currency": "EUR"
+                     *           },
+                     *           "variant_id": "33333333-3333-3333-3333-333333333331",
+                     *           "variant_sku": "HOODIE-S"
+                     *         }
+                     *       ],
+                     *       "number": "RS-1001",
+                     *       "payment_status": "pending",
+                     *       "state": "placed",
+                     *       "total": {
+                     *         "amount_minor": 4500,
+                     *         "currency": "EUR"
+                     *       }
+                     *     }
+                     */
                     "application/json": components["schemas"]["OrderResponse"];
                 };
             };
@@ -916,6 +1228,20 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "items": [
+                     *         {
+                     *           "category_id": "11111111-1111-1111-1111-111111111111",
+                     *           "description": "Soft cotton hoodie",
+                     *           "enabled": true,
+                     *           "id": "22222222-2222-2222-2222-222222222221",
+                     *           "name": "Hoodie",
+                     *           "slug": "hoodie"
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["ProductListResponse"];
                 };
             };
@@ -939,11 +1265,134 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    /**
+                     * @example {
+                     *       "category_id": "11111111-1111-1111-1111-111111111111",
+                     *       "description": "Soft cotton hoodie",
+                     *       "enabled": true,
+                     *       "id": "22222222-2222-2222-2222-222222222221",
+                     *       "name": "Hoodie",
+                     *       "slug": "hoodie",
+                     *       "variants": [
+                     *         {
+                     *           "id": "33333333-3333-3333-3333-333333333331",
+                     *           "name": "Small",
+                     *           "price": {
+                     *             "amount_minor": 4500,
+                     *             "currency": "EUR"
+                     *           },
+                     *           "product_id": "22222222-2222-2222-2222-222222222221",
+                     *           "sku": "HOODIE-S",
+                     *           "stock_quantity": 10
+                     *         }
+                     *       ]
+                     *     }
+                     */
                     "application/json": components["schemas"]["ProductDetailResponse"];
                 };
             };
             /** @description Unknown id */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_ai_providers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Model provider status (masked) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProvidersStatusResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    list_ai_providers_catalog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Model provider catalog (env names only) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProvidersCatalogResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    test_ai_provider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiProviderTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Provider probe result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProviderTestResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Invalid body */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1207,6 +1656,106 @@ export interface operations {
             };
             /** @description Unknown job */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    commit_sandbox_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Job id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Committed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitSandboxJobResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown job or cart line */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not awaiting commit */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    discard_sandbox_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Job id */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Discarded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SandboxJobResponse"];
+                };
+            };
+            /** @description Missing or invalid bearer */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown job */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Not awaiting commit */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -3,6 +3,8 @@
 use rustashop_domain::{Cart, CartLine, Currency};
 use rustashop_persist::CatalogRepository;
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports)]
+use serde_json::json;
 use serenade_http::Response;
 use utoipa::ToSchema;
 
@@ -12,33 +14,46 @@ use crate::request_param::{ensure_request_param, ensure_request_param_opt};
 
 /// Body for `POST /v1/carts`.
 #[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({"currency": "EUR"}))]
 pub struct CreateCartRequest {
     /// ISO currency for the cart (default `EUR`).
+    #[schema(example = "EUR")]
     pub currency: Option<String>,
 }
 
 /// Body for `POST /v1/carts/{id}/lines`.
 #[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "variant_id": "33333333-3333-3333-3333-333333333331",
+    "quantity": 1
+}))]
 pub struct AddCartLineRequest {
     /// Variant to add.
+    #[schema(example = "33333333-3333-3333-3333-333333333331")]
     pub variant_id: String,
     /// Quantity greater than zero.
+    #[schema(example = 1)]
     pub quantity: i32,
 }
 
 /// Body for `PATCH /v1/carts/{id}/lines/{line_id}`.
 #[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({"quantity": 2}))]
 pub struct UpdateCartLineRequest {
     /// Replacement quantity greater than zero.
+    #[schema(example = 2)]
     pub quantity: i32,
 }
 
 /// Money JSON for cart responses.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+#[schema(example = json!({"amount_minor": 4500, "currency": "EUR"}))]
 pub struct MoneyResponse {
     /// Amount in minor units.
+    #[schema(example = 4500)]
     pub amount_minor: i64,
     /// ISO currency code.
+    #[schema(example = "EUR")]
     pub currency: String,
 }
 
@@ -298,9 +313,19 @@ pub async fn delete_cart_line_response(
 #[utoipa::path(
     post,
     path = "/v1/carts",
+    tag = "carts",
     request_body = CreateCartRequest,
     responses(
-        (status = 201, description = "Cart created", body = CartResponse),
+        (status = 201, description = "Cart created", body = CartResponse,
+            example = json!({
+                "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "customer_id": null,
+                "token": "cart-token-example",
+                "status": "open",
+                "currency": "EUR",
+                "lines": [],
+                "items_total": {"amount_minor": 0, "currency": "EUR"}
+            })),
         (status = 422, description = "Invalid currency", body = ErrorBody)
     )
 )]
@@ -311,6 +336,7 @@ pub fn create_cart() {}
 #[utoipa::path(
     get,
     path = "/v1/carts/{id}",
+    tag = "carts",
     params(("id" = String, Path, description = "Cart id")),
     responses(
         (status = 200, description = "Cart", body = CartResponse),
@@ -324,6 +350,7 @@ pub fn get_cart() {}
 #[utoipa::path(
     post,
     path = "/v1/carts/{id}/lines",
+    tag = "carts",
     params(("id" = String, Path, description = "Cart id")),
     request_body = AddCartLineRequest,
     responses(
@@ -339,6 +366,7 @@ pub fn add_cart_line() {}
 #[utoipa::path(
     patch,
     path = "/v1/carts/{id}/lines/{line_id}",
+    tag = "carts",
     params(
         ("id" = String, Path, description = "Cart id"),
         ("line_id" = String, Path, description = "Line id")
@@ -357,6 +385,7 @@ pub fn update_cart_line() {}
 #[utoipa::path(
     delete,
     path = "/v1/carts/{id}/lines/{line_id}",
+    tag = "carts",
     params(
         ("id" = String, Path, description = "Cart id"),
         ("line_id" = String, Path, description = "Line id")

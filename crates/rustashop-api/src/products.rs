@@ -3,6 +3,8 @@
 use rustashop_domain::{Product, ProductRepository, ProductVariant};
 use rustashop_persist::CatalogRepository;
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports)]
+use serde_json::json;
 use serenade_contracts::PageRequest;
 use serenade_http::Response;
 use utoipa::{IntoParams, ToSchema};
@@ -52,18 +54,30 @@ impl ListProductsQuery {
 
 /// Product JSON returned by list routes (no variants).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, ToSchema)]
+#[schema(example = json!({
+    "id": "22222222-2222-2222-2222-222222222221",
+    "category_id": "11111111-1111-1111-1111-111111111111",
+    "slug": "hoodie",
+    "name": "Hoodie",
+    "description": "Soft cotton hoodie",
+    "enabled": true
+}))]
 pub struct ProductResponse {
     /// Stable identifier.
+    #[schema(example = "22222222-2222-2222-2222-222222222221")]
     pub id: String,
     /// Optional category id.
     pub category_id: Option<String>,
     /// Unique URL slug.
+    #[schema(example = "hoodie")]
     pub slug: String,
     /// Display name.
+    #[schema(example = "Hoodie")]
     pub name: String,
     /// Optional long description.
     pub description: Option<String>,
     /// Whether the product is offered for sale.
+    #[schema(example = true)]
     pub enabled: bool,
 }
 
@@ -201,8 +215,21 @@ pub async fn get_product_response(catalog: &CatalogRepository, id: &str) -> Resp
 #[utoipa::path(
     get,
     path = "/v1/products",
+    tag = "products",
     params(ListProductsQuery),
-    responses((status = 200, description = "Product page", body = ProductListResponse))
+    responses(
+        (status = 200, description = "Product page", body = ProductListResponse,
+            example = json!({
+                "items": [{
+                    "id": "22222222-2222-2222-2222-222222222221",
+                    "category_id": "11111111-1111-1111-1111-111111111111",
+                    "slug": "hoodie",
+                    "name": "Hoodie",
+                    "description": "Soft cotton hoodie",
+                    "enabled": true
+                }]
+            }))
+    )
 )]
 #[allow(clippy::missing_const_for_fn)]
 pub fn list_products() {}
@@ -211,9 +238,26 @@ pub fn list_products() {}
 #[utoipa::path(
     get,
     path = "/v1/products/{id}",
+    tag = "products",
     params(("id" = String, Path, description = "Product id")),
     responses(
-        (status = 200, description = "Product with variants", body = ProductDetailResponse),
+        (status = 200, description = "Product with variants", body = ProductDetailResponse,
+            example = json!({
+                "id": "22222222-2222-2222-2222-222222222221",
+                "category_id": "11111111-1111-1111-1111-111111111111",
+                "slug": "hoodie",
+                "name": "Hoodie",
+                "description": "Soft cotton hoodie",
+                "enabled": true,
+                "variants": [{
+                    "id": "33333333-3333-3333-3333-333333333331",
+                    "product_id": "22222222-2222-2222-2222-222222222221",
+                    "sku": "HOODIE-S",
+                    "name": "Small",
+                    "price": {"amount_minor": 4500, "currency": "EUR"},
+                    "stock_quantity": 10
+                }]
+            })),
         (status = 404, description = "Unknown id", body = ErrorBody)
     )
 )]

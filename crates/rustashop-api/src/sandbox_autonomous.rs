@@ -281,6 +281,7 @@ pub struct CommitSandboxJobResponse {
 #[utoipa::path(
     post,
     path = "/v1/{admin_api_prefix}/sandbox/jobs/{id}/commit",
+    tag = "sandbox",
     params(("id" = String, Path, description = "Job id")),
     security(("admin_bearer" = [])),
     responses(
@@ -297,6 +298,7 @@ pub fn commit_sandbox_job() {}
 #[utoipa::path(
     post,
     path = "/v1/{admin_api_prefix}/sandbox/jobs/{id}/discard",
+    tag = "sandbox",
     params(("id" = String, Path, description = "Job id")),
     security(("admin_bearer" = [])),
     responses(

@@ -80,6 +80,7 @@ pub async fn list_admin_products_response(
 #[utoipa::path(
     get,
     path = "/v1/{admin_api_prefix}/products",
+    tag = "admin-products",
     params(ListAdminProductsQuery),
     security(("admin_bearer" = [])),
     responses(

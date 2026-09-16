@@ -3,6 +3,8 @@
 use rustashop_domain::Order;
 use rustashop_persist::CatalogRepository;
 use serde::{Deserialize, Serialize};
+#[allow(unused_imports)]
+use serde_json::json;
 use serenade_http::Response;
 use utoipa::ToSchema;
 
@@ -12,8 +14,10 @@ use crate::request_param::{ensure_request_param, ensure_request_param_opt};
 
 /// Body for `POST /v1/checkout`.
 #[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({"cart_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"}))]
 pub struct CheckoutRequest {
     /// Cart to convert into an order.
+    #[schema(example = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")]
     pub cart_id: String,
 }
 
@@ -140,10 +144,30 @@ pub async fn place_order_response(
 #[utoipa::path(
     post,
     path = "/v1/checkout",
+    tag = "checkout",
     request_body = CheckoutRequest,
     params(("Idempotency-Key" = Option<String>, Header, description = "Replay token")),
     responses(
-        (status = 201, description = "Order placed", body = OrderResponse),
+        (status = 201, description = "Order placed", body = OrderResponse,
+            example = json!({
+                "id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+                "number": "RS-1001",
+                "cart_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "state": "placed",
+                "payment_status": "pending",
+                "currency": "EUR",
+                "items_total": {"amount_minor": 4500, "currency": "EUR"},
+                "total": {"amount_minor": 4500, "currency": "EUR"},
+                "lines": [{
+                    "id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+                    "variant_id": "33333333-3333-3333-3333-333333333331",
+                    "quantity": 1,
+                    "unit_price": {"amount_minor": 4500, "currency": "EUR"},
+                    "line_total": {"amount_minor": 4500, "currency": "EUR"},
+                    "product_name": "Hoodie",
+                    "variant_sku": "HOODIE-S"
+                }]
+            })),
         (status = 404, description = "Unknown cart", body = ErrorBody),
         (status = 409, description = "Cart already checked out", body = ErrorBody),
         (status = 422, description = "Empty cart", body = ErrorBody)
