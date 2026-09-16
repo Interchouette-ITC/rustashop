@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use serenade_http::{AsyncMiddleware, AsyncNext, BoxFuture, HttpError, Request, Response};
-use serenade_security::{Authenticator, TOKEN_ATTRIBUTE, UsernamePasswordToken};
+use serenade_security::{Authenticator, TOKEN_ATTRIBUTE, TokenInterface, UsernamePasswordToken};
 
 /// Async firewall: header → [`Authenticator`] → `_security_token` attribute.
 ///
@@ -42,14 +42,24 @@ impl AsyncMiddleware for AsyncFirewallMiddleware {
     ) -> BoxFuture<'a, Result<Response, HttpError>> {
         Box::pin(async move {
             let credentials = request.headers().get(&self.header_name);
-            let token = if credentials.is_none() && self.allow_anonymous {
-                UsernamePasswordToken::anonymous()
+            if credentials.is_none() && self.allow_anonymous {
+                // Keep a token restored from session (SessionTokenMiddleware runs earlier).
+                let keep = request
+                    .attributes()
+                    .get::<UsernamePasswordToken>(TOKEN_ATTRIBUTE)
+                    .is_some_and(TokenInterface::is_authenticated);
+                if !keep {
+                    request
+                        .attributes_mut()
+                        .insert(TOKEN_ATTRIBUTE, UsernamePasswordToken::anonymous());
+                }
             } else {
-                self.authenticator
+                let token = self
+                    .authenticator
                     .authenticate(credentials)
-                    .map_err(|err| HttpError::status(401, err.to_string()))?
-            };
-            request.attributes_mut().insert(TOKEN_ATTRIBUTE, token);
+                    .map_err(|err| HttpError::status(401, err.to_string()))?;
+                request.attributes_mut().insert(TOKEN_ATTRIBUTE, token);
+            }
             next.run(request).await
         })
     }

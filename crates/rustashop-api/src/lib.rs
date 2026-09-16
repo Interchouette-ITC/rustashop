@@ -26,6 +26,7 @@ mod sandbox_autonomous;
 mod sandbox_jobs;
 mod sandbox_realtime;
 mod sandbox_ws;
+mod session_http;
 
 use actix_web::web;
 
