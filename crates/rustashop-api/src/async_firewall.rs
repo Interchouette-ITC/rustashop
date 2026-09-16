@@ -81,6 +81,20 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn missing_credentials_without_anonymous_returns_401() {
+        let mut kernel = AsyncHttpKernel::from_async_fn(|_request: &mut Request| {
+            Box::pin(async move { Ok(Response::text(200, "ok")) })
+        });
+        // Default allow_anonymous = false: no Authorization → authenticate(None) → 401.
+        kernel.push_middleware(AsyncFirewallMiddleware::new(
+            "Authorization",
+            Arc::new(OkAuth),
+        ));
+        let response = kernel.handle(Request::new(Method::Get, "/")).await;
+        assert_eq!(response.status(), 401);
+    }
+
+    #[tokio::test]
     async fn allow_anonymous_sets_anonymous_token() {
         let mut kernel = AsyncHttpKernel::from_async_fn(|request: &mut Request| {
             Box::pin(async move {

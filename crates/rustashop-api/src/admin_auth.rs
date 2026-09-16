@@ -147,6 +147,79 @@ mod tests {
     use serenade_security::TokenInterface;
 
     #[test]
+    fn debug_default_and_authenticator_surface() {
+        let config = AdminAuthConfig::default();
+        assert!(!config.is_configured());
+        let debug = format!("{config:?}");
+        assert!(debug.contains("AdminAuthConfig"));
+        assert!(debug.contains("configured: false"));
+        let _ = config.authenticator();
+        let configured = AdminAuthConfig::from_token("secret");
+        assert!(format!("{configured:?}").contains("configured: true"));
+        assert!(
+            configured
+                .authenticator()
+                .authenticate(Some("Bearer secret"))
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn authorize_bearer_rejects_empty_presented_secret() {
+        let config = AdminAuthConfig::from_token("secret");
+        assert!(matches!(
+            config.authorize_bearer(Some("")),
+            Err(ApiError::Unauthorized)
+        ));
+        assert!(matches!(
+            config.authorize_bearer(Some("   ")),
+            Err(ApiError::Unauthorized)
+        ));
+    }
+
+    #[test]
+    fn authorize_bearer_denies_when_role_missing() {
+        struct UserOnlyAuth;
+
+        impl Authenticator for UserOnlyAuth {
+            fn authenticate(
+                &self,
+                credentials: Option<&str>,
+            ) -> Result<UsernamePasswordToken, SecurityError> {
+                if credentials.is_none() {
+                    return Err(SecurityError::Authentication {
+                        message: "missing".to_owned(),
+                    });
+                }
+                Ok(UsernamePasswordToken::authenticated(
+                    InMemoryUser::new("user", vec!["ROLE_USER".to_owned()]),
+                    "x",
+                ))
+            }
+        }
+
+        let mut access = AccessDecisionManager::new();
+        access.add_voter(RoleVoter::new("ROLE_ADMIN", ADMIN_AREA_SUBJECT));
+        let config = AdminAuthConfig {
+            authenticator: Arc::new(UserOnlyAuth),
+            expected_empty: false,
+            access: Arc::new(access),
+        };
+        assert!(matches!(
+            config.authorize_bearer(Some("anything")),
+            Err(ApiError::Unauthorized)
+        ));
+    }
+
+    #[test]
+    fn authenticator_accepts_raw_secret_without_bearer_prefix() {
+        let auth = AdminBearerAuthenticator {
+            expected: "secret".to_owned(),
+        };
+        assert!(auth.authenticate(Some("secret")).is_ok());
+    }
+
+    #[test]
     fn from_token_is_configured() {
         let config = AdminAuthConfig::from_token("secret");
         assert!(config.is_configured());
