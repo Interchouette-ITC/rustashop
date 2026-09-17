@@ -55,8 +55,14 @@ Orders list and status PATCH use the same `/v1/{admin_api_prefix}/...` routes as
 
 API work stays in `crates/rustashop-api` and the OpenAPI dump. UI hosts consume; they do not redefine commerce routes.
 
+## Parity matrix
+
+Which screens exist on which host (honest `shipped` / `partial` / `blocked`):
+
+[`docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md) - section **UI parity matrix**.
+
 ## Related
 
-- HTTP and OpenAPI: [`API.md`](API.md)
+- HTTP, OpenAPI, and cart WebSocket: [`API.md`](API.md)
 - Crate map: [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- Renderer detail: [`../docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md)
+- Renderer detail + blockers: [`../docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md)

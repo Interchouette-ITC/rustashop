@@ -61,8 +61,35 @@ curl -s http://127.0.0.1:8080/v1/admin/orders \
 
 Idempotent checkout accepts header `Idempotency-Key`.
 
+## WebSocket (cart session)
+
+Live cart push sits beside the HTTP API on the same Actix process.
+
+| Item | Value |
+| --- | --- |
+| Endpoint | `GET /v1/carts/{id}/ws?token=<cart.token>` |
+| Auth | Opaque cart `token` from `CartResponse` (same as HTTP body token; not admin bearer) |
+| Event | `cart.updated` JSON after cart mutations |
+
+Example payload shape:
+
+```json
+{
+  "type": "cart.updated",
+  "version": 1,
+  "cart": { "id": "…", "token": "…", "status": "open", "currency": "EUR", "lines": [], "items_total": { "amount_minor": 0, "currency": "EUR" } }
+}
+```
+
+Clients must treat the server snapshot as authoritative. Integration coverage lives in `crates/rustashop-api/tests/cart_ws.rs`.
+
+Storefront hosts (Angular / Leptos) still use HTTP for cart today; WS subscribe is tracked under epic [#31](https://github.com/Interchouette-ITC/rustashop/issues/31). Admin sandbox job logs already use a separate WS path under `/v1/{admin_api_prefix}/sandbox/jobs/{id}/ws`.
+
+Design notes: [`docs-dev/REALTIME.md`](../docs-dev/REALTIME.md).
+
 ## Related
 
 - Crate overview: [`ARCHITECTURE.md`](ARCHITECTURE.md)
 - UI hosts on this API: [`UI.md`](UI.md)
+- Screen × track parity: [`docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md)
 - Local Make targets: [`CONTRIBUTING.md`](CONTRIBUTING.md)

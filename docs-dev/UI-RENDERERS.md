@@ -104,23 +104,39 @@ Product vocabulary: **shop** (not storefront / vitrine).
 | Desktop installer       | rangular **native** (GPUI)                     |
 | `rustashop.app`         | Ionic / mobile (later; likely Angular-aligned) |
 
-## Dependencies and order
+## UI parity matrix (screens × track)
 
-Upstream rangular work splits into **two blockers** with different blast radius:
+Honest status on org `dev` (not aspirational). Cell values: **shipped** | **partial** | **blocked** | **n/a**.
 
-| Upstream                                                                                     | Blocks                                                                                            | Does not block                                                                                |
-| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) (forms / validators) | Leptos+rangular **checkout**, **admin CRUD**, multi-field UX on **any** renderer (Leptos or GPUI) | API; Angular shop; Leptos+rangular **browse-only** (catalog list/detail, add-to-cart buttons) |
-| [rangular #37](https://github.com/Interchouette-ITC/rangular/issues/37) (GPUI backend)       | rangular **native** host only                                                                     | Leptos web shop; Angular; API                                                                 |
+HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart push: `GET /v1/carts/{id}/ws` + `cart.updated` (API shipped; **storefront clients not yet** - product plan N1/N2).
 
-Suggested order:
+| Screen | OpenAPI (HTTP) | WS events | Angular shop | Leptos+rangular web | GPUI native | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| Browse (product list) | `GET /v1/products` | — | shipped | shipped | blocked | Shared templates under `templates/shop/default/` |
+| Product detail | `GET /v1/products/{id}` | — | shipped | shipped | blocked | Add-to-cart is HTTP today |
+| Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` (API yes; shop clients no) | partial | partial | blocked | HTTP cart shipped; live badge/lines wait N1/N2 |
+| Checkout | `POST /v1/checkout` | not yet (order lifecycle later) | shipped | blocked | blocked | Leptos checkout needs [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) forms |
+| Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | not yet | shipped (`admin/angular`) | blocked | blocked | Leptos admin forms blocked on #22; native on [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
 
-1. **Commerce API** (landed through cart/checkout)
-2. **Angular shop** (#21 scaffold, #22 pages) - stable SPA path
-3. **rangular #22** (forms) - unlocks Leptos+rangular checkout **and** future BO
-4. **Leptos+rangular shop** browse + cart (#23, #24)
-5. **Admin API** + pluggable SPA sample (#6); Angular sample first, Leptos+rangular BO when ready
-6. **rangular #37** (GPUI) - native admin/desktop
+**partial** on cart = HTTP + shared cart id (`rs.cartId`) work; WebSocket subscribe on shops is the remaining gap (epic [#31](https://github.com/Interchouette-ITC/rustashop/issues/31)).
+
+Admin sandbox job logs already use WS (`GET /v1/{admin_api_prefix}/sandbox/jobs/{id}/ws`) in `admin/angular` - that is not a storefront parity row.
+
+## Upstream blockers
+
+| Upstream | Blocks | Does not block |
+| --- | --- | --- |
+| [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) (forms / validators) | Leptos+rangular **checkout**, **admin CRUD**, multi-field UX on **any** renderer (Leptos or GPUI) | API; Angular shop; Leptos+rangular browse + cart HTTP |
+| [rangular #37](https://github.com/Interchouette-ITC/rangular/issues/37) (GPUI backend) | rangular **native** host only | Leptos web shop; Angular; API |
+
+## Delivery order (current)
+
+1. Commerce API + Angular shop + Leptos browse/cart - **landed**
+2. UI parity docs (this matrix) - [#51](https://github.com/Interchouette-ITC/rustashop/issues/51)
+3. Storefront cart WS clients (Angular, then Leptos) - under [#31](https://github.com/Interchouette-ITC/rustashop/issues/31)
+4. rangular #22 - unlocks Leptos checkout + future BO forms
+5. Realtime deepen (inventory / order) - when ordered
+6. rangular #37 - native admin/desktop
 
 ## Non-goals (early)
 
@@ -133,4 +149,5 @@ Suggested order:
 
 - [WASM-LAYERS.md](WASM-LAYERS.md) - wasm roles (UI wasm vs plugins vs sandbox)
 - [rangular SPEC](https://github.com/Interchouette-ITC/rangular/blob/dev/docs/SPEC.md) - v0.1 browser-only; GPUI is post-v0.1
-- GitHub: rustashop UI / shop epics (#7, #8, #6)
+- Contributor UI overview: [`docs/UI.md`](../docs/UI.md)
+- Open issues: dual renderers [#50](https://github.com/Interchouette-ITC/rustashop/issues/50), realtime [#31](https://github.com/Interchouette-ITC/rustashop/issues/31)
