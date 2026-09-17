@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use axum::body::Body;
-use axum::http::{HeaderName, HeaderValue, Request as HttpRequest, StatusCode};
+use axum::http::{HeaderName, HeaderValue, Request as HttpRequest};
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::wrapper::Parameters,
@@ -266,10 +266,10 @@ async fn bridge_streamable(
     body: Vec<u8>,
 ) -> Result<Response, HttpError> {
     let http_request = build_http_request(method, path, query, headers, body)?;
-    let http_response = match service.oneshot(http_request).await {
-        Ok(response) => response,
-        Err(never) => match never {},
-    };
+    let http_response = service
+        .oneshot(http_request)
+        .await
+        .expect("streamable HTTP service is infallible");
     Ok(collect_http_response(http_response).await)
 }
 
@@ -280,21 +280,19 @@ fn build_http_request(
     headers: &[(String, String)],
     body: Vec<u8>,
 ) -> Result<HttpRequest<Body>, HttpError> {
-    let uri = match query {
-        Some(query) if !query.is_empty() => format!("{path}?{query}"),
-        _ => path.to_owned(),
-    };
+    let uri = query
+        .filter(|part| !part.is_empty())
+        .map_or_else(|| path.to_owned(), |part| format!("{path}?{part}"));
     let http_method = axum::http::Method::from_bytes(method.as_str().as_bytes())
         .map_err(|error| HttpError::status(405, error.to_string()))?;
     let mut builder = HttpRequest::builder().method(http_method).uri(uri);
     for (name, value) in headers {
-        let Ok(header_name) = HeaderName::try_from(name.as_str()) else {
-            continue;
-        };
-        let Ok(header_value) = HeaderValue::from_str(value) else {
-            continue;
-        };
-        builder = builder.header(header_name, header_value);
+        if let (Ok(header_name), Ok(header_value)) = (
+            HeaderName::try_from(name.as_str()),
+            HeaderValue::from_str(value),
+        ) {
+            builder = builder.header(header_name, header_value);
+        }
     }
     builder
         .body(Body::from(body))
@@ -320,12 +318,7 @@ where
     let body = axum::body::to_bytes(Body::new(response.into_body()), MAX_MCP_BODY_BYTES)
         .await
         .unwrap_or_default();
-    let mut out = Response::new(if StatusCode::from_u16(status).is_ok() {
-        status
-    } else {
-        500
-    })
-    .with_body(body.to_vec());
+    let mut out = Response::new(status).with_body(body.to_vec());
     for (name, value) in header_pairs {
         out = out.with_header(name, value);
     }
@@ -340,11 +333,8 @@ where
 pub async fn bind_http(addr: impl ToSocketAddrs) -> std::io::Result<(BoundServer, ShutdownHandle)> {
     let kernel = mcp_http_kernel();
     let (server, shutdown) = bind_server(addr, kernel).await?;
-    tracing::info!(
-        addr = %server.local_addr(),
-        crate = MCP_CRATE,
-        "rustashop-mcp HTTP listening (serenade-http-axum)"
-    );
+    let addr = server.local_addr();
+    tracing::info!("rustashop-mcp HTTP listening on {addr} ({MCP_CRATE})");
     Ok((server, shutdown))
 }
 
@@ -568,10 +558,40 @@ mod tests {
             .expect("unknown");
         assert_eq!(unknown.status().as_u16(), 404);
 
+        let with_query = reqwest::Client::new()
+            .post(format!("http://{addr}/mcp?sessionId=cov"))
+            .header("content-type", "application/json")
+            .header("accept", "application/json, text/event-stream")
+            .json(&init)
+            .send()
+            .await
+            .expect("mcp post with query");
+        assert_ne!(with_query.status().as_u16(), 404);
+
         shutdown.shutdown();
         join.await
             .expect("join")
             .expect("await_bound should shut down cleanly");
+    }
+
+    #[test]
+    fn build_http_request_skips_invalid_headers_and_keeps_query() {
+        let request = build_http_request(
+            Method::Post,
+            "/mcp",
+            Some("sessionId=1"),
+            &[
+                ("content-type".into(), "application/json".into()),
+                ("not a header".into(), "x".into()),
+                ("x-bad".into(), "a\nb".into()),
+            ],
+            b"{}".to_vec(),
+        )
+        .expect("build");
+        assert_eq!(request.uri().path(), "/mcp");
+        assert_eq!(request.uri().query(), Some("sessionId=1"));
+        assert!(request.headers().get("content-type").is_some());
+        assert!(request.headers().get("x-bad").is_none());
     }
 
     async fn mount_commerce_mocks(mock: &MockServer) {
