@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["ensure_worker_package","main","run","shop_root"]};

@@ -1,2 +1,2 @@
-window.ALL_CRATES = ["rustashop","rustashop_api","rustashop_domain","rustashop_extensions","rustashop_install","rustashop_mcp","rustashop_migrate","rustashop_openapi","rustashop_persist","rustashop_persist_diesel","rustashop_persist_seaorm","rustashop_persist_sqlx","rustashop_sandbox","rustashop_seaorm_migrate"];
-//{"start":21,"fragment_lengths":[11,16,19,23,20,16,20,20,20,27,27,25,20,27]}
+window.ALL_CRATES = ["rustashop","rustashop_api","rustashop_console","rustashop_domain","rustashop_extensions","rustashop_install","rustashop_jobs","rustashop_mcp","rustashop_migrate","rustashop_openapi","rustashop_persist","rustashop_persist_diesel","rustashop_persist_seaorm","rustashop_persist_sqlx","rustashop_sandbox","rustashop_seaorm_migrate","rustashop_worker"];
+//{"start":21,"fragment_lengths":[11,16,20,19,23,20,17,16,20,20,20,27,27,25,20,27,19]}

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CATALOG_CACHE_POOL_SERVICE"],"struct":["WorkerExtension"]};
