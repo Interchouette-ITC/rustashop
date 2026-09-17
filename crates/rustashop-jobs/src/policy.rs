@@ -1,6 +1,11 @@
 //! When the API process should spawn an in-process consumer.
 
+use std::sync::Mutex;
+
 use crate::messenger::MESSENGER_REDIS_URL_ENV;
+
+/// Serializes tests that touch messenger Redis / inline-worker env vars.
+pub static MESSENGER_ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Env override: `1` force inline worker, `0` force external worker.
 pub const INLINE_WORKER_ENV: &str = "RUSTASHOP_MESSENGER_INLINE_WORKER";
@@ -18,13 +23,11 @@ pub fn should_spawn_inline_worker() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    static LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn default_inline_without_redis() {
-        let _g = LOCK.lock().expect("lock");
+        let _g = MESSENGER_ENV_LOCK.lock().expect("lock");
+        // SAFETY: test-local env under [`MESSENGER_ENV_LOCK`].
         unsafe {
             std::env::remove_var(INLINE_WORKER_ENV);
             std::env::remove_var(MESSENGER_REDIS_URL_ENV);
@@ -34,7 +37,7 @@ mod tests {
 
     #[test]
     fn default_external_with_redis_url() {
-        let _g = LOCK.lock().expect("lock");
+        let _g = MESSENGER_ENV_LOCK.lock().expect("lock");
         unsafe {
             std::env::remove_var(INLINE_WORKER_ENV);
             std::env::set_var(MESSENGER_REDIS_URL_ENV, "redis://127.0.0.1:6379/0");
@@ -47,7 +50,7 @@ mod tests {
 
     #[test]
     fn explicit_override() {
-        let _g = LOCK.lock().expect("lock");
+        let _g = MESSENGER_ENV_LOCK.lock().expect("lock");
         unsafe {
             std::env::set_var(MESSENGER_REDIS_URL_ENV, "redis://127.0.0.1:6379/0");
             std::env::set_var(INLINE_WORKER_ENV, "1");

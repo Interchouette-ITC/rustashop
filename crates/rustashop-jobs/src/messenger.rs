@@ -599,8 +599,9 @@ mod tests {
             })
             .await
             .expect("enqueue");
-        let handle = spawn_configured_worker(&messenger, registry.clone(), hub);
-        let finished = tokio::time::timeout(Duration::from_secs(5), async {
+        // Use in-memory spawn directly so Redis URL env from parallel tests cannot divert.
+        let handle = messenger.spawn_worker(registry.clone(), hub);
+        let finished = tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 let status = registry.get(&job.id).expect("job").status;
                 if status != crate::registry::SandboxJobStatus::Running {
