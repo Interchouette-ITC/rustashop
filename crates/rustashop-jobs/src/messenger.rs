@@ -306,9 +306,6 @@ async fn consume_redis_loop(
                 if once || (max != usize::MAX && empty_polls + 1 >= max && processed == 0) {
                     break;
                 }
-                if once {
-                    break;
-                }
                 empty_polls += 1;
                 if max != usize::MAX && processed + empty_polls >= max {
                     break;
@@ -405,10 +402,11 @@ fn spawn_redis_worker(
                     }
                     Err(error) => warn!(%error, "sandbox messenger: bad Redis payload"),
                 },
-                Ok(None) => tokio::time::sleep(Duration::from_millis(25)).await,
-                Err(error) => {
-                    error!(%error, "sandbox messenger: Redis receive failed");
-                    tokio::time::sleep(Duration::from_millis(200)).await;
+                other => {
+                    if let Err(error) = other {
+                        error!(%error, "sandbox messenger: Redis receive failed");
+                    }
+                    tokio::time::sleep(Duration::from_millis(25)).await;
                 }
             }
         }
@@ -423,11 +421,8 @@ async fn enqueue_redis(
 ) -> Result<(), serenade_messenger::MessengerError> {
     let config = serenade_messenger::RedisTransportConfig::new(url).with_list_key(list);
     let transport = serenade_messenger::RedisTransport::connect(config)?;
-    let bytes = serde_json::to_vec(&SandboxJobWirePayload::from(work)).map_err(|error| {
-        serenade_messenger::MessengerError::Transport {
-            message: error.to_string(),
-        }
-    })?;
+    let bytes = serde_json::to_vec(&SandboxJobWirePayload::from(work))
+        .expect("sandbox job wire payload serializes");
     let frame = serenade_messenger::WireEnvelope::new(SANDBOX_JOB_MESSAGE, bytes)?;
     transport.send_wire(frame).await
 }
@@ -456,6 +451,7 @@ async fn dispatch_work(work: SandboxJobWork, registry: &SandboxJobRegistry, hub:
 }
 
 #[cfg(test)]
+#[allow(clippy::await_holding_lock)] // std::Mutex serializes env mutation across async tests
 mod tests {
     use super::*;
     use rustashop_sandbox::{CART_UPDATE_QUANTITY_HOOK, CartLine, Money};
@@ -472,6 +468,13 @@ mod tests {
                     currency: "EUR".into(),
                 },
             }],
+        }
+    }
+
+    fn clear_redis_env() {
+        unsafe {
+            std::env::remove_var(MESSENGER_REDIS_URL_ENV);
+            std::env::remove_var(MESSENGER_REDIS_LIST_ENV);
         }
     }
 
@@ -532,6 +535,8 @@ mod tests {
 
     #[tokio::test]
     async fn enqueue_sandbox_job_and_wire_payload_roundtrip() {
+        let _g = crate::test_env::lock();
+        clear_redis_env();
         force_enqueue_failure(false);
         let messenger = SandboxJobMessenger::new();
         let quote = SandboxJobWork::Quote {
@@ -569,6 +574,8 @@ mod tests {
 
     #[tokio::test]
     async fn force_enqueue_failure_flag() {
+        let _g = crate::test_env::lock();
+        clear_redis_env();
         force_enqueue_failure(true);
         let messenger = SandboxJobMessenger::new();
         let err = enqueue_sandbox_job(
@@ -587,6 +594,8 @@ mod tests {
 
     #[tokio::test]
     async fn spawn_configured_worker_drains_quote() {
+        let _g = crate::test_env::lock();
+        clear_redis_env();
         let messenger = SandboxJobMessenger::new();
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
@@ -599,8 +608,7 @@ mod tests {
             })
             .await
             .expect("enqueue");
-        // Use in-memory spawn directly so Redis URL env from parallel tests cannot divert.
-        let handle = messenger.spawn_worker(registry.clone(), hub);
+        let handle = spawn_configured_worker(&messenger, registry.clone(), hub);
         let finished = tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 let status = registry.get(&job.id).expect("job").status;
@@ -615,6 +623,345 @@ mod tests {
         let status = finished.expect("worker did not finish job");
         assert_ne!(status, crate::registry::SandboxJobStatus::Running);
         assert!(messenger.transport().is_empty());
+    }
+
+    #[tokio::test]
+    async fn run_consume_loop_limit_drains_and_stops() {
+        let _g = crate::test_env::lock();
+        clear_redis_env();
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job("quote", "hash", "test");
+        messenger
+            .enqueue(SandboxJobWork::Quote {
+                job_id: job.id.clone(),
+                cart: sample_cart(),
+                source: "not-valid-python".into(),
+            })
+            .await
+            .expect("enqueue");
+        let processed = run_consume_loop(
+            &messenger,
+            registry.clone(),
+            hub,
+            ConsumeOptions {
+                once: false,
+                limit: Some(2),
+            },
+        )
+        .await
+        .expect("consume");
+        assert_eq!(processed, 1);
+        assert_ne!(
+            registry.get(&job.id).expect("job").status,
+            crate::registry::SandboxJobStatus::Running
+        );
+    }
+
+    #[cfg(feature = "redis")]
+    #[test]
+    fn decode_wire_payload_ok_and_err() {
+        let quote = SandboxJobWork::Quote {
+            job_id: "q".into(),
+            cart: sample_cart(),
+            source: "src".into(),
+        };
+        let bytes = serde_json::to_vec(&SandboxJobWirePayload::from(quote)).expect("json");
+        let decoded = decode_wire_payload(&bytes).expect("decode");
+        assert!(matches!(decoded, SandboxJobWork::Quote { job_id, .. } if job_id == "q"));
+
+        let cart_qty = SandboxJobWork::CartQuantity {
+            job_id: "c".into(),
+            input: LegacyHookInput {
+                hook: CART_UPDATE_QUANTITY_HOOK.into(),
+                cart_id: "cart".into(),
+                id_product: "v1".into(),
+                quantity: 2,
+                operator: "set".into(),
+            },
+            source: "php".into(),
+        };
+        let bytes = serde_json::to_vec(&SandboxJobWirePayload::from(cart_qty)).expect("json");
+        let decoded = decode_wire_payload(&bytes).expect("decode");
+        assert!(matches!(decoded, SandboxJobWork::CartQuantity { job_id, .. } if job_id == "c"));
+        assert!(decode_wire_payload(b"not-json").is_err());
+    }
+
+    #[cfg(feature = "redis")]
+    #[tokio::test]
+    async fn redis_connect_failures_are_surfaced() {
+        let _g = crate::test_env::lock();
+        unsafe {
+            std::env::set_var(MESSENGER_REDIS_URL_ENV, "redis://127.0.0.1:1");
+            std::env::remove_var(MESSENGER_REDIS_LIST_ENV);
+        }
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let err = run_consume_loop(
+            &messenger,
+            registry.clone(),
+            hub.clone(),
+            ConsumeOptions {
+                once: true,
+                limit: None,
+            },
+        )
+        .await
+        .expect_err("bad redis url");
+        assert_ne!(err, "");
+        let enqueue_err = enqueue_sandbox_job(
+            &messenger,
+            SandboxJobWork::Quote {
+                job_id: "x".into(),
+                cart: sample_cart(),
+                source: String::new(),
+            },
+        )
+        .await
+        .expect_err("enqueue redis");
+        assert_ne!(enqueue_err, "");
+        let handle = spawn_configured_worker(&messenger, registry, hub);
+        tokio::time::sleep(Duration::from_millis(150)).await;
+        handle.abort();
+        unsafe {
+            std::env::remove_var(MESSENGER_REDIS_URL_ENV);
+        }
+    }
+
+    #[cfg(feature = "redis")]
+    fn redis_up(url: &str) -> bool {
+        redis::Client::open(url)
+            .ok()
+            .and_then(|client| client.get_connection().ok())
+            .is_some()
+    }
+
+    #[cfg(feature = "redis")]
+    fn bind_redis_env(url: &str, list: &str) {
+        unsafe {
+            std::env::set_var(MESSENGER_REDIS_URL_ENV, url);
+            std::env::set_var(MESSENGER_REDIS_LIST_ENV, list);
+        }
+    }
+
+    #[cfg(feature = "redis")]
+    async fn push_wire(url: &str, list: &str, payload: &[u8]) {
+        let config = serenade_messenger::RedisTransportConfig::new(url).with_list_key(list);
+        let transport =
+            serenade_messenger::RedisTransport::connect(config).expect("redis transport");
+        let frame =
+            serenade_messenger::WireEnvelope::new(SANDBOX_JOB_MESSAGE, payload).expect("wire");
+        transport.send_wire(frame).await.expect("push");
+    }
+
+    #[cfg(feature = "redis")]
+    fn push_raw(url: &str, list: &str, payload: &[u8]) {
+        use redis::Commands;
+        let client = redis::Client::open(url).expect("client");
+        let mut conn = client.get_connection().expect("conn");
+        let _: () = conn.rpush(list, payload).expect("push");
+    }
+
+    #[cfg(feature = "redis")]
+    #[tokio::test]
+    async fn redis_enqueue_and_consume_quote() {
+        let _g = crate::test_env::lock();
+        let url = "redis://127.0.0.1:6379/0";
+        assert!(
+            redis_up(url),
+            "redis must be listening at {url} (CI service or local docker)"
+        );
+        let list = format!("rustashop:sandbox:jobs:quote:{}", std::process::id());
+        bind_redis_env(url, &list);
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job("quote", "hash", "redis-test");
+        enqueue_sandbox_job(
+            &messenger,
+            SandboxJobWork::Quote {
+                job_id: job.id.clone(),
+                cart: sample_cart(),
+                source: "not-valid-python".into(),
+            },
+        )
+        .await
+        .expect("enqueue redis");
+        let processed = run_consume_loop(
+            &messenger,
+            registry.clone(),
+            hub,
+            ConsumeOptions {
+                once: false,
+                limit: Some(5),
+            },
+        )
+        .await
+        .expect("consume redis");
+        assert!(processed >= 1);
+        assert_ne!(
+            registry.get(&job.id).expect("job").status,
+            crate::registry::SandboxJobStatus::Running
+        );
+        clear_redis_env();
+    }
+
+    #[cfg(feature = "redis")]
+    #[tokio::test]
+    async fn redis_bad_json_and_corrupt_frame() {
+        let _g = crate::test_env::lock();
+        let url = "redis://127.0.0.1:6379/0";
+        assert!(redis_up(url), "redis must be listening at {url}");
+        let list = format!("rustashop:sandbox:jobs:bad:{}", std::process::id());
+        bind_redis_env(url, &list);
+        let messenger = SandboxJobMessenger::new();
+        push_wire(url, &list, b"not-json").await;
+        let skipped = run_consume_loop(
+            &messenger,
+            SandboxJobRegistry::new(),
+            SandboxJobHub::new(),
+            ConsumeOptions {
+                once: true,
+                limit: None,
+            },
+        )
+        .await
+        .expect("consume junk");
+        assert_eq!(skipped, 0);
+        push_raw(url, &list, b"not-a-wire-envelope");
+        assert!(
+            run_consume_loop(
+                &messenger,
+                SandboxJobRegistry::new(),
+                SandboxJobHub::new(),
+                ConsumeOptions {
+                    once: true,
+                    limit: None,
+                },
+            )
+            .await
+            .is_err(),
+            "corrupt wire frame should error"
+        );
+        clear_redis_env();
+    }
+
+    #[cfg(feature = "redis")]
+    #[tokio::test]
+    async fn redis_spawn_worker_drains_and_handles_errors() {
+        let _g = crate::test_env::lock();
+        let url = "redis://127.0.0.1:6379/0";
+        assert!(redis_up(url), "redis must be listening at {url}");
+        let list = format!("rustashop:sandbox:jobs:worker:{}", std::process::id());
+        bind_redis_env(url, &list);
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job("quote", "hash", "redis-worker");
+        enqueue_sandbox_job(
+            &messenger,
+            SandboxJobWork::Quote {
+                job_id: job.id.clone(),
+                cart: sample_cart(),
+                source: "not-valid-python".into(),
+            },
+        )
+        .await
+        .expect("enqueue for worker");
+        push_wire(url, &list, b"{}").await;
+        let handle = spawn_configured_worker(&messenger, registry.clone(), hub.clone());
+        let finished = tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                let status = registry.get(&job.id).expect("job").status;
+                if status != crate::registry::SandboxJobStatus::Running {
+                    break status;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+        handle.abort();
+        assert_ne!(
+            finished.expect("redis worker timeout"),
+            crate::registry::SandboxJobStatus::Running
+        );
+        let handle = spawn_configured_worker(&messenger, registry.clone(), hub);
+        tokio::time::sleep(Duration::from_millis(60)).await;
+        handle.abort();
+        push_raw(url, &list, b"not-a-wire-envelope");
+        let handle = spawn_configured_worker(&messenger, registry, SandboxJobHub::new());
+        tokio::time::sleep(Duration::from_millis(100)).await;
+        handle.abort();
+        clear_redis_env();
+    }
+
+    #[cfg(feature = "redis")]
+    #[tokio::test]
+    async fn redis_consume_cart_quantity() {
+        let _g = crate::test_env::lock();
+        let url = "redis://127.0.0.1:6379/0";
+        assert!(redis_up(url), "redis must be listening at {url}");
+        let list = format!("rustashop:sandbox:jobs:cart:{}", std::process::id());
+        bind_redis_env(url, &list);
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job("cart_quantity", "hash", "redis-cart");
+        enqueue_sandbox_job(
+            &messenger,
+            SandboxJobWork::CartQuantity {
+                job_id: job.id.clone(),
+                input: LegacyHookInput {
+                    hook: CART_UPDATE_QUANTITY_HOOK.into(),
+                    cart_id: "cart-redis".into(),
+                    id_product: "v1".into(),
+                    quantity: 1,
+                    operator: "set".into(),
+                },
+                source: rustashop_sandbox::php_migration_hook_source(),
+            },
+        )
+        .await
+        .expect("enqueue cart qty");
+        let _wasmer = rustashop_sandbox::WASMER_TEST_GATE.lock().await;
+        let n = run_consume_loop(
+            &messenger,
+            registry,
+            hub,
+            ConsumeOptions {
+                once: false,
+                limit: Some(3),
+            },
+        )
+        .await
+        .expect("consume cart");
+        assert!(n >= 1);
+        clear_redis_env();
+    }
+
+    #[tokio::test]
+    async fn run_consume_loop_unlimited_polls_until_timeout() {
+        let _g = crate::test_env::lock();
+        clear_redis_env();
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let run = run_consume_loop(
+            &messenger,
+            registry,
+            hub,
+            ConsumeOptions {
+                once: false,
+                limit: None,
+            },
+        );
+        let timed_out = tokio::time::timeout(Duration::from_millis(40), run).await;
+        assert!(
+            timed_out.is_err(),
+            "unlimited empty consume should keep polling"
+        );
     }
 
     #[tokio::test]

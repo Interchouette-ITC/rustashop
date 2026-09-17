@@ -25,3 +25,17 @@ pub use registry::{
 pub use runner::{run_cart_quantity_job, run_quote_job};
 
 pub use messenger::force_enqueue_failure;
+
+#[cfg(test)]
+pub(crate) mod test_env {
+    use std::sync::{Mutex, MutexGuard, PoisonError};
+
+    static MESSENGER_ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Serializes tests that mutate messenger Redis / inline-worker env vars.
+    pub fn lock() -> MutexGuard<'static, ()> {
+        MESSENGER_ENV_LOCK
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+}

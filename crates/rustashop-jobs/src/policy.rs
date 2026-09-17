@@ -17,15 +17,11 @@ pub fn should_spawn_inline_worker() -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
-
     use super::*;
-
-    static MESSENGER_ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn default_inline_without_redis() {
-        let _g = MESSENGER_ENV_LOCK.lock().expect("lock");
+        let _g = crate::test_env::lock();
         // SAFETY: test-local env under lock.
         unsafe {
             std::env::remove_var(INLINE_WORKER_ENV);
@@ -36,7 +32,7 @@ mod tests {
 
     #[test]
     fn default_external_with_redis_url() {
-        let _g = MESSENGER_ENV_LOCK.lock().expect("lock");
+        let _g = crate::test_env::lock();
         unsafe {
             std::env::remove_var(INLINE_WORKER_ENV);
             std::env::set_var(MESSENGER_REDIS_URL_ENV, "redis://127.0.0.1:6379/0");
@@ -49,7 +45,7 @@ mod tests {
 
     #[test]
     fn explicit_override() {
-        let _g = MESSENGER_ENV_LOCK.lock().expect("lock");
+        let _g = crate::test_env::lock();
         unsafe {
             std::env::set_var(MESSENGER_REDIS_URL_ENV, "redis://127.0.0.1:6379/0");
             std::env::set_var(INLINE_WORKER_ENV, "1");

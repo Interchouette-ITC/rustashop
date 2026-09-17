@@ -119,6 +119,17 @@ mod tests {
         assert_eq!(parse_limit(&["--limit=3".into()]), Some(3));
         assert_eq!(parse_limit(&["--limit".into(), "2".into()]), Some(2));
         assert_eq!(parse_limit(&["--once".into()]), None);
+        assert_eq!(parse_limit(&["--limit=nope".into()]), None);
+    }
+
+    #[test]
+    fn command_metadata() {
+        assert_eq!(AboutCommand.name(), "rustashop:about");
+        assert_ne!(AboutCommand.description(), "");
+        assert_eq!(CacheClearCommand.name(), "cache:clear");
+        assert_ne!(CacheClearCommand.description(), "");
+        assert_eq!(MessengerConsumeCommand.name(), "messenger:consume");
+        assert_ne!(MessengerConsumeCommand.description(), "");
     }
 
     #[test]
@@ -136,6 +147,12 @@ mod tests {
     #[test]
     fn messenger_consume_once_empty() {
         let input = Input::new(Environment::Dev, true, vec!["--once".into()], None);
+        MessengerConsumeCommand.execute(&input).expect("consume");
+    }
+
+    #[test]
+    fn messenger_consume_limit_equals_form() {
+        let input = Input::new(Environment::Dev, true, vec!["--limit=1".into()], None);
         MessengerConsumeCommand.execute(&input).expect("consume");
     }
 }
