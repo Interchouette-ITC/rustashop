@@ -131,6 +131,7 @@ mod tests {
     #[test]
     fn hit_miss_and_tag_invalidation() {
         let cache = CatalogCache::with_ttl(None);
+        assert!(format!("{cache:?}").contains("CatalogCache"));
         let key = CatalogCache::list_key(20, 0);
         assert!(cache.get_list(&key).is_none());
         cache.put_list(&key, ProductListResponse { items: Vec::new() });
@@ -140,7 +141,7 @@ mod tests {
     }
 
     #[test]
-    fn detail_round_trip() {
+    fn detail_round_trip_with_ttl() {
         let cache = CatalogCache::with_ttl(Some(Duration::from_secs(60)));
         let key = CatalogCache::detail_key("p1");
         cache.put_detail(
@@ -160,7 +161,10 @@ mod tests {
     }
 
     #[test]
-    fn list_key_shape() {
+    fn from_env_and_keys() {
+        let cache = CatalogCache::from_env();
         assert_eq!(CatalogCache::list_key(20, 0), "products:list:20:0");
+        assert_eq!(CatalogCache::detail_key("abc"), "products:detail:abc");
+        let _ = cache.invalidate_catalog();
     }
 }

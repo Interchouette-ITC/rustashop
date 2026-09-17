@@ -296,8 +296,41 @@ mod admin_products_response_tests {
             &catalog,
             HOODIE_ID,
             br#"{"enabled":true}"#,
-            Some(&cache),
+            None,
         )
         .await;
+
+        assert_eq!(
+            patch_admin_product_response(
+                &auth,
+                Some("secret"),
+                &catalog,
+                "a\0b",
+                br#"{"enabled":true}"#,
+                None,
+            )
+            .await
+            .status(),
+            422
+        );
+        assert_eq!(
+            patch_admin_product_response(&auth, Some("secret"), &catalog, HOODIE_ID, b"{", None)
+                .await
+                .status(),
+            422
+        );
+        assert_eq!(
+            patch_admin_product_response(
+                &auth,
+                Some("secret"),
+                &catalog,
+                "00000000-0000-0000-0000-000000000000",
+                br#"{"enabled":true}"#,
+                None,
+            )
+            .await
+            .status(),
+            404
+        );
     }
 }

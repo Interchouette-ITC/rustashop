@@ -364,4 +364,45 @@ mod catalog_error_tests {
         let get = get_product_response(&catalog, HOODIE_ID, None).await;
         assert_eq!(get.status(), 500);
     }
+
+    #[tokio::test]
+    async fn list_and_get_serve_cache_hits() {
+        let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        sqlx::query("SELECT pg_advisory_lock($1)")
+            .bind(SCHEMA_LOCK)
+            .execute(&pool)
+            .await
+            .expect("lock");
+        sqlx::query("DROP SCHEMA public CASCADE")
+            .execute(&pool)
+            .await
+            .expect("drop");
+        sqlx::query("CREATE SCHEMA public")
+            .execute(&pool)
+            .await
+            .expect("create");
+        migrate(&pool).await.expect("migrate");
+        seed_catalog(&pool).await.expect("seed");
+        let catalog = SqlxCatalogRepository::new(pool.clone());
+        let cache = crate::catalog_cache::CatalogCache::with_ttl(None);
+
+        let miss =
+            list_products_response(&catalog, &ListProductsQuery::default(), Some(&cache)).await;
+        assert_eq!(miss.status(), 200);
+        let hit =
+            list_products_response(&catalog, &ListProductsQuery::default(), Some(&cache)).await;
+        assert_eq!(hit.status(), 200);
+        assert_eq!(hit.body(), miss.body());
+
+        let detail = get_product_response(&catalog, HOODIE_ID, Some(&cache)).await;
+        assert_eq!(detail.status(), 200);
+        let detail_hit = get_product_response(&catalog, HOODIE_ID, Some(&cache)).await;
+        assert_eq!(detail_hit.status(), 200);
+        assert_eq!(detail_hit.body(), detail.body());
+    }
 }

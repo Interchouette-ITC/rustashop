@@ -1554,6 +1554,80 @@ mod tests {
         assert_eq!(limited.status(), 429);
     }
 
+    #[actix_web::test]
+    async fn patch_admin_product_via_kernel() {
+        let auth = AdminAuthConfig::from_token("secret");
+        let kernel = commerce_http_kernel(CommerceFrontConfig {
+            admin_auth: auth.clone(),
+            catalog_cache: Some(CatalogCache::with_ttl(None)),
+            ..CommerceFrontConfig::test_default()
+        });
+        let denied = Request::new(
+            Method::Patch,
+            "/v1/admin/products/22222222-2222-2222-2222-222222222221",
+        )
+        .with_header("content-type", "application/json")
+        .with_body(br#"{"enabled":false}"#.to_vec());
+        assert_eq!(kernel.handle(denied).await.status(), 401);
+
+        let missing_catalog = Request::new(
+            Method::Patch,
+            "/v1/admin/products/22222222-2222-2222-2222-222222222221",
+        )
+        .with_header("authorization", "Bearer secret")
+        .with_header("content-type", "application/json")
+        .with_body(br#"{"enabled":false}"#.to_vec());
+        assert_eq!(kernel.handle(missing_catalog).await.status(), 500);
+
+        assert_eq!(
+            patch_admin_product_via_catalog(
+                &auth,
+                Some("secret"),
+                None,
+                None,
+                Some("22222222-2222-2222-2222-222222222221"),
+                br#"{"enabled":false}"#,
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            patch_admin_product_via_catalog(
+                &auth,
+                Some("secret"),
+                None,
+                None,
+                None,
+                br#"{"enabled":false}"#,
+            )
+            .await
+            .status(),
+            500
+        );
+    }
+
+    #[actix_web::test]
+    async fn rate_limit_keys_off_forwarded_for() {
+        let kernel = commerce_http_kernel(CommerceFrontConfig {
+            public_rate_limiter: Some(PublicWriteRateLimiter::with_policy(
+                1,
+                std::time::Duration::from_secs(60),
+            )),
+            ..CommerceFrontConfig::test_default()
+        });
+        let first = Request::new(Method::Post, "/v1/carts")
+            .with_header("x-forwarded-for", "203.0.113.9, 10.0.0.1")
+            .with_header("content-type", "application/json")
+            .with_body(br#"{"currency":"EUR"}"#.to_vec());
+        let second = Request::new(Method::Post, "/v1/carts")
+            .with_header("x-forwarded-for", "203.0.113.9")
+            .with_header("content-type", "application/json")
+            .with_body(br#"{"currency":"EUR"}"#.to_vec());
+        let _ = kernel.handle(first).await;
+        assert_eq!(kernel.handle(second).await.status(), 429);
+    }
+
     #[test]
     fn matcher_sets_route_attribute() {
         let matcher = front_matcher(DEFAULT_ADMIN_API_PREFIX);

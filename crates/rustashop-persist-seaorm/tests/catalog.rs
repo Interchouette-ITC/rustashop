@@ -104,6 +104,27 @@ async fn seaorm_catalog_lists_and_finds_seeded_rows() {
         repo.list_variants_for_product("bad-id").await,
         Err(PersistenceError::InvalidInput { .. })
     ));
+
+    let disabled = repo
+        .set_product_enabled(HOODIE_PRODUCT, false)
+        .await
+        .expect("disable");
+    assert!(!disabled.enabled);
+    let enabled = repo
+        .set_product_enabled(HOODIE_PRODUCT, true)
+        .await
+        .expect("enable");
+    assert!(enabled.enabled);
+    assert!(matches!(
+        repo.set_product_enabled("00000000-0000-0000-0000-000000000000", true)
+            .await,
+        Err(PersistenceError::NotFound { .. })
+    ));
+    assert!(matches!(
+        repo.set_product_enabled("bad-id", true).await,
+        Err(PersistenceError::InvalidInput { .. })
+    ));
+
     unlock(&db).await;
 }
 

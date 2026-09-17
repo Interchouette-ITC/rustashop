@@ -136,11 +136,13 @@ mod tests {
     #[test]
     fn rejects_after_limit() {
         let limiter = PublicWriteRateLimiter::with_policy(2, Duration::from_secs(60));
+        assert!(format!("{limiter:?}").contains("PublicWriteRateLimiter"));
         assert!(limiter.check("alice").is_ok());
         assert!(limiter.check("alice").is_ok());
         let err = limiter.check("alice").expect_err("third should 429");
         assert_eq!(err.status(), 429);
         assert!(limiter.check("bob").is_ok());
+        assert!(limiter.check("").is_ok());
     }
 
     #[test]
@@ -152,6 +154,18 @@ mod tests {
     }
 
     #[test]
+    fn zero_window_disables_factory() {
+        let limiter = PublicWriteRateLimiter::with_policy(5, Duration::from_secs(0));
+        assert!(limiter.check("anyone").is_ok());
+    }
+
+    #[test]
+    fn from_env_builds_enabled_limiter() {
+        let limiter = PublicWriteRateLimiter::from_env();
+        assert!(limiter.check("from-env").is_ok());
+    }
+
+    #[test]
     fn client_key_prefers_forwarded_for() {
         let mut headers = Headers::new();
         headers.insert("x-forwarded-for", "1.2.3.4, 5.6.7.8");
@@ -160,10 +174,26 @@ mod tests {
     }
 
     #[test]
+    fn client_key_uses_real_ip_then_client_id() {
+        let mut headers = Headers::new();
+        headers.insert("x-forwarded-for", "  ,  ");
+        headers.insert("x-real-ip", "10.0.0.1");
+        assert_eq!(client_key_from_headers(&headers), "10.0.0.1");
+
+        let mut headers = Headers::new();
+        headers.insert("x-client-id", "suite-a");
+        assert_eq!(client_key_from_headers(&headers), "suite-a");
+    }
+
+    #[test]
     fn client_key_falls_back_to_anon() {
         assert_eq!(
             client_key_from_headers(&Headers::new()),
             FALLBACK_CLIENT_KEY
         );
+        let mut headers = Headers::new();
+        headers.insert("x-real-ip", "   ");
+        headers.insert("x-client-id", "");
+        assert_eq!(client_key_from_headers(&headers), FALLBACK_CLIENT_KEY);
     }
 }
