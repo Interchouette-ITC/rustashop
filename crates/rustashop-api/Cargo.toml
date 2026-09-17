@@ -28,7 +28,7 @@ openapi-ui = ["serenade-openapi/actix"]
 ## OpenTelemetry bridge via `serenade-observability` (OTLP/HTTP when endpoint set).
 otel = ["serenade-observability/otel"]
 ## Durable sandbox job queue via Redis (`RUSTASHOP_MESSENGER_REDIS_URL`).
-messenger-redis = ["serenade-messenger/redis"]
+messenger-redis = ["serenade-messenger/redis", "rustashop-jobs/redis"]
 persist-sqlx = [
     "rustashop-persist/persist-sqlx",
     "dep:rustashop-persist-sqlx",
@@ -47,6 +47,7 @@ actix-ws = { workspace = true }
 getrandom = "0.3"
 rustashop = { workspace = true }
 rustashop-domain = { workspace = true }
+rustashop-jobs = { workspace = true }
 rustashop-persist = { workspace = true }
 rustashop-sandbox = { path = "../rustashop-sandbox" }
 rustashop-persist-sqlx = { workspace = true, optional = true }

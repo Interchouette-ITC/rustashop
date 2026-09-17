@@ -149,11 +149,16 @@ async fn run() -> std::io::Result<()> {
     let sandbox_hub = SandboxJobHub::new();
     let sandbox_registry = SandboxJobRegistry::new();
     let sandbox_messenger = SandboxJobMessenger::new();
-    let _sandbox_worker = spawn_configured_worker(
-        &sandbox_messenger,
-        sandbox_registry.clone(),
-        sandbox_hub.clone(),
-    );
+    let _sandbox_worker = if rustashop_jobs::should_spawn_inline_worker() {
+        Some(spawn_configured_worker(
+            &sandbox_messenger,
+            sandbox_registry.clone(),
+            sandbox_hub.clone(),
+        ))
+    } else {
+        info!("sandbox messenger: external worker (make worker / messenger:consume)");
+        None
+    };
     let admin_auth = AdminAuthConfig::from_env();
     let admin_prefix = AdminApiPrefix::from_env();
     if admin_auth.is_configured() {

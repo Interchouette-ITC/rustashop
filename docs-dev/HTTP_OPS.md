@@ -62,6 +62,19 @@ After a successful `POST /v1/checkout`, when the body includes `email`, the API 
 | `RUSTASHOP_ORDER_MAIL_FROM` | From address (default `orders@rustashop.local`) |
 | `RUSTASHOP_MAIL_DIR` | When set, `FileTransport` dumps messages under this directory; otherwise `NullTransport` |
 
+## Console worker
+
+Serenade console entry: `make console` / `make worker` (`rustashop-console` binary).
+
+| Command | Role |
+| --- | --- |
+| `messenger:consume` | Consume sandbox jobs (Redis when `RUSTASHOP_MESSENGER_REDIS_URL` is set) |
+| `rustashop:about` | Kernel status / environment dump |
+| `cache:clear` | Clear the console DI catalog cache pool |
+| `serenade:about`, `debug:container`, … | Framework built-ins |
+
+See `AI-TOOLS.md` for the Redis multi-process recipe. Default API listen uses an inline consumer only when Redis is unset (or `RUSTASHOP_MESSENGER_INLINE_WORKER=1`).
+
 ## Logging
 
 Process logging goes through `serenade-observability` (`LoggingConfig` + `init`). Default sinks: stderr and rolling files under `var/log/` (stem from `RUSTASHOP_ENV`, default `dev`). Filter: `SERENADE_LOG` or `RUST_LOG`.

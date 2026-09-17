@@ -5774,6 +5774,7 @@ dependencies = [
  "rstest",
  "rustashop",
  "rustashop-domain",
+ "rustashop-jobs",
  "rustashop-persist",
  "rustashop-persist-seaorm",
  "rustashop-persist-sqlx",
@@ -5821,6 +5822,21 @@ dependencies = [
  "anyhow",
  "serenade-component-host",
  "wasmtime",
+]
+
+[[package]]
+name = "rustashop-jobs"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.3.4",
+ "redis",
+ "rustashop-sandbox",
+ "serde",
+ "serde_json",
+ "serenade-messenger",
+ "tokio",
+ "tracing",
+ "utoipa",
 ]
 
 [[package]]
@@ -5908,6 +5924,22 @@ dependencies = [
  "serenade-sandbox",
  "tempfile",
  "tokio",
+]
+
+[[package]]
+name = "rustashop-worker"
+version = "0.1.0"
+dependencies = [
+ "rustashop",
+ "rustashop-jobs",
+ "serenade-bundle",
+ "serenade-cache",
+ "serenade-config",
+ "serenade-console",
+ "serenade-di",
+ "serenade-kernel",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
