@@ -247,6 +247,10 @@ pub async fn get_cart_response(catalog: &CatalogRepository, id: &str) -> Respons
 }
 
 /// Adds a line (merges quantity when the variant is already present).
+///
+/// # Panics
+///
+/// Panics only if quantity failed domain checks after Serenade validation (unreachable).
 pub async fn add_cart_line_response(
     catalog: &CatalogRepository,
     hub: Option<&CartHub>,
@@ -276,16 +280,15 @@ pub async fn add_cart_line_response(
         Ok(None) => return api_error_json_response(&ApiError::NotFound),
         Err(error) => return api_error_json_response(&ApiError::from_persist(&error)),
     };
-    let line = match CartLine::from_variant(
+    // Quantity already passed `serenade-validator` Range(1..=i32::MAX).
+    let line = CartLine::from_variant(
         String::new(),
         cart.id.clone(),
         &variant,
         product_name,
         request.quantity,
-    ) {
-        Ok(line) => line,
-        Err(error) => return api_error_json_response(&ApiError::from_domain(&error)),
-    };
+    )
+    .expect("positive quantity already validated");
     if let Err(error) = cart.upsert_line(line) {
         return api_error_json_response(&ApiError::from_domain(&error));
     }
