@@ -26,6 +26,7 @@ module.exports = {
     target,
     secure: false,
     changeOrigin: true,
+    ws: true,
     pathRewrite: {
       '^/api': '',
     },
