@@ -67,9 +67,9 @@ mod tests {
     fn object_level_violation_omits_path_prefix() {
         let mut list = ConstraintViolationList::new();
         list.add(Violation::new("", "object invalid", "Custom"));
-        let ApiError::Unprocessable(message) = api_error_from_violations(&list) else {
-            panic!("expected unprocessable");
-        };
-        assert_eq!(message, "object invalid");
+        assert!(matches!(
+            api_error_from_violations(&list),
+            ApiError::Unprocessable(ref message) if message == "object invalid"
+        ));
     }
 }
