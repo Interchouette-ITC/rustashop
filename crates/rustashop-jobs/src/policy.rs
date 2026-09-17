@@ -1,11 +1,6 @@
 //! When the API process should spawn an in-process consumer.
 
-use std::sync::Mutex;
-
 use crate::messenger::MESSENGER_REDIS_URL_ENV;
-
-/// Serializes tests that touch messenger Redis / inline-worker env vars.
-pub static MESSENGER_ENV_LOCK: Mutex<()> = Mutex::new(());
 
 /// Env override: `1` force inline worker, `0` force external worker.
 pub const INLINE_WORKER_ENV: &str = "RUSTASHOP_MESSENGER_INLINE_WORKER";
@@ -22,12 +17,16 @@ pub fn should_spawn_inline_worker() -> bool {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
+
     use super::*;
+
+    static MESSENGER_ENV_LOCK: Mutex<()> = Mutex::new(());
 
     #[test]
     fn default_inline_without_redis() {
         let _g = MESSENGER_ENV_LOCK.lock().expect("lock");
-        // SAFETY: test-local env under [`MESSENGER_ENV_LOCK`].
+        // SAFETY: test-local env under lock.
         unsafe {
             std::env::remove_var(INLINE_WORKER_ENV);
             std::env::remove_var(MESSENGER_REDIS_URL_ENV);
