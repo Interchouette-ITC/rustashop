@@ -7,7 +7,7 @@ Rust **rmcp** server for commerce tools. Shares the `TOOLS` catalog with in-app 
 | Mode | How | Use |
 | --- | --- | --- |
 | **stdio (host)** | `make run-mcp` | MCP over stdin/stdout |
-| **HTTP (host)** | `make run-mcp-http` | Streamable HTTP on **8090** → `http://127.0.0.1:8090/mcp` |
+| **HTTP (host)** | `make run-mcp-http` | Streamable HTTP on **8090** via `serenade-http-axum` → `http://127.0.0.1:8090/mcp` |
 
 ```bash
 # Commerce API must be up (default http://127.0.0.1:8080)

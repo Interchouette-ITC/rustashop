@@ -5,12 +5,18 @@
 
 use std::sync::Arc;
 
+use axum::body::Body;
+use axum::http::{HeaderName, HeaderValue, Request as HttpRequest, StatusCode};
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::wrapper::Parameters,
     model::{CallToolResult, ContentBlock, ServerCapabilities, ServerInfo},
     tool, tool_handler, tool_router,
 };
+use serenade_http::{AsyncHttpKernel, HttpError, Method, Request, Response, box_future};
+use serenade_http_axum::{BoundServer, ShutdownHandle, await_bound, bind_server};
+use tokio::net::ToSocketAddrs;
+use tower::ServiceExt;
 
 use crate::MCP_CRATE;
 #[cfg(test)]
@@ -23,6 +29,9 @@ use crate::tools::{
 
 /// Default Streamable HTTP bind (`RUSTASHOP_MCP_ADDR` / `--listen`).
 pub const DEFAULT_HTTP_LISTEN: &str = "127.0.0.1:8090";
+
+/// Max body accepted when bridging Streamable HTTP through the Serenade kernel.
+const MAX_MCP_BODY_BYTES: usize = 16 * 1024 * 1024;
 
 /// MCP server handle (clonable for Streamable HTTP sessions).
 #[derive(Clone)]
@@ -199,42 +208,154 @@ impl RustashopMcp {
     }
 }
 
-fn http_router() -> axum::Router {
+type McpStreamableService = rmcp::transport::streamable_http_server::tower::StreamableHttpService<
+    RustashopMcp,
+    rmcp::transport::streamable_http_server::session::local::LocalSessionManager,
+>;
+
+fn streamable_service() -> McpStreamableService {
     let config =
         rmcp::transport::streamable_http_server::tower::StreamableHttpServerConfig::default();
-    let service = rmcp::transport::streamable_http_server::tower::StreamableHttpService::new(
+    rmcp::transport::streamable_http_server::tower::StreamableHttpService::new(
         || Ok(RustashopMcp::from_env()),
         Arc::new(
             rmcp::transport::streamable_http_server::session::local::LocalSessionManager::default(),
         ),
         config,
-    );
-    let method_router = axum::routing::any_service(service);
-    axum::Router::new()
-        .route("/mcp", method_router.clone())
-        .route("/mcp/", method_router)
+    )
 }
 
-async fn serve_listener(
-    listener: tokio::net::TcpListener,
-    shutdown: impl std::future::Future<Output = ()> + Send + 'static,
-) -> std::io::Result<()> {
-    let addr = listener.local_addr()?;
-    tracing::info!(%addr, crate = MCP_CRATE, "rustashop-mcp HTTP listening");
-    axum::serve(listener, http_router())
-        .with_graceful_shutdown(shutdown)
-        .await?;
-    Ok(())
+/// Serenade async kernel that bridges `/mcp` to Streamable HTTP.
+#[must_use]
+pub fn mcp_http_kernel() -> AsyncHttpKernel {
+    let service = streamable_service();
+    AsyncHttpKernel::from_async_fn(move |request: &mut Request| {
+        let mut service = service.clone();
+        let path = request.path().to_owned();
+        let method = request.method();
+        let query = request.query().map(str::to_owned);
+        let headers: Vec<(String, String)> = request
+            .headers()
+            .iter()
+            .map(|(name, value)| (name.to_owned(), value.to_owned()))
+            .collect();
+        let body = request.body().to_vec();
+        box_future(async move {
+            if path != "/mcp" && path != "/mcp/" {
+                return Ok(Response::new(404).with_body(b"no handler".to_vec()));
+            }
+            bridge_streamable(
+                &mut service,
+                method,
+                &path,
+                query.as_deref(),
+                &headers,
+                body,
+            )
+            .await
+        })
+    })
+}
+
+async fn bridge_streamable(
+    service: &mut McpStreamableService,
+    method: Method,
+    path: &str,
+    query: Option<&str>,
+    headers: &[(String, String)],
+    body: Vec<u8>,
+) -> Result<Response, HttpError> {
+    let http_request = build_http_request(method, path, query, headers, body)?;
+    let http_response = match service.oneshot(http_request).await {
+        Ok(response) => response,
+        Err(never) => match never {},
+    };
+    Ok(collect_http_response(http_response).await)
+}
+
+fn build_http_request(
+    method: Method,
+    path: &str,
+    query: Option<&str>,
+    headers: &[(String, String)],
+    body: Vec<u8>,
+) -> Result<HttpRequest<Body>, HttpError> {
+    let uri = match query {
+        Some(query) if !query.is_empty() => format!("{path}?{query}"),
+        _ => path.to_owned(),
+    };
+    let http_method = axum::http::Method::from_bytes(method.as_str().as_bytes())
+        .map_err(|error| HttpError::status(405, error.to_string()))?;
+    let mut builder = HttpRequest::builder().method(http_method).uri(uri);
+    for (name, value) in headers {
+        let Ok(header_name) = HeaderName::try_from(name.as_str()) else {
+            continue;
+        };
+        let Ok(header_value) = HeaderValue::from_str(value) else {
+            continue;
+        };
+        builder = builder.header(header_name, header_value);
+    }
+    builder
+        .body(Body::from(body))
+        .map_err(|error| HttpError::status(400, error.to_string()))
+}
+
+async fn collect_http_response<B>(response: axum::http::Response<B>) -> Response
+where
+    B: axum::body::HttpBody<Data = axum::body::Bytes> + Send + 'static,
+    B::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    let status = response.status().as_u16();
+    let header_pairs: Vec<(String, String)> = response
+        .headers()
+        .iter()
+        .filter_map(|(name, value)| {
+            value
+                .to_str()
+                .ok()
+                .map(|text| (name.as_str().to_owned(), text.to_owned()))
+        })
+        .collect();
+    let body = axum::body::to_bytes(Body::new(response.into_body()), MAX_MCP_BODY_BYTES)
+        .await
+        .unwrap_or_default();
+    let mut out = Response::new(if StatusCode::from_u16(status).is_ok() {
+        status
+    } else {
+        500
+    })
+    .with_body(body.to_vec());
+    for (name, value) in header_pairs {
+        out = out.with_header(name, value);
+    }
+    out
+}
+
+/// Binds Streamable MCP HTTP via Serenade Axum [`bind_server`] (tests / graceful stop).
+///
+/// # Errors
+///
+/// Propagates bind errors from the Serenade Axum helper.
+pub async fn bind_http(addr: impl ToSocketAddrs) -> std::io::Result<(BoundServer, ShutdownHandle)> {
+    let kernel = mcp_http_kernel();
+    let (server, shutdown) = bind_server(addr, kernel).await?;
+    tracing::info!(
+        addr = %server.local_addr(),
+        crate = MCP_CRATE,
+        "rustashop-mcp HTTP listening (serenade-http-axum)"
+    );
+    Ok((server, shutdown))
 }
 
 /// Serves MCP over Streamable HTTP until the process is stopped.
 ///
 /// # Errors
 ///
-/// Returns I/O errors from binding or serving the Axum listener.
+/// Returns I/O errors from binding or serving through Serenade Axum.
 pub async fn run_http(addr: &str) -> std::io::Result<()> {
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    serve_listener(listener, std::future::pending()).await
+    let (server, _shutdown) = bind_http(addr).await?;
+    await_bound(server).await
 }
 
 #[tool_handler]
@@ -409,20 +530,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn run_http_serves_mcp_and_shuts_down() {
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-            .await
-            .expect("bind");
-        let addr = listener.local_addr().expect("addr");
-        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
-
-        let server = tokio::spawn(async move {
-            tokio::time::sleep(std::time::Duration::from_millis(40)).await;
-            serve_listener(listener, async {
-                let _ = shutdown_rx.await;
-            })
-            .await
-        });
+    async fn bind_http_serves_mcp_and_shuts_down() {
+        let (server, shutdown) = bind_http("127.0.0.1:0").await.expect("bind");
+        let addr = server.local_addr();
+        let join = tokio::spawn(async move { await_bound(server).await });
 
         assert!(
             poll_tcp_ready(addr, 50).await,
@@ -450,11 +561,17 @@ mod tests {
         let status = response.status();
         assert!(status.is_success() || status.as_u16() == 406);
 
-        let _ = shutdown_tx.send(());
-        server
+        let unknown = reqwest::Client::new()
+            .get(format!("http://{addr}/nope"))
+            .send()
             .await
+            .expect("unknown");
+        assert_eq!(unknown.status().as_u16(), 404);
+
+        shutdown.shutdown();
+        join.await
             .expect("join")
-            .expect("serve_listener should shut down cleanly");
+            .expect("await_bound should shut down cleanly");
     }
 
     async fn mount_commerce_mocks(mock: &MockServer) {

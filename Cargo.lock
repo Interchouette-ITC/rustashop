@@ -5834,7 +5834,10 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "serenade-http",
+ "serenade-http-axum",
  "tokio",
+ "tower",
  "tracing",
  "tracing-subscriber",
  "wiremock",
@@ -6582,6 +6585,16 @@ source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd
 dependencies = [
  "actix-web",
  "serenade-http",
+]
+
+[[package]]
+name = "serenade-http-axum"
+version = "0.1.0"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+dependencies = [
+ "axum",
+ "serenade-http",
+ "tokio",
 ]
 
 [[package]]
