@@ -5786,12 +5786,14 @@ dependencies = [
  "serenade-http",
  "serenade-http-actix",
  "serenade-kernel",
+ "serenade-mailer",
  "serenade-messenger",
  "serenade-observability",
  "serenade-openapi",
  "serenade-rate-limiter",
  "serenade-security",
  "serenade-session",
+ "serenade-validator",
  "sqlx",
  "thiserror 2.0.20",
  "tokio",
@@ -6750,6 +6752,15 @@ source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd
 dependencies = [
  "getrandom 0.3.4",
  "serenade-http",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "serenade-validator"
+version = "0.1.0"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+dependencies = [
+ "serenade-messenger",
  "thiserror 2.0.20",
 ]
 

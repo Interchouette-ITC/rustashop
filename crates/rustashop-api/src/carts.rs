@@ -6,11 +6,15 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use serde_json::json;
 use serenade_http::Response;
+use serenade_validator::{
+    Constraint, ConstraintViolationList, Length, NotBlank, Range, Validatable, Validator,
+};
 use utoipa::ToSchema;
 
 use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
 use crate::realtime::{CartHub, CartRealtimeEvent};
 use crate::request_param::{ensure_request_param, ensure_request_param_opt};
+use crate::request_validate::validate_request;
 
 /// Body for `POST /v1/carts`.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -36,6 +40,25 @@ pub struct AddCartLineRequest {
     pub quantity: i32,
 }
 
+impl Validatable for AddCartLineRequest {
+    fn validate(&self, validator: &dyn Validator) -> ConstraintViolationList {
+        let mut list = validator.validate_value(
+            &self.variant_id,
+            "variant_id",
+            &[&NotBlank as &dyn Constraint, &Length::new(1, 128)],
+        );
+        let quantity = validator.validate_value(
+            &self.quantity.to_string(),
+            "quantity",
+            &[&Range::new(1, i64::from(i32::MAX))],
+        );
+        for violation in quantity.as_slice() {
+            list.add(violation.clone());
+        }
+        list
+    }
+}
+
 /// Body for `PATCH /v1/carts/{id}/lines/{line_id}`.
 #[derive(Debug, Deserialize, ToSchema)]
 #[schema(example = json!({"quantity": 2}))]
@@ -43,6 +66,16 @@ pub struct UpdateCartLineRequest {
     /// Replacement quantity greater than zero.
     #[schema(example = 2)]
     pub quantity: i32,
+}
+
+impl Validatable for UpdateCartLineRequest {
+    fn validate(&self, validator: &dyn Validator) -> ConstraintViolationList {
+        validator.validate_value(
+            &self.quantity.to_string(),
+            "quantity",
+            &[&Range::new(1, i64::from(i32::MAX))],
+        )
+    }
 }
 
 /// Money JSON for cart responses.
@@ -214,6 +247,10 @@ pub async fn get_cart_response(catalog: &CatalogRepository, id: &str) -> Respons
 }
 
 /// Adds a line (merges quantity when the variant is already present).
+///
+/// # Panics
+///
+/// Panics only if quantity failed domain checks after Serenade validation (unreachable).
 pub async fn add_cart_line_response(
     catalog: &CatalogRepository,
     hub: Option<&CartHub>,
@@ -227,6 +264,9 @@ pub async fn add_cart_line_response(
         Ok(request) => request,
         Err(error) => return api_error_json_response(&error),
     };
+    if let Err(error) = validate_request(&request) {
+        return api_error_json_response(&error);
+    }
     if let Err(error) = ensure_request_param(&request.variant_id) {
         return api_error_json_response(&error);
     }
@@ -240,16 +280,15 @@ pub async fn add_cart_line_response(
         Ok(None) => return api_error_json_response(&ApiError::NotFound),
         Err(error) => return api_error_json_response(&ApiError::from_persist(&error)),
     };
-    let line = match CartLine::from_variant(
+    // Quantity already passed `serenade-validator` Range(1..=i32::MAX).
+    let line = CartLine::from_variant(
         String::new(),
         cart.id.clone(),
         &variant,
         product_name,
         request.quantity,
-    ) {
-        Ok(line) => line,
-        Err(error) => return api_error_json_response(&ApiError::from_domain(&error)),
-    };
+    )
+    .expect("positive quantity already validated");
     if let Err(error) = cart.upsert_line(line) {
         return api_error_json_response(&ApiError::from_domain(&error));
     }
@@ -274,6 +313,9 @@ pub async fn update_cart_line_response(
         Ok(request) => request,
         Err(error) => return api_error_json_response(&error),
     };
+    if let Err(error) = validate_request(&request) {
+        return api_error_json_response(&error);
+    }
     let mut cart = match catalog.find_cart_by_id(cart_id).await {
         Ok(Some(cart)) => cart,
         Ok(None) => return api_error_json_response(&ApiError::NotFound),
@@ -676,6 +718,28 @@ mod cart_response_tests {
                 .await
                 .status(),
             404
+        );
+    }
+
+    #[tokio::test]
+    async fn update_rejects_zero_quantity_via_validator() {
+        let (catalog, _pool) = seeded().await;
+        let created = create_cart_response(&catalog, None, br#"{"currency":"EUR"}"#).await;
+        let cart: CartResponse = serde_json::from_slice(created.body()).expect("cart");
+        let added = add_cart_line_response(
+            &catalog,
+            None,
+            &cart.id,
+            format!(r#"{{"variant_id":"{MUG_VARIANT}","quantity":1}}"#).as_bytes(),
+        )
+        .await;
+        let with_line: CartResponse = serde_json::from_slice(added.body()).expect("line");
+        let line_id = &with_line.lines[0].id;
+        assert_eq!(
+            update_cart_line_response(&catalog, None, &cart.id, line_id, br#"{"quantity":0}"#)
+                .await
+                .status(),
+            422
         );
     }
 

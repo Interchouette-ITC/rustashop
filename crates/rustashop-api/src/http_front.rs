@@ -32,6 +32,7 @@ use crate::model_providers::{
     list_ai_providers_catalog_response, list_ai_providers_response, test_ai_provider_response,
 };
 use crate::openapi::openapi_json_response;
+use crate::order_mail::OrderMailer;
 use crate::products::{ListProductsQuery, get_product_response, list_products_response};
 use crate::public_rate_limit::{PublicWriteRateLimiter, client_key_from_headers};
 use crate::realtime::CartHub;
@@ -99,6 +100,8 @@ pub struct CommerceFrontConfig {
     pub catalog_cache: Option<CatalogCache>,
     /// Optional rate limiter for public cart/checkout writes.
     pub public_rate_limiter: Option<PublicWriteRateLimiter>,
+    /// Optional order confirmation mailer (`serenade-mailer`).
+    pub order_mailer: Option<OrderMailer>,
     /// Shared readiness flag for `GET /readyz` (flip before HTTP drain).
     pub readiness: Readiness,
 }
@@ -121,6 +124,7 @@ impl CommerceFrontConfig {
                 10_000,
                 std::time::Duration::from_secs(60),
             )),
+            order_mailer: Some(OrderMailer::null()),
             readiness: Readiness::new(),
         }
     }
@@ -278,7 +282,13 @@ async fn dispatch_route(
             .await
         }
         PLACE_ORDER_ROUTE => {
-            place_order_via_catalog(config.catalog.as_ref(), input.body, input.idempotency).await
+            place_order_via_catalog(
+                config.catalog.as_ref(),
+                config.order_mailer.as_ref(),
+                input.body,
+                input.idempotency,
+            )
+            .await
         }
         OPENAPI_ROUTE => openapi_json_response(),
         _ => dispatch_operator_route(route_name, config, &input).await,
@@ -504,13 +514,14 @@ async fn delete_cart_line_via_catalog(
 
 async fn place_order_via_catalog(
     catalog: Option<&CatalogRepository>,
+    mailer: Option<&OrderMailer>,
     body: &[u8],
     idempotency_key: Option<&str>,
 ) -> Response {
     let Some(catalog) = catalog else {
         return api_error_json_response(&ApiError::Internal);
     };
-    place_order_response(catalog, body, idempotency_key).await
+    place_order_response(catalog, mailer, body, idempotency_key).await
 }
 
 async fn list_admin_products_via_catalog(
