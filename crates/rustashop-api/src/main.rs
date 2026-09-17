@@ -4,7 +4,9 @@ use rustashop_api::{
     ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, AdminApiPrefix, AdminAuthConfig,
     BIND_ENV, CartHub, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
     INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobRegistry, bind_address, bind_commerce_server,
+    catalog_cache::CatalogCache,
     commerce_http_kernel, install_artefacts_present,
+    public_rate_limit::PublicWriteRateLimiter,
     sandbox_messenger::{SandboxJobMessenger, spawn_configured_worker},
     shop_root,
 };
@@ -180,6 +182,8 @@ async fn run() -> std::io::Result<()> {
         sandbox_hub: Some(sandbox_hub.clone()),
         sandbox_registry: Some(sandbox_registry),
         sandbox_messenger: Some(sandbox_messenger),
+        catalog_cache: Some(CatalogCache::from_env()),
+        public_rate_limiter: Some(PublicWriteRateLimiter::from_env()),
         readiness: readiness.clone(),
     });
     let bound = bind_commerce_server(

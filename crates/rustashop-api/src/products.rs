@@ -180,24 +180,45 @@ fn page_request(query: &ListProductsQuery) -> PageRequest {
 pub async fn list_products_response(
     catalog: &CatalogRepository,
     query: &ListProductsQuery,
+    cache: Option<&crate::catalog_cache::CatalogCache>,
 ) -> Response {
-    match ProductRepository::list(catalog, page_request(query)).await {
-        Ok(items) => json_response(
-            200,
-            &ProductListResponse {
+    let page = page_request(query);
+    let cache_key = crate::catalog_cache::CatalogCache::list_key(page.limit, page.offset);
+    if let Some(cache) = cache
+        && let Some(hit) = cache.get_list(&cache_key)
+    {
+        return json_response(200, hit.as_ref());
+    }
+    match ProductRepository::list(catalog, page).await {
+        Ok(items) => {
+            let body = ProductListResponse {
                 items: items.into_iter().map(ProductResponse::from).collect(),
-            },
-        ),
+            };
+            if let Some(cache) = cache {
+                cache.put_list(&cache_key, body.clone());
+            }
+            json_response(200, &body)
+        }
         Err(error) => api_error_json_response(&ApiError::from_persist(&error)),
     }
 }
 
 /// Returns one product by id (with variants) as a Serenade JSON [`Response`].
-pub async fn get_product_response(catalog: &CatalogRepository, id: &str) -> Response {
+pub async fn get_product_response(
+    catalog: &CatalogRepository,
+    id: &str,
+    cache: Option<&crate::catalog_cache::CatalogCache>,
+) -> Response {
     if let Err(error) = ensure_request_param(id) {
         return api_error_json_response(&error);
     }
     let id = id.to_owned();
+    let cache_key = crate::catalog_cache::CatalogCache::detail_key(&id);
+    if let Some(cache) = cache
+        && let Some(hit) = cache.get_detail(&cache_key)
+    {
+        return json_response(200, hit.as_ref());
+    }
     let product = match ProductRepository::find_by_id(catalog, &id).await {
         Ok(product) => product,
         Err(error) => return api_error_json_response(&ApiError::from_persist(&error)),
@@ -206,7 +227,13 @@ pub async fn get_product_response(catalog: &CatalogRepository, id: &str) -> Resp
         return api_error_json_response(&ApiError::NotFound);
     };
     match catalog.list_variants_for_product(&id).await {
-        Ok(variants) => json_response(200, &ProductDetailResponse::from_parts(product, variants)),
+        Ok(variants) => {
+            let body = ProductDetailResponse::from_parts(product, variants);
+            if let Some(cache) = cache {
+                cache.put_detail(&cache_key, body.clone());
+            }
+            json_response(200, &body)
+        }
         Err(error) => api_error_json_response(&ApiError::from_persist(&error)),
     }
 }
@@ -321,20 +348,20 @@ mod catalog_error_tests {
         seed_catalog(&pool).await.expect("seed");
         let catalog = SqlxCatalogRepository::new(pool.clone());
 
-        let nul = get_product_response(&catalog, "a\0b").await;
+        let nul = get_product_response(&catalog, "a\0b", None).await;
         assert_eq!(nul.status(), 422);
 
         sqlx::query("DROP TABLE product_variant CASCADE")
             .execute(&pool)
             .await
             .expect("drop variants");
-        let variants = get_product_response(&catalog, HOODIE_ID).await;
+        let variants = get_product_response(&catalog, HOODIE_ID, None).await;
         assert_eq!(variants.status(), 500);
 
         pool.close().await;
-        let list = list_products_response(&catalog, &ListProductsQuery::default()).await;
+        let list = list_products_response(&catalog, &ListProductsQuery::default(), None).await;
         assert_eq!(list.status(), 500);
-        let get = get_product_response(&catalog, HOODIE_ID).await;
+        let get = get_product_response(&catalog, HOODIE_ID, None).await;
         assert_eq!(get.status(), 500);
     }
 }

@@ -5781,6 +5781,7 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
+ "serenade-cache",
  "serenade-contracts",
  "serenade-http",
  "serenade-http-actix",
@@ -5788,6 +5789,7 @@ dependencies = [
  "serenade-messenger",
  "serenade-observability",
  "serenade-openapi",
+ "serenade-rate-limiter",
  "serenade-security",
  "serenade-session",
  "sqlx",
@@ -6502,6 +6504,15 @@ dependencies = [
  "serenade-mailer",
  "serenade-rate-limiter",
  "serenade-scheduler",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "serenade-cache"
+version = "0.1.0"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+dependencies = [
+ "serenade-di",
  "thiserror 2.0.20",
 ]
 
