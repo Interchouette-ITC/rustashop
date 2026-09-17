@@ -3,6 +3,7 @@
 //! Audit rows stay process-local. Admin `GET …/jobs/{id}` reads Redis when the
 //! in-memory map misses (API and worker are different processes).
 
+#[cfg(any(test, feature = "redis"))]
 use crate::messenger::MESSENGER_REDIS_URL_ENV;
 use crate::registry::SandboxJobResponse;
 
