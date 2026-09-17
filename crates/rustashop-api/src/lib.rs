@@ -24,7 +24,7 @@ mod realtime;
 mod request_param;
 mod sandbox_autonomous;
 mod sandbox_jobs;
-mod sandbox_messenger;
+pub mod sandbox_messenger;
 mod sandbox_realtime;
 mod sandbox_ws;
 mod session_http;
@@ -74,10 +74,6 @@ pub use sandbox_jobs::{
     CreateSandboxJobRequest, SandboxAuditRecord, SandboxJobRegistry, SandboxJobResponse,
     SandboxJobStatus, SandboxProposalResponse, create_sandbox_job, get_sandbox_job,
     list_sandbox_audit,
-};
-pub use sandbox_messenger::{
-    DEFAULT_MESSENGER_REDIS_LIST, MESSENGER_REDIS_LIST_ENV, MESSENGER_REDIS_URL_ENV,
-    SandboxJobMessenger, spawn_configured_worker,
 };
 pub use sandbox_realtime::SandboxJobHub;
 

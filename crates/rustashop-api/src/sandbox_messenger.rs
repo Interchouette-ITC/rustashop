@@ -1,7 +1,7 @@
 //! Sandbox job enqueue / consume via `serenade-messenger`.
 //!
 //! Default: [`InMemoryTransport`] + in-process worker loop (CI / local).
-//! Feature `messenger-redis`: durable [`WireEnvelope`] queue on Redis.
+//! Feature `messenger-redis`: durable Redis wire-envelope queue.
 
 use std::time::Duration;
 
@@ -130,10 +130,8 @@ impl Default for SandboxJobMessenger {
 
 async fn dispatch_envelope(envelope: Envelope, registry: &SandboxJobRegistry, hub: &SandboxJobHub) {
     let Some(work) = envelope.downcast_ref::<SandboxJobWork>() else {
-        warn!(
-            message_name = envelope.message_name(),
-            "sandbox messenger: unknown envelope type"
-        );
+        let message_name = envelope.message_name();
+        warn!(message_name, "sandbox messenger: unknown envelope type");
         return;
     };
     match work.clone() {
@@ -150,7 +148,7 @@ async fn dispatch_envelope(envelope: Envelope, registry: &SandboxJobRegistry, hu
     }
 }
 
-/// JSON payload for Redis [`WireEnvelope`] frames (feature `messenger-redis`).
+/// JSON payload for Redis wire-envelope frames (feature `messenger-redis`).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum SandboxJobWirePayload {
@@ -245,10 +243,18 @@ pub fn spawn_configured_worker(
 }
 
 /// Enqueues on Redis when `messenger-redis` + URL are set; otherwise in-memory.
+///
+/// # Errors
+///
+/// Returns a string when the transport send fails, or when tests force a failure.
 pub async fn enqueue_sandbox_job(
     messenger: &SandboxJobMessenger,
     work: SandboxJobWork,
 ) -> Result<(), String> {
+    #[cfg(test)]
+    if FAIL_ENQUEUE.with(std::cell::Cell::get) {
+        return Err("forced enqueue failure".to_owned());
+    }
     #[cfg(feature = "messenger-redis")]
     {
         if let Ok(url) = std::env::var(MESSENGER_REDIS_URL_ENV) {
@@ -263,6 +269,17 @@ pub async fn enqueue_sandbox_job(
         .enqueue(work)
         .await
         .map_err(|error| error.to_string())
+}
+
+#[cfg(test)]
+thread_local! {
+    static FAIL_ENQUEUE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Test-only: force the next [`enqueue_sandbox_job`] calls to fail.
+#[cfg(test)]
+pub fn force_enqueue_failure(fail: bool) {
+    FAIL_ENQUEUE.with(|cell| cell.set(fail));
 }
 
 #[cfg(feature = "messenger-redis")]
@@ -345,12 +362,11 @@ async fn dispatch_work(work: SandboxJobWork, registry: &SandboxJobRegistry, hub:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustashop_sandbox::{CartLine, Money};
+    use rustashop_sandbox::{CART_UPDATE_QUANTITY_HOOK, CartLine, Money};
+    use serenade_messenger::{Command, Message};
 
-    #[tokio::test]
-    async fn in_memory_enqueue_and_pop() {
-        let messenger = SandboxJobMessenger::new();
-        let cart = CartSnapshot {
+    fn sample_cart() -> CartSnapshot {
+        CartSnapshot {
             currency: "EUR".into(),
             lines: vec![CartLine {
                 sku: "SKU".into(),
@@ -360,11 +376,28 @@ mod tests {
                     currency: "EUR".into(),
                 },
             }],
+        }
+    }
+
+    #[test]
+    fn debug_default_and_message_name() {
+        let messenger = SandboxJobMessenger::default();
+        assert!(format!("{messenger:?}").contains("SandboxJobMessenger"));
+        assert_eq!(SandboxJobWork::NAME, SANDBOX_JOB_MESSAGE);
+        let _ = SandboxJobWork::Quote {
+            job_id: "x".into(),
+            cart: sample_cart(),
+            source: String::new(),
         };
+    }
+
+    #[tokio::test]
+    async fn in_memory_enqueue_and_pop() {
+        let messenger = SandboxJobMessenger::new();
         messenger
             .enqueue(SandboxJobWork::Quote {
                 job_id: "job-1".into(),
-                cart,
+                cart: sample_cart(),
                 source: "print([])".into(),
             })
             .await
@@ -377,5 +410,161 @@ mod tests {
             SandboxJobWork::CartQuantity { .. } => panic!("expected quote work"),
         }
         assert!(messenger.transport().is_empty());
+    }
+
+    #[tokio::test]
+    async fn drain_one_empty_and_unknown_envelope() {
+        #[derive(Debug)]
+        struct OtherCmd;
+        impl Message for OtherCmd {
+            const NAME: &'static str = "other";
+        }
+        impl Command for OtherCmd {}
+
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        assert!(!messenger.drain_one(&registry, &hub).await);
+
+        messenger
+            .transport()
+            .send(Envelope::new(OtherCmd))
+            .await
+            .expect("send");
+        assert!(messenger.drain_one(&registry, &hub).await);
+    }
+
+    #[tokio::test]
+    async fn enqueue_sandbox_job_and_wire_payload_roundtrip() {
+        force_enqueue_failure(false);
+        let messenger = SandboxJobMessenger::new();
+        let quote = SandboxJobWork::Quote {
+            job_id: "q1".into(),
+            cart: sample_cart(),
+            source: "src".into(),
+        };
+        enqueue_sandbox_job(&messenger, quote.clone())
+            .await
+            .expect("enqueue");
+        assert_eq!(messenger.transport().len(), 1);
+
+        let cart_qty = SandboxJobWork::CartQuantity {
+            job_id: "c1".into(),
+            input: LegacyHookInput {
+                hook: CART_UPDATE_QUANTITY_HOOK.into(),
+                cart_id: "cart".into(),
+                id_product: "v1".into(),
+                quantity: 2,
+                operator: "set".into(),
+            },
+            source: "php".into(),
+        };
+        let wire = SandboxJobWirePayload::from(cart_qty);
+        assert!(matches!(
+            SandboxJobWork::from(wire),
+            SandboxJobWork::CartQuantity { job_id, .. } if job_id == "c1"
+        ));
+        let wire_quote = SandboxJobWirePayload::from(quote);
+        assert!(matches!(
+            SandboxJobWork::from(wire_quote),
+            SandboxJobWork::Quote { .. }
+        ));
+    }
+
+    #[tokio::test]
+    async fn force_enqueue_failure_flag() {
+        force_enqueue_failure(true);
+        let messenger = SandboxJobMessenger::new();
+        let err = enqueue_sandbox_job(
+            &messenger,
+            SandboxJobWork::Quote {
+                job_id: "x".into(),
+                cart: sample_cart(),
+                source: String::new(),
+            },
+        )
+        .await
+        .expect_err("forced");
+        assert!(err.contains("forced"));
+        force_enqueue_failure(false);
+    }
+
+    #[tokio::test]
+    async fn spawn_configured_worker_drains_quote() {
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job("quote", "hash", "test");
+        messenger
+            .enqueue(SandboxJobWork::Quote {
+                job_id: job.id.clone(),
+                cart: sample_cart(),
+                source: "not-valid-python".into(),
+            })
+            .await
+            .expect("enqueue");
+        let handle = spawn_configured_worker(&messenger, registry.clone(), hub);
+        let finished = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                let status = registry.get(&job.id).expect("job").status;
+                if status != crate::sandbox_jobs::SandboxJobStatus::Running {
+                    break status;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await;
+        handle.abort();
+        let status = finished.expect("worker did not finish job");
+        assert_ne!(status, crate::sandbox_jobs::SandboxJobStatus::Running);
+        assert!(messenger.transport().is_empty());
+    }
+
+    #[tokio::test]
+    async fn drain_one_runs_quote_job() {
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job("quote", "hash", "test");
+        messenger
+            .enqueue(SandboxJobWork::Quote {
+                job_id: job.id.clone(),
+                cart: sample_cart(),
+                source: "not-valid-python".into(),
+            })
+            .await
+            .expect("enqueue");
+        assert!(messenger.drain_one(&registry, &hub).await);
+        let done = registry.get(&job.id).expect("job");
+        assert_ne!(done.status, crate::sandbox_jobs::SandboxJobStatus::Running);
+    }
+
+    #[tokio::test]
+    async fn drain_one_runs_cart_quantity_job() {
+        let _wasmer = rustashop_sandbox::WASMER_TEST_GATE.lock().await;
+        let messenger = SandboxJobMessenger::new();
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let job = registry.start_job("cart_quantity", "hash", "test");
+        messenger
+            .enqueue(SandboxJobWork::CartQuantity {
+                job_id: job.id.clone(),
+                input: LegacyHookInput {
+                    hook: CART_UPDATE_QUANTITY_HOOK.into(),
+                    cart_id: "cart-drain".into(),
+                    id_product: "variant-1".into(),
+                    quantity: 1,
+                    operator: "set".into(),
+                },
+                source: rustashop_sandbox::php_migration_hook_source(),
+            })
+            .await
+            .expect("enqueue");
+        assert!(messenger.drain_one(&registry, &hub).await);
+        let done = registry.get(&job.id).expect("job");
+        assert_eq!(
+            done.status,
+            crate::sandbox_jobs::SandboxJobStatus::AwaitingCommit
+        );
     }
 }

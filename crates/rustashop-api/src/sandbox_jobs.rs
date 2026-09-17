@@ -447,16 +447,9 @@ async fn create_quote_job(
         source: source.to_owned(),
     };
     if let Err(message) = enqueue_sandbox_job(messenger, work).await {
-        hub.publish(&SandboxJobEvent::log(
-            &job.id,
-            format!("enqueue failed: {message}"),
-        ));
-        registry.finish_job(
-            &job.id,
-            SandboxJobStatus::Failed,
-            None,
-            Some(format!("enqueue failed: {message}")),
-        );
+        let detail = format!("enqueue failed: {message}");
+        hub.publish(&SandboxJobEvent::log(&job.id, detail.clone()));
+        registry.finish_job(&job.id, SandboxJobStatus::Failed, None, Some(detail));
         return api_error_json_response(&ApiError::Internal);
     }
 
@@ -713,6 +706,20 @@ mod tests {
             422
         );
         assert_eq!(
+            create_sandbox_job_response(
+                &auth,
+                Some("tok"),
+                &registry,
+                &hub,
+                &messenger,
+                br#"{"job_type":"cart_quantity","cart_id":"c1","variant_id":"v1","quantity":2,"operator":"set"}"#
+            )
+            .await
+            .status(),
+            202
+        );
+        assert_eq!(messenger.transport().len(), 1);
+        assert_eq!(
             get_sandbox_job_response(&auth, None, &registry, "x").status(),
             401
         );
@@ -728,6 +735,36 @@ mod tests {
             list_sandbox_audit_response(&auth, Some("tok"), &registry).status(),
             200
         );
+    }
+
+    #[tokio::test]
+    async fn create_quote_job_enqueues_and_returns_202() {
+        crate::sandbox_messenger::force_enqueue_failure(false);
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let messenger = SandboxJobMessenger::new();
+        let body = br#"{"job_type":"quote","currency":"EUR","lines":[{"sku":"HOODIE-M","quantity":1,"unit_price_minor":5000}]}"#;
+        let response =
+            create_sandbox_job_response(&auth, Some("tok"), &registry, &hub, &messenger, body)
+                .await;
+        assert_eq!(response.status(), 202);
+        assert_eq!(messenger.transport().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn create_quote_job_reports_enqueue_failure() {
+        crate::sandbox_messenger::force_enqueue_failure(true);
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let messenger = SandboxJobMessenger::new();
+        let body = br#"{"job_type":"quote","currency":"EUR","lines":[{"sku":"HOODIE-M","quantity":1,"unit_price_minor":5000}]}"#;
+        let response =
+            create_sandbox_job_response(&auth, Some("tok"), &registry, &hub, &messenger, body)
+                .await;
+        assert_eq!(response.status(), 500);
+        crate::sandbox_messenger::force_enqueue_failure(false);
     }
 
     #[tokio::test]

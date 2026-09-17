@@ -68,16 +68,9 @@ pub async fn create_cart_quantity_job(
         source,
     };
     if let Err(message) = enqueue_sandbox_job(messenger, work).await {
-        hub.publish(&SandboxJobEvent::log(
-            &job.id,
-            format!("enqueue failed: {message}"),
-        ));
-        registry.finish_job(
-            &job.id,
-            SandboxJobStatus::Failed,
-            None,
-            Some(format!("enqueue failed: {message}")),
-        );
+        let detail = format!("enqueue failed: {message}");
+        hub.publish(&SandboxJobEvent::log(&job.id, detail.clone()));
+        registry.finish_job(&job.id, SandboxJobStatus::Failed, None, Some(detail));
         return api_error_json_response(&ApiError::Internal);
     }
 
@@ -421,6 +414,40 @@ mod tests {
         )
         .await;
         assert_eq!(response.status(), 422);
+    }
+
+    #[tokio::test]
+    async fn create_cart_quantity_job_enqueues_and_returns_202() {
+        crate::sandbox_messenger::force_enqueue_failure(false);
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
+        let response = create_cart_quantity_job(
+            &registry,
+            &hub,
+            &messenger,
+            &create_request(Some("cart"), Some("v1"), Some(2), Some("set")),
+        )
+        .await;
+        assert_eq!(response.status(), 202);
+        assert_eq!(messenger.transport().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn create_cart_quantity_job_reports_enqueue_failure() {
+        crate::sandbox_messenger::force_enqueue_failure(true);
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
+        let response = create_cart_quantity_job(
+            &registry,
+            &hub,
+            &messenger,
+            &create_request(Some("cart"), Some("v1"), Some(2), Some("set")),
+        )
+        .await;
+        assert_eq!(response.status(), 500);
+        crate::sandbox_messenger::force_enqueue_failure(false);
     }
 
     #[tokio::test]

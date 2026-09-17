@@ -3,9 +3,10 @@
 use rustashop_api::{
     ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, AdminApiPrefix, AdminAuthConfig,
     BIND_ENV, CartHub, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
-    INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobMessenger, SandboxJobRegistry, bind_address,
-    bind_commerce_server, commerce_http_kernel, install_artefacts_present, shop_root,
-    spawn_configured_worker,
+    INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobRegistry, bind_address, bind_commerce_server,
+    commerce_http_kernel, install_artefacts_present,
+    sandbox_messenger::{SandboxJobMessenger, spawn_configured_worker},
+    shop_root,
 };
 use serenade_http::Readiness;
 use serenade_http_actix::await_bound;

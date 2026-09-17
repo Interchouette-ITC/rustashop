@@ -8,9 +8,10 @@ use actix_web::{App, test, web};
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
     AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
-    CommitSandboxJobResponse, DEFAULT_ADMIN_API_PREFIX, SandboxJobHub, SandboxJobMessenger,
-    SandboxJobRegistry, SandboxJobResponse, SandboxJobStatus, bind_commerce_server, commerce_app,
-    commerce_http_kernel, routes, spawn_configured_worker,
+    CommitSandboxJobResponse, DEFAULT_ADMIN_API_PREFIX, SandboxJobHub, SandboxJobRegistry,
+    SandboxJobResponse, SandboxJobStatus, bind_commerce_server, commerce_app, commerce_http_kernel,
+    routes,
+    sandbox_messenger::{SandboxJobMessenger, spawn_configured_worker},
 };
 use rustashop_persist::CatalogRepository;
 use rustashop_sandbox::WASMER_TEST_GATE;
