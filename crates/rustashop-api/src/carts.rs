@@ -719,6 +719,28 @@ mod cart_response_tests {
     }
 
     #[tokio::test]
+    async fn update_rejects_zero_quantity_via_validator() {
+        let (catalog, _pool) = seeded().await;
+        let created = create_cart_response(&catalog, None, br#"{"currency":"EUR"}"#).await;
+        let cart: CartResponse = serde_json::from_slice(created.body()).expect("cart");
+        let added = add_cart_line_response(
+            &catalog,
+            None,
+            &cart.id,
+            format!(r#"{{"variant_id":"{MUG_VARIANT}","quantity":1}}"#).as_bytes(),
+        )
+        .await;
+        let with_line: CartResponse = serde_json::from_slice(added.body()).expect("line");
+        let line_id = &with_line.lines[0].id;
+        assert_eq!(
+            update_cart_line_response(&catalog, None, &cart.id, line_id, br#"{"quantity":0}"#)
+                .await
+                .status(),
+            422
+        );
+    }
+
+    #[tokio::test]
     async fn covers_save_and_closed_pool_errors() {
         let (catalog, pool) = seeded().await;
         let created = create_cart_response(&catalog, None, br#"{"currency":"EUR"}"#).await;

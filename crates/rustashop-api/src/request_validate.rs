@@ -35,7 +35,7 @@ fn api_error_from_violations(violations: &ConstraintViolationList) -> ApiError {
 
 #[cfg(test)]
 mod tests {
-    use serenade_validator::{Constraint, ConstraintViolationList, NotBlank, Validator};
+    use serenade_validator::{Constraint, ConstraintViolationList, NotBlank, Validator, Violation};
 
     use super::*;
 
@@ -61,5 +61,15 @@ mod tests {
     #[test]
     fn accepts_valid() {
         validate_request(&BlankName { name: "ok".into() }).expect("valid");
+    }
+
+    #[test]
+    fn object_level_violation_omits_path_prefix() {
+        let mut list = ConstraintViolationList::new();
+        list.add(Violation::new("", "object invalid", "Custom"));
+        let ApiError::Unprocessable(message) = api_error_from_violations(&list) else {
+            panic!("expected unprocessable");
+        };
+        assert_eq!(message, "object invalid");
     }
 }

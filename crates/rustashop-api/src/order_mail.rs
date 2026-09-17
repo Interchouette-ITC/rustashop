@@ -41,8 +41,15 @@ impl OrderMailer {
     #[must_use]
     pub fn from_env() -> Self {
         let from = std::env::var(ORDER_MAIL_FROM_ENV).unwrap_or_else(|_| DEFAULT_FROM.to_owned());
-        match std::env::var(ORDER_MAIL_DIR_ENV) {
-            Ok(dir) if !dir.trim().is_empty() => {
+        Self::from_parts(from, std::env::var(ORDER_MAIL_DIR_ENV).ok())
+    }
+
+    /// Builds from an explicit From address and optional dump directory.
+    #[must_use]
+    pub fn from_parts(from: impl Into<String>, mail_dir: Option<String>) -> Self {
+        let from = from.into();
+        match mail_dir {
+            Some(dir) if !dir.trim().is_empty() => {
                 Self::with_transport(Arc::new(FileTransport::new(PathBuf::from(dir))), from)
             }
             _ => Self::with_transport(Arc::new(NullTransport::new()), from),
@@ -62,6 +69,12 @@ impl OrderMailer {
     #[must_use]
     pub fn recording(outbox: Arc<Mutex<Vec<Email>>>) -> Self {
         Self::with_transport(Arc::new(RecordingTransport { outbox }), DEFAULT_FROM)
+    }
+
+    /// Transport that always fails (tests the checkout warn path).
+    #[must_use]
+    pub fn failing() -> Self {
+        Self::with_transport(Arc::new(FailingTransport), DEFAULT_FROM)
     }
 
     /// Sends a plain-text order confirmation to `to`.
@@ -106,6 +119,15 @@ impl Transport for RecordingTransport {
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .push(email.clone());
         Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct FailingTransport;
+
+impl Transport for FailingTransport {
+    fn send(&self, _email: &Email) -> Result<(), MailerError> {
+        Err(MailerError::MissingSender)
     }
 }
 
@@ -156,7 +178,50 @@ mod tests {
     }
 
     #[test]
-    fn from_env_builds() {
+    fn recording_requires_from_and_to() {
+        let outbox = Arc::new(Mutex::new(Vec::new()));
+        let transport = RecordingTransport {
+            outbox: Arc::clone(&outbox),
+        };
+        assert!(matches!(
+            transport.send(&Email::new()),
+            Err(MailerError::MissingSender)
+        ));
+        let from_only = Email::new().from("from@example.test").expect("from");
+        assert!(matches!(
+            transport.send(&from_only),
+            Err(MailerError::MissingRecipient)
+        ));
+    }
+
+    #[test]
+    fn from_parts_file_and_null() {
+        let dir = std::env::temp_dir().join(format!(
+            "rustashop-mail-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |d| d.as_nanos())
+        ));
+        let mailer = OrderMailer::from_parts(DEFAULT_FROM, Some(dir.to_string_lossy().into()));
+        mailer
+            .send_order_confirmation(&sample_order(), "buyer@example.test")
+            .expect("file transport");
+        assert!(dir.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+
+        let nullish = OrderMailer::from_parts(DEFAULT_FROM, Some("   ".into()));
+        nullish
+            .send_order_confirmation(&sample_order(), "buyer@example.test")
+            .expect("blank dir is null");
         let _ = OrderMailer::from_env();
+    }
+
+    #[test]
+    fn failing_transport_errors() {
+        assert!(
+            OrderMailer::failing()
+                .send_order_confirmation(&sample_order(), "buyer@example.test")
+                .is_err()
+        );
     }
 }

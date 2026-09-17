@@ -316,6 +316,15 @@ mod checkout_response_tests {
         )
         .await;
         assert_eq!(blank_email.status(), 422);
+
+        let nul_email = place_order_response(
+            &catalog,
+            None,
+            br#"{"cart_id":"11111111-1111-1111-1111-111111111111","email":"a\u0000b"}"#,
+            None,
+        )
+        .await;
+        assert_eq!(nul_email.status(), 422);
     }
 
     #[tokio::test]
@@ -375,5 +384,61 @@ mod checkout_response_tests {
         };
         assert_eq!(len, 1);
         assert!(subject.contains("confirmed"));
+    }
+
+    #[tokio::test]
+    async fn places_order_when_mail_send_fails() {
+        use crate::carts::{add_cart_line_response, create_cart_response};
+        use crate::order_mail::OrderMailer;
+
+        let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        sqlx::query("SELECT pg_advisory_lock($1)")
+            .bind(SCHEMA_LOCK)
+            .execute(&pool)
+            .await
+            .expect("lock");
+        sqlx::query("DROP SCHEMA public CASCADE")
+            .execute(&pool)
+            .await
+            .expect("drop");
+        sqlx::query("CREATE SCHEMA public")
+            .execute(&pool)
+            .await
+            .expect("create");
+        migrate(&pool).await.expect("migrate");
+        seed_catalog(&pool).await.expect("seed");
+        let catalog = SqlxCatalogRepository::new(pool);
+
+        let created = create_cart_response(&catalog, None, br#"{"currency":"EUR"}"#).await;
+        let cart: crate::carts::CartResponse =
+            serde_json::from_slice(created.body()).expect("cart");
+        assert_eq!(
+            add_cart_line_response(
+                &catalog,
+                None,
+                &cart.id,
+                br#"{"variant_id":"33333333-3333-3333-3333-333333333331","quantity":1}"#,
+            )
+            .await
+            .status(),
+            200
+        );
+        let body = format!(
+            r#"{{"cart_id":"{}","email":"buyer@example.test"}}"#,
+            cart.id
+        );
+        let placed = place_order_response(
+            &catalog,
+            Some(&OrderMailer::failing()),
+            body.as_bytes(),
+            None,
+        )
+        .await;
+        assert_eq!(placed.status(), 201);
     }
 }
