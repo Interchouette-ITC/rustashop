@@ -114,8 +114,12 @@ impl CatalogCache {
 }
 
 fn ttl_from_env() -> Option<Duration> {
-    std::env::var(CATALOG_CACHE_TTL_SECS_ENV).map_or_else(
-        |_| Some(Duration::from_secs(DEFAULT_TTL_SECS)),
+    ttl_from_raw(std::env::var(CATALOG_CACHE_TTL_SECS_ENV).ok().as_deref())
+}
+
+fn ttl_from_raw(raw: Option<&str>) -> Option<Duration> {
+    raw.map_or_else(
+        || Some(Duration::from_secs(DEFAULT_TTL_SECS)),
         |raw| match raw.parse::<u64>() {
             Ok(0) => None,
             Ok(secs) => Some(Duration::from_secs(secs)),
@@ -158,6 +162,20 @@ mod tests {
         );
         let hit = cache.get_detail(&key).expect("hit");
         assert_eq!(hit.slug, "hoodie");
+    }
+
+    #[test]
+    fn ttl_from_raw_covers_all_arms() {
+        assert_eq!(
+            ttl_from_raw(None),
+            Some(Duration::from_secs(DEFAULT_TTL_SECS))
+        );
+        assert_eq!(ttl_from_raw(Some("0")), None);
+        assert_eq!(ttl_from_raw(Some("45")), Some(Duration::from_secs(45)));
+        assert_eq!(
+            ttl_from_raw(Some("nope")),
+            Some(Duration::from_secs(DEFAULT_TTL_SECS))
+        );
     }
 
     #[test]

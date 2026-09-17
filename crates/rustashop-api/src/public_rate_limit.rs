@@ -45,6 +45,10 @@ impl PublicWriteRateLimiter {
     }
 
     /// Explicit policy for tests (`limit == 0` disables).
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the fixed limiter name were rejected by Serenade (it is not).
     #[must_use]
     pub fn with_policy(limit: u32, window: Duration) -> Self {
         if limit == 0 {
@@ -54,9 +58,9 @@ impl PublicWriteRateLimiter {
             return Self { factory: None };
         };
         let storage = Arc::new(InMemoryRateLimiterStorage::new());
-        let Ok(factory) = RateLimiterFactory::new("public_write", policy, storage) else {
-            return Self { factory: None };
-        };
+        // Limiter name is a non-empty constant; factory construction cannot fail.
+        let factory = RateLimiterFactory::new("public_write", policy, storage)
+            .expect("public_write is a valid rate limiter name");
         Self {
             factory: Some(factory),
         }
@@ -81,13 +85,15 @@ impl PublicWriteRateLimiter {
             .map_err(|_| Response::text(500, "rate limiter key error"))?;
         match consume_or_exceed(&limiter, 1) {
             Ok(_) => Ok(()),
-            Err(ConsumeOrExceedError::Exceeded(exceeded)) => {
-                Err(too_many_requests(&exceeded.rate_limit))
-            }
-            Err(ConsumeOrExceedError::Limiter(_)) => {
-                Err(Response::text(500, "rate limiter storage error"))
-            }
+            Err(error) => Err(response_for_consume_error(error)),
         }
+    }
+}
+
+fn response_for_consume_error(error: ConsumeOrExceedError) -> Response {
+    match error {
+        ConsumeOrExceedError::Exceeded(exceeded) => too_many_requests(&exceeded.rate_limit),
+        ConsumeOrExceedError::Limiter(_) => Response::text(500, "rate limiter storage error"),
     }
 }
 
@@ -132,6 +138,7 @@ fn env_u64(name: &str, default: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serenade_rate_limiter::RateLimiterError;
 
     #[test]
     fn rejects_after_limit() {
@@ -195,5 +202,24 @@ mod tests {
         headers.insert("x-real-ip", "   ");
         headers.insert("x-client-id", "");
         assert_eq!(client_key_from_headers(&headers), FALLBACK_CLIENT_KEY);
+    }
+
+    #[test]
+    fn consume_error_maps_limiter_storage() {
+        let storage =
+            response_for_consume_error(ConsumeOrExceedError::Limiter(RateLimiterError::Storage {
+                message: "boom".into(),
+            }));
+        assert_eq!(storage.status(), 500);
+        assert_eq!(
+            response_for_consume_error(ConsumeOrExceedError::Limiter(
+                RateLimiterError::InvalidTokens {
+                    tokens: 0,
+                    message: "zero".into(),
+                },
+            ))
+            .status(),
+            500
+        );
     }
 }

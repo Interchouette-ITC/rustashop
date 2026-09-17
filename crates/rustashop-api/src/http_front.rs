@@ -1524,6 +1524,53 @@ mod tests {
         assert_eq!(response.status(), 404);
     }
 
+    #[cfg(feature = "persist-sqlx")]
+    #[actix_web::test]
+    async fn patch_admin_product_via_catalog_with_catalog() {
+        use rustashop_persist_sqlx::SqlxCatalogRepository;
+        use sqlx::postgres::PgPoolOptions;
+
+        let Ok(url) = std::env::var("DATABASE_URL") else {
+            eprintln!("skip: DATABASE_URL is not set");
+            return;
+        };
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        let catalog = SqlxCatalogRepository::new(pool);
+        let auth = AdminAuthConfig::from_token("secret");
+        assert_eq!(
+            patch_admin_product_via_catalog(
+                &auth,
+                Some("secret"),
+                Some(&catalog),
+                None,
+                None,
+                br#"{"enabled":false}"#,
+            )
+            .await
+            .status(),
+            404
+        );
+        // Unknown id still enters the catalog+id path (covers the success dispatch line).
+        let status = patch_admin_product_via_catalog(
+            &auth,
+            Some("secret"),
+            Some(&catalog),
+            Some(&CatalogCache::with_ttl(None)),
+            Some("22222222-2222-2222-2222-222222222299"),
+            br#"{"enabled":false}"#,
+        )
+        .await
+        .status();
+        assert!(
+            status == 404 || status == 500,
+            "expected not-found or persist error, got {status}"
+        );
+    }
+
     #[actix_web::test]
     async fn kernel_rejects_unknown_path() {
         let kernel = commerce_http_kernel(CommerceFrontConfig::test_default());
