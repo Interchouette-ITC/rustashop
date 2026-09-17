@@ -9,6 +9,7 @@ mod async_firewall;
 mod cart_ws;
 mod cart_ws_session;
 mod carts;
+pub mod catalog_cache;
 mod checkout;
 mod error;
 mod health;
@@ -20,6 +21,7 @@ mod listen_app;
 mod model_providers;
 mod openapi;
 mod products;
+pub mod public_rate_limit;
 mod realtime;
 mod request_param;
 mod sandbox_autonomous;
@@ -38,7 +40,7 @@ pub use admin_orders::{
 pub use admin_prefix::{
     ADMIN_API_PREFIX_ENV, AdminApiPrefix, DEFAULT_ADMIN_API_PREFIX, configure_admin_routes,
 };
-pub use admin_products::list_admin_products;
+pub use admin_products::{list_admin_products, patch_admin_product};
 pub use ai_tools::{AiToolResponse, list_ai_tools, list_shop_ai_tools};
 pub use carts::{
     CartLineResponse, CartResponse, MoneyResponse, add_cart_line, create_cart, delete_cart_line,

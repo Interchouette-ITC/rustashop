@@ -32,6 +32,27 @@ CSRF secret: `RUSTASHOP_CSRF_SECRET`, else `RUSTASHOP_ADMIN_API_TOKEN`, else a l
 
 **Cart `token` is not this cookie.** Cart lines and cart WebSocket auth stay domain-owned opaque secrets in the database. Serenade session is HTTP identity stickiness only.
 
+## Catalog cache
+
+Storefront `GET /v1/products` and `GET /v1/products/{id}` use `serenade-cache` (`ArrayAdapter` in-process by default). Entries are tagged `catalog`. Admin `PATCH /v1/{admin}/products/{id}` (enabled flag) invalidates that tag.
+
+| Env | Role |
+| --- | --- |
+| `RUSTASHOP_CATALOG_CACHE_TTL_SECS` | TTL seconds (default `30`; `0` = no TTL besides tag invalidate) |
+
+Multi-node: swap the pool for Serenade `RedisAdapter` (crate feature `redis`) with the same tag contract.
+
+## Public write rate limits
+
+Mutating cart and checkout routes (`POST /v1/carts`, cart line mutations, `POST /v1/checkout`) consume a Serenade fixed-window limiter (in-memory by default). Client key: `X-Forwarded-For` (first hop), else `X-Real-IP`, else `X-Client-Id`, else `anon`. Rejected requests return `429` with `Retry-After` / `X-RateLimit-*`.
+
+| Env | Role |
+| --- | --- |
+| `RUSTASHOP_PUBLIC_RATE_LIMIT` | Tokens per window (default `120`; `0` disables) |
+| `RUSTASHOP_PUBLIC_RATE_WINDOW_SECS` | Window length (default `60`) |
+
+Multi-node: use Serenade `RedisRateLimiterStorage` (crate feature `redis`) instead of `InMemoryRateLimiterStorage`.
+
 ## Logging
 
 Process logging goes through `serenade-observability` (`LoggingConfig` + `init`). Default sinks: stderr and rolling files under `var/log/` (stem from `RUSTASHOP_ENV`, default `dev`). Filter: `SERENADE_LOG` or `RUST_LOG`.

@@ -2,7 +2,10 @@
 
 use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository};
 use sea_orm::entity::prelude::*;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
+};
 use serenade_contracts::{PageRequest, PersistenceError};
 
 use crate::entities::{category, product};
@@ -75,6 +78,35 @@ impl SeaOrmCatalogRepository {
                 })
             })
             .collect()
+    }
+
+    /// Updates `enabled` for a product (admin write) and returns the row.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PersistenceError`] when the id is invalid, missing, or the query fails.
+    pub async fn set_product_enabled(
+        &self,
+        product_id: &str,
+        enabled: bool,
+    ) -> Result<Product, PersistenceError> {
+        let uuid = parse_uuid(product_id)?;
+        let model = product::Entity::find_by_id(uuid)
+            .one(&self.db)
+            .await
+            .map_err(|error| internal(&error))?
+            .ok_or_else(|| PersistenceError::NotFound {
+                entity: "product",
+                id: product_id.to_owned(),
+            })?;
+        let mut active: product::ActiveModel = model.into();
+        active.enabled = Set(enabled);
+        active.updated_at = Set(chrono::Utc::now().into());
+        let updated = active
+            .update(&self.db)
+            .await
+            .map_err(|error| internal(&error))?;
+        Ok(product_from_model(updated))
     }
 }
 

@@ -945,6 +945,73 @@
         ]
       }
     },
+    "/v1/{admin_api_prefix}/products/{id}": {
+      "patch": {
+        "tags": [
+          "admin-products"
+        ],
+        "summary": "`PATCH /v1/{admin_api_prefix}/products/{id}` `OpenAPI` path (Serenade front).",
+        "operationId": "patch_admin_product",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Product id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchAdminProductRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated product",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid bearer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_bearer": []
+          }
+        ]
+      }
+    },
     "/v1/{admin_api_prefix}/sandbox/audit": {
       "get": {
         "tags": [
@@ -1861,6 +1928,23 @@
             "$ref": "#/components/schemas/MoneyResponse",
             "description": "Payable total."
           }
+        }
+      },
+      "PatchAdminProductRequest": {
+        "type": "object",
+        "description": "Body for `PATCH /v1/{admin}/products/{id}`.",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Whether the product is offered on the storefront.",
+            "example": false
+          }
+        },
+        "example": {
+          "enabled": false
         }
       },
       "PatchOrderStatusRequest": {

@@ -1,14 +1,18 @@
-//! Admin product list (JSON via Serenade front; utoipa path items for `OpenAPI`).
+//! Admin product list and enabled PATCH (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
 use rustashop_persist::CatalogRepository;
 use serde::Deserialize;
+#[allow(unused_imports)]
+use serde_json::json;
 use serenade_contracts::PageRequest;
 use serenade_http::Response;
-use utoipa::IntoParams;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::admin_auth::AdminAuthConfig;
+use crate::catalog_cache::CatalogCache;
 use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
 use crate::products::{ProductListResponse, ProductResponse};
+use crate::request_param::ensure_request_param;
 
 const DEFAULT_LIMIT: u32 = 20;
 const MAX_LIMIT: u32 = 100;
@@ -49,10 +53,23 @@ impl ListAdminProductsQuery {
     }
 }
 
+/// Body for `PATCH /v1/{admin}/products/{id}`.
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({"enabled": false}))]
+pub struct PatchAdminProductRequest {
+    /// Whether the product is offered on the storefront.
+    #[schema(example = false)]
+    pub enabled: bool,
+}
+
 fn page_request(query: &ListAdminProductsQuery) -> PageRequest {
     let limit = query.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
     let offset = query.offset.unwrap_or(0);
     PageRequest { limit, offset }
+}
+
+fn parse_json_body<T: for<'de> Deserialize<'de>>(body: &[u8]) -> Result<T, ApiError> {
+    serde_json::from_slice(body).map_err(|error| ApiError::Unprocessable(error.to_string()))
 }
 
 /// Lists all products (including disabled) as a Serenade JSON [`Response`].
@@ -76,6 +93,39 @@ pub async fn list_admin_products_response(
     }
 }
 
+/// Updates product `enabled` and invalidates the storefront catalog cache tag.
+pub async fn patch_admin_product_response(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    catalog: &CatalogRepository,
+    product_id: &str,
+    body: &[u8],
+    cache: Option<&CatalogCache>,
+) -> Response {
+    if let Err(error) = auth.authorize_bearer(bearer) {
+        return api_error_json_response(&error);
+    }
+    if let Err(error) = ensure_request_param(product_id) {
+        return api_error_json_response(&error);
+    }
+    let request = match parse_json_body::<PatchAdminProductRequest>(body) {
+        Ok(request) => request,
+        Err(error) => return api_error_json_response(&error),
+    };
+    match catalog
+        .set_product_enabled(product_id, request.enabled)
+        .await
+    {
+        Ok(product) => {
+            if let Some(cache) = cache {
+                let _ = cache.invalidate_catalog();
+            }
+            json_response(200, &ProductResponse::from(product))
+        }
+        Err(error) => api_error_json_response(&ApiError::from_persist(&error)),
+    }
+}
+
 /// `GET /v1/{admin_api_prefix}/products` `OpenAPI` path (Serenade front).
 #[utoipa::path(
     get,
@@ -90,6 +140,23 @@ pub async fn list_admin_products_response(
 )]
 #[allow(clippy::missing_const_for_fn)]
 pub fn list_admin_products() {}
+
+/// `PATCH /v1/{admin_api_prefix}/products/{id}` `OpenAPI` path (Serenade front).
+#[utoipa::path(
+    patch,
+    path = "/v1/{admin_api_prefix}/products/{id}",
+    tag = "admin-products",
+    params(("id" = String, Path, description = "Product id")),
+    request_body = PatchAdminProductRequest,
+    security(("admin_bearer" = [])),
+    responses(
+        (status = 200, description = "Updated product", body = ProductResponse),
+        (status = 401, description = "Missing or invalid bearer", body = ErrorBody),
+        (status = 404, description = "Unknown id", body = ErrorBody)
+    )
+)]
+#[allow(clippy::missing_const_for_fn)]
+pub fn patch_admin_product() {}
 
 #[cfg(test)]
 mod tests {
@@ -107,8 +174,9 @@ mod tests {
     }
 
     #[test]
-    fn openapi_stub_is_callable() {
+    fn openapi_stubs_are_callable() {
         list_admin_products();
+        patch_admin_product();
     }
 }
 
@@ -120,10 +188,9 @@ mod admin_products_response_tests {
 
     // Shared with other rustashop-api lib tests that reset `public`.
     const SCHEMA_LOCK: i64 = 874_521;
+    const HOODIE_ID: &str = "22222222-2222-2222-2222-222222222221";
 
-    #[tokio::test]
-    async fn covers_auth_and_persist_errors() {
-        let auth = AdminAuthConfig::from_token("secret");
+    async fn seeded_catalog() -> (SqlxCatalogRepository, sqlx::PgPool) {
         let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
         let pool = PgPoolOptions::new()
             .max_connections(1)
@@ -145,7 +212,13 @@ mod admin_products_response_tests {
             .expect("create");
         migrate(&pool).await.expect("migrate");
         seed_catalog(&pool).await.expect("seed");
-        let catalog = SqlxCatalogRepository::new(pool.clone());
+        (SqlxCatalogRepository::new(pool.clone()), pool)
+    }
+
+    #[tokio::test]
+    async fn covers_auth_and_persist_errors() {
+        let auth = AdminAuthConfig::from_token("secret");
+        let (catalog, pool) = seeded_catalog().await;
 
         assert_eq!(
             list_admin_products_response(&auth, None, &catalog, &ListAdminProductsQuery::default())
@@ -176,6 +249,88 @@ mod admin_products_response_tests {
             .await
             .status(),
             500
+        );
+    }
+
+    #[tokio::test]
+    async fn patch_invalidates_catalog_cache() {
+        let auth = AdminAuthConfig::from_token("secret");
+        let (catalog, _pool) = seeded_catalog().await;
+        let cache = CatalogCache::with_ttl(None);
+        let list_key = CatalogCache::list_key(20, 0);
+        cache.put_list(&list_key, ProductListResponse { items: Vec::new() });
+        assert!(cache.get_list(&list_key).is_some());
+
+        assert_eq!(
+            patch_admin_product_response(
+                &auth,
+                None,
+                &catalog,
+                HOODIE_ID,
+                br#"{"enabled":false}"#,
+                Some(&cache),
+            )
+            .await
+            .status(),
+            401
+        );
+        assert_eq!(
+            patch_admin_product_response(
+                &auth,
+                Some("secret"),
+                &catalog,
+                HOODIE_ID,
+                br#"{"enabled":false}"#,
+                Some(&cache),
+            )
+            .await
+            .status(),
+            200
+        );
+        assert!(cache.get_list(&list_key).is_none());
+
+        // Restore so other suites see the seed product enabled.
+        let _ = patch_admin_product_response(
+            &auth,
+            Some("secret"),
+            &catalog,
+            HOODIE_ID,
+            br#"{"enabled":true}"#,
+            None,
+        )
+        .await;
+
+        assert_eq!(
+            patch_admin_product_response(
+                &auth,
+                Some("secret"),
+                &catalog,
+                "a\0b",
+                br#"{"enabled":true}"#,
+                None,
+            )
+            .await
+            .status(),
+            422
+        );
+        assert_eq!(
+            patch_admin_product_response(&auth, Some("secret"), &catalog, HOODIE_ID, b"{", None)
+                .await
+                .status(),
+            422
+        );
+        assert_eq!(
+            patch_admin_product_response(
+                &auth,
+                Some("secret"),
+                &catalog,
+                "00000000-0000-0000-0000-000000000000",
+                br#"{"enabled":true}"#,
+                None,
+            )
+            .await
+            .status(),
+            404
         );
     }
 }

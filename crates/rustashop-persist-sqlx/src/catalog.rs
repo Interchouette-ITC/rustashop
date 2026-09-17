@@ -89,6 +89,33 @@ impl SqlxCatalogRepository {
             })
             .collect()
     }
+
+    /// Updates `enabled` for a product (admin write) and returns the row.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PersistenceError`] when the id is invalid, missing, or the query fails.
+    pub async fn set_product_enabled(
+        &self,
+        product_id: &str,
+        enabled: bool,
+    ) -> Result<Product, PersistenceError> {
+        let row = sqlx::query_as::<_, ProductRow>(
+            "UPDATE product SET enabled = $2, updated_at = NOW()
+             WHERE id = $1::uuid
+             RETURNING id::text AS id, category_id::text AS category_id, slug, name, description, enabled",
+        )
+        .bind(product_id)
+        .bind(enabled)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|error| internal(&error))?;
+        row.map(ProductRow::into_product)
+            .ok_or_else(|| PersistenceError::NotFound {
+                entity: "product",
+                id: product_id.to_owned(),
+            })
+    }
 }
 
 #[derive(Debug, FromRow)]

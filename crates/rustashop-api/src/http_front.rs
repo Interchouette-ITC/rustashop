@@ -14,13 +14,16 @@ use crate::admin_orders::{
     ListOrdersQuery, list_admin_orders_response, patch_admin_order_response,
 };
 use crate::admin_prefix::DEFAULT_ADMIN_API_PREFIX;
-use crate::admin_products::{ListAdminProductsQuery, list_admin_products_response};
+use crate::admin_products::{
+    ListAdminProductsQuery, list_admin_products_response, patch_admin_product_response,
+};
 use crate::ai_tools::{list_ai_tools_response, list_shop_ai_tools_response};
 use crate::async_firewall::AsyncFirewallMiddleware;
 use crate::carts::{
     add_cart_line_response, create_cart_response, delete_cart_line_response, get_cart_response,
     update_cart_line_response,
 };
+use crate::catalog_cache::CatalogCache;
 use crate::checkout::{idempotency_key_from_headers, place_order_response};
 use crate::error::{ApiError, api_error_json_response};
 use crate::health::health_json_body;
@@ -30,6 +33,7 @@ use crate::model_providers::{
 };
 use crate::openapi::openapi_json_response;
 use crate::products::{ListProductsQuery, get_product_response, list_products_response};
+use crate::public_rate_limit::{PublicWriteRateLimiter, client_key_from_headers};
 use crate::realtime::CartHub;
 use crate::session_http::{csrf_manager_from_env, try_browser_security_route};
 use serenade_security::AsyncSessionTokenMiddleware;
@@ -48,6 +52,7 @@ const DELETE_CART_LINE_ROUTE: &str = "delete_cart_line";
 const PLACE_ORDER_ROUTE: &str = "place_order";
 const OPENAPI_ROUTE: &str = "openapi_json";
 const LIST_ADMIN_PRODUCTS_ROUTE: &str = "list_admin_products";
+const PATCH_ADMIN_PRODUCT_ROUTE: &str = "patch_admin_product";
 const LIST_ADMIN_ORDERS_ROUTE: &str = "list_admin_orders";
 const PATCH_ADMIN_ORDER_ROUTE: &str = "patch_admin_order";
 const CREATE_SANDBOX_JOB_ROUTE: &str = "create_sandbox_job";
@@ -90,6 +95,10 @@ pub struct CommerceFrontConfig {
     pub sandbox_registry: Option<crate::sandbox_jobs::SandboxJobRegistry>,
     /// Optional Serenade messenger for sandbox job enqueue.
     pub sandbox_messenger: Option<crate::sandbox_messenger::SandboxJobMessenger>,
+    /// Optional storefront catalog cache (`serenade-cache`).
+    pub catalog_cache: Option<CatalogCache>,
+    /// Optional rate limiter for public cart/checkout writes.
+    pub public_rate_limiter: Option<PublicWriteRateLimiter>,
     /// Shared readiness flag for `GET /readyz` (flip before HTTP drain).
     pub readiness: Readiness,
 }
@@ -107,6 +116,11 @@ impl CommerceFrontConfig {
             sandbox_hub: None,
             sandbox_registry: None,
             sandbox_messenger: None,
+            catalog_cache: Some(CatalogCache::with_ttl(None)),
+            public_rate_limiter: Some(PublicWriteRateLimiter::with_policy(
+                10_000,
+                std::time::Duration::from_secs(60),
+            )),
             readiness: Readiness::new(),
         }
     }
@@ -144,6 +158,7 @@ pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
         let body = request.body().to_vec();
         let idempotency = idempotency_key_from_headers(request.headers());
         let bearer = bearer_from_headers(request.headers());
+        let client_key = client_key_from_headers(request.headers());
         box_future(async move {
             match outcome {
                 Ok(found) => Ok(dispatch_route(
@@ -156,6 +171,7 @@ pub fn commerce_http_kernel(config: CommerceFrontConfig) -> AsyncHttpKernel {
                         body: &body,
                         idempotency: idempotency.as_deref(),
                         bearer: bearer.as_deref(),
+                        client_key: client_key.as_str(),
                     },
                 )
                 .await),
@@ -180,6 +196,18 @@ struct DispatchInput<'req> {
     body: &'req [u8],
     idempotency: Option<&'req str>,
     bearer: Option<&'req str>,
+    client_key: &'req str,
+}
+
+fn is_public_mutating_route(route_name: &str) -> bool {
+    matches!(
+        route_name,
+        CREATE_CART_ROUTE
+            | ADD_CART_LINE_ROUTE
+            | UPDATE_CART_LINE_ROUTE
+            | DELETE_CART_LINE_ROUTE
+            | PLACE_ORDER_ROUTE
+    )
 }
 
 async fn dispatch_route(
@@ -187,13 +215,31 @@ async fn dispatch_route(
     config: &CommerceFrontConfig,
     input: DispatchInput<'_>,
 ) -> Response {
+    if is_public_mutating_route(route_name)
+        && let Some(limiter) = config.public_rate_limiter.as_ref()
+        && let Err(response) = limiter.check(input.client_key)
+    {
+        return response;
+    }
     match route_name {
         HEALTHZ_ROUTE => healthz_response(),
         READYZ_ROUTE => readyz(config.readiness.is_ready()),
         LIST_PRODUCTS_ROUTE => {
-            list_products_via_catalog(config.catalog.as_ref(), input.query).await
+            list_products_via_catalog(
+                config.catalog.as_ref(),
+                config.catalog_cache.as_ref(),
+                input.query,
+            )
+            .await
         }
-        GET_PRODUCT_ROUTE => get_product_via_catalog(config.catalog.as_ref(), input.id).await,
+        GET_PRODUCT_ROUTE => {
+            get_product_via_catalog(
+                config.catalog.as_ref(),
+                config.catalog_cache.as_ref(),
+                input.id,
+            )
+            .await
+        }
         CREATE_CART_ROUTE => {
             create_cart_via_catalog(
                 config.catalog.as_ref(),
@@ -235,12 +281,33 @@ async fn dispatch_route(
             place_order_via_catalog(config.catalog.as_ref(), input.body, input.idempotency).await
         }
         OPENAPI_ROUTE => openapi_json_response(),
+        _ => dispatch_operator_route(route_name, config, &input).await,
+    }
+}
+
+async fn dispatch_operator_route(
+    route_name: &str,
+    config: &CommerceFrontConfig,
+    input: &DispatchInput<'_>,
+) -> Response {
+    match route_name {
         LIST_ADMIN_PRODUCTS_ROUTE => {
             list_admin_products_via_catalog(
                 &config.admin_auth,
                 input.bearer,
                 config.catalog.as_ref(),
                 input.query,
+            )
+            .await
+        }
+        PATCH_ADMIN_PRODUCT_ROUTE => {
+            patch_admin_product_via_catalog(
+                &config.admin_auth,
+                input.bearer,
+                config.catalog.as_ref(),
+                config.catalog_cache.as_ref(),
+                input.id,
+                input.body,
             )
             .await
         }
@@ -267,7 +334,7 @@ async fn dispatch_route(
         | GET_SANDBOX_JOB_ROUTE
         | LIST_SANDBOX_AUDIT_ROUTE
         | COMMIT_SANDBOX_JOB_ROUTE
-        | DISCARD_SANDBOX_JOB_ROUTE => dispatch_sandbox_route(route_name, config, &input).await,
+        | DISCARD_SANDBOX_JOB_ROUTE => dispatch_sandbox_route(route_name, config, input).await,
         LIST_AI_TOOLS_ROUTE => list_ai_tools_response(&config.admin_auth, input.bearer),
         LIST_SHOP_AI_TOOLS_ROUTE => list_shop_ai_tools_response(),
         LIST_AI_PROVIDERS_ROUTE => list_ai_providers_response(&config.admin_auth, input.bearer),
@@ -336,16 +403,18 @@ async fn create_sandbox_job_from_front(
 
 async fn list_products_via_catalog(
     catalog: Option<&CatalogRepository>,
+    cache: Option<&CatalogCache>,
     query: Option<&str>,
 ) -> Response {
     let Some(catalog) = catalog else {
         return api_error_json_response(&ApiError::Internal);
     };
-    list_products_response(catalog, &ListProductsQuery::from_query_string(query)).await
+    list_products_response(catalog, &ListProductsQuery::from_query_string(query), cache).await
 }
 
 async fn get_product_via_catalog(
     catalog: Option<&CatalogRepository>,
+    cache: Option<&CatalogCache>,
     product_id: Option<&str>,
 ) -> Response {
     let Some(catalog) = catalog else {
@@ -354,7 +423,7 @@ async fn get_product_via_catalog(
     let Some(product_id) = product_id else {
         return api_error_json_response(&ApiError::NotFound);
     };
-    get_product_response(catalog, product_id).await
+    get_product_response(catalog, product_id, cache).await
 }
 
 async fn create_cart_via_catalog(
@@ -463,6 +532,26 @@ async fn list_admin_products_via_catalog(
         &ListAdminProductsQuery::from_query_string(query),
     )
     .await
+}
+
+async fn patch_admin_product_via_catalog(
+    auth: &AdminAuthConfig,
+    bearer: Option<&str>,
+    catalog: Option<&CatalogRepository>,
+    cache: Option<&CatalogCache>,
+    product_id: Option<&str>,
+    body: &[u8],
+) -> Response {
+    if let Err(error) = auth.authorize_bearer(bearer) {
+        return api_error_json_response(&error);
+    }
+    let Some(catalog) = catalog else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    let Some(product_id) = product_id else {
+        return api_error_json_response(&ApiError::NotFound);
+    };
+    patch_admin_product_response(auth, bearer, catalog, product_id, body, cache).await
 }
 
 async fn list_admin_orders_via_catalog(
@@ -697,6 +786,13 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Get,
         ))
         .expect("openapi route");
+    add_admin_catalog_routes(collection, admin_prefix);
+    add_sandbox_admin_routes(collection, admin_prefix);
+    add_ai_admin_routes(collection, admin_prefix);
+    add_install_and_session_routes(collection);
+}
+
+fn add_admin_catalog_routes(collection: &mut RouteCollection, admin_prefix: &str) {
     let admin_products = format!("/v1/{admin_prefix}/products");
     collection
         .add(Route::with_method(
@@ -705,6 +801,14 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Get,
         ))
         .expect("list admin products route");
+    let admin_product = format!("/v1/{admin_prefix}/products/{{id}}");
+    collection
+        .add(Route::with_method(
+            PATCH_ADMIN_PRODUCT_ROUTE,
+            &admin_product,
+            Method::Patch,
+        ))
+        .expect("patch admin product route");
     let admin_orders = format!("/v1/{admin_prefix}/orders");
     collection
         .add(Route::with_method(
@@ -721,8 +825,9 @@ fn add_admin_and_ops_routes(collection: &mut RouteCollection, admin_prefix: &str
             Method::Patch,
         ))
         .expect("patch admin order route");
-    add_sandbox_admin_routes(collection, admin_prefix);
-    add_ai_admin_routes(collection, admin_prefix);
+}
+
+fn add_install_and_session_routes(collection: &mut RouteCollection) {
     collection
         .add(Route::with_method(
             INSTALL_STATUS_ROUTE,
@@ -1318,9 +1423,9 @@ mod tests {
 
     #[actix_web::test]
     async fn get_product_via_catalog_requires_id() {
-        let response = get_product_via_catalog(None, None).await;
+        let response = get_product_via_catalog(None, None, None).await;
         assert_eq!(response.status(), 500);
-        let response = get_product_via_catalog(None, Some("x")).await;
+        let response = get_product_via_catalog(None, None, Some("x")).await;
         assert_eq!(response.status(), 500);
     }
 
@@ -1415,8 +1520,55 @@ mod tests {
             .await
             .expect("connect");
         let catalog = SqlxCatalogRepository::new(pool);
-        let response = get_product_via_catalog(Some(&catalog), None).await;
+        let response = get_product_via_catalog(Some(&catalog), None, None).await;
         assert_eq!(response.status(), 404);
+    }
+
+    #[cfg(feature = "persist-sqlx")]
+    #[actix_web::test]
+    async fn patch_admin_product_via_catalog_with_catalog() {
+        use rustashop_persist_sqlx::SqlxCatalogRepository;
+        use sqlx::postgres::PgPoolOptions;
+
+        let Ok(url) = std::env::var("DATABASE_URL") else {
+            eprintln!("skip: DATABASE_URL is not set");
+            return;
+        };
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect(&url)
+            .await
+            .expect("connect");
+        let catalog = SqlxCatalogRepository::new(pool);
+        let auth = AdminAuthConfig::from_token("secret");
+        assert_eq!(
+            patch_admin_product_via_catalog(
+                &auth,
+                Some("secret"),
+                Some(&catalog),
+                None,
+                None,
+                br#"{"enabled":false}"#,
+            )
+            .await
+            .status(),
+            404
+        );
+        // Unknown id still enters the catalog+id path (covers the success dispatch line).
+        let status = patch_admin_product_via_catalog(
+            &auth,
+            Some("secret"),
+            Some(&catalog),
+            Some(&CatalogCache::with_ttl(None)),
+            Some("22222222-2222-2222-2222-222222222299"),
+            br#"{"enabled":false}"#,
+        )
+        .await
+        .status();
+        assert!(
+            status == 404 || status == 500,
+            "expected not-found or persist error, got {status}"
+        );
     }
 
     #[actix_web::test]
@@ -1424,6 +1576,103 @@ mod tests {
         let kernel = commerce_http_kernel(CommerceFrontConfig::test_default());
         let response = kernel.handle(Request::new(Method::Get, "/nope")).await;
         assert_eq!(response.status(), 404);
+    }
+
+    #[actix_web::test]
+    async fn public_write_rate_limit_returns_429() {
+        let kernel = commerce_http_kernel(CommerceFrontConfig {
+            public_rate_limiter: Some(PublicWriteRateLimiter::with_policy(
+                1,
+                std::time::Duration::from_secs(60),
+            )),
+            ..CommerceFrontConfig::test_default()
+        });
+        let first = Request::new(Method::Post, "/v1/carts")
+            .with_header("x-client-id", "rate-limit-test")
+            .with_header("content-type", "application/json")
+            .with_body(br#"{"currency":"EUR"}"#.to_vec());
+        let second = Request::new(Method::Post, "/v1/carts")
+            .with_header("x-client-id", "rate-limit-test")
+            .with_header("content-type", "application/json")
+            .with_body(br#"{"currency":"EUR"}"#.to_vec());
+        // First may be 500 (no catalog) or 201; second must be 429 when limited.
+        let _ = kernel.handle(first).await;
+        let limited = kernel.handle(second).await;
+        assert_eq!(limited.status(), 429);
+    }
+
+    #[actix_web::test]
+    async fn patch_admin_product_via_kernel() {
+        let auth = AdminAuthConfig::from_token("secret");
+        let kernel = commerce_http_kernel(CommerceFrontConfig {
+            admin_auth: auth.clone(),
+            catalog_cache: Some(CatalogCache::with_ttl(None)),
+            ..CommerceFrontConfig::test_default()
+        });
+        let denied = Request::new(
+            Method::Patch,
+            "/v1/admin/products/22222222-2222-2222-2222-222222222221",
+        )
+        .with_header("content-type", "application/json")
+        .with_body(br#"{"enabled":false}"#.to_vec());
+        assert_eq!(kernel.handle(denied).await.status(), 401);
+
+        let missing_catalog = Request::new(
+            Method::Patch,
+            "/v1/admin/products/22222222-2222-2222-2222-222222222221",
+        )
+        .with_header("authorization", "Bearer secret")
+        .with_header("content-type", "application/json")
+        .with_body(br#"{"enabled":false}"#.to_vec());
+        assert_eq!(kernel.handle(missing_catalog).await.status(), 500);
+
+        assert_eq!(
+            patch_admin_product_via_catalog(
+                &auth,
+                Some("secret"),
+                None,
+                None,
+                Some("22222222-2222-2222-2222-222222222221"),
+                br#"{"enabled":false}"#,
+            )
+            .await
+            .status(),
+            500
+        );
+        assert_eq!(
+            patch_admin_product_via_catalog(
+                &auth,
+                Some("secret"),
+                None,
+                None,
+                None,
+                br#"{"enabled":false}"#,
+            )
+            .await
+            .status(),
+            500
+        );
+    }
+
+    #[actix_web::test]
+    async fn rate_limit_keys_off_forwarded_for() {
+        let kernel = commerce_http_kernel(CommerceFrontConfig {
+            public_rate_limiter: Some(PublicWriteRateLimiter::with_policy(
+                1,
+                std::time::Duration::from_secs(60),
+            )),
+            ..CommerceFrontConfig::test_default()
+        });
+        let first = Request::new(Method::Post, "/v1/carts")
+            .with_header("x-forwarded-for", "203.0.113.9, 10.0.0.1")
+            .with_header("content-type", "application/json")
+            .with_body(br#"{"currency":"EUR"}"#.to_vec());
+        let second = Request::new(Method::Post, "/v1/carts")
+            .with_header("x-forwarded-for", "203.0.113.9")
+            .with_header("content-type", "application/json")
+            .with_body(br#"{"currency":"EUR"}"#.to_vec());
+        let _ = kernel.handle(first).await;
+        assert_eq!(kernel.handle(second).await.status(), 429);
     }
 
     #[test]
@@ -1451,6 +1700,7 @@ mod tests {
             body: &[],
             idempotency: None,
             bearer: None,
+            client_key: "anon",
         };
         let response = dispatch_sandbox_route("not_sandbox", &config, &input).await;
         assert_eq!(response.status(), 404);
@@ -1519,6 +1769,7 @@ mod tests {
             body,
             idempotency: None,
             bearer: Some("tok"),
+            client_key: "anon",
         };
         let response = dispatch_sandbox_route(CREATE_SANDBOX_JOB_ROUTE, &config, &input).await;
         assert_eq!(response.status(), 202);
@@ -1668,6 +1919,7 @@ mod tests {
             body: &[],
             idempotency: None,
             bearer: Some("tok"),
+            client_key: "anon",
         };
         let discarded =
             dispatch_sandbox_route(DISCARD_SANDBOX_JOB_ROUTE, &config, &discard_input).await;
@@ -1680,6 +1932,7 @@ mod tests {
             body: &[],
             idempotency: None,
             bearer: Some("tok"),
+            client_key: "anon",
         };
         // Catalog missing → Internal before NotFound on job.
         let committed =
