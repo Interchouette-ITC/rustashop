@@ -66,10 +66,21 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 
 | Variable | Role |
 | --- | --- |
-| `RUSTASHOP_MESSENGER_REDIS_URL` | When set (and API built with `--features messenger-redis`), enqueue/consume use a Redis list instead of the in-process queue |
+| `RUSTASHOP_MESSENGER_REDIS_URL` | When set (and API/worker built with Redis features), enqueue uses a Redis list; the API does **not** spawn an in-process consumer by default |
 | `RUSTASHOP_MESSENGER_REDIS_LIST` | Redis list key (default `rustashop:sandbox:jobs`) |
+| `RUSTASHOP_MESSENGER_INLINE_WORKER` | `1` force in-process consumer in the API; `0` force external worker. Default: inline when Redis URL unset, external when set |
 
 Compose includes an optional `redis` service for local durable workers (`docker compose --profile messenger up`).
+
+Multi-process recipe:
+
+1. Start Redis (`docker compose --profile messenger up -d redis` or equivalent).
+2. Run the API with `RUSTASHOP_MESSENGER_REDIS_URL=redis://127.0.0.1:6379/0` (build with `--features messenger-redis`).
+3. Run `make worker` (or `make console ARGS='messenger:consume'`) with the same Redis URL.
+
+Job status JSON is mirrored to Redis keys `rustashop:sandbox:job:{id}` so admin `GET …/jobs/{id}` works across processes. Live WebSocket job logs remain process-local to the API (follow-up: Redis pub/sub). Audit list stays process-local.
+
+Same-process tests keep the in-memory queue and inline consumer (no Redis).
 
 ### Model provider env (host only)
 

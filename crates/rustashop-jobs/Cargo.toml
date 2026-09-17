@@ -1,0 +1,33 @@
+[package]
+name = "rustashop-jobs"
+description = "Sandbox job registry, messenger enqueue/consume, and Wasmer runners"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+## Durable Redis queue + cross-process job status keys.
+redis = ["serenade-messenger/redis", "dep:redis"]
+
+[dependencies]
+getrandom = "0.3"
+redis = { version = "0.27", optional = true, default-features = false, features = [
+    "r2d2",
+] }
+rustashop-sandbox = { path = "../rustashop-sandbox" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serenade-messenger = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+utoipa = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+
+[lints]
+workspace = true

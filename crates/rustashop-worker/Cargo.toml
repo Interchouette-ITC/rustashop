@@ -1,0 +1,33 @@
+[package]
+name = "rustashop-worker"
+description = "Serenade console ops and sandbox messenger worker"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "rustashop-console"
+path = "src/bin/console.rs"
+
+[features]
+default = ["redis"]
+## Durable Redis queue consume (required for multi-process worker).
+redis = ["rustashop-jobs/redis"]
+
+[dependencies]
+rustashop = { workspace = true }
+rustashop-jobs = { workspace = true }
+serenade-bundle = { workspace = true }
+serenade-cache = { workspace = true }
+serenade-config = { workspace = true }
+serenade-console = { workspace = true }
+serenade-di = { workspace = true }
+serenade-kernel = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

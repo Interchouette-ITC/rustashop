@@ -23,6 +23,7 @@ COMPOSE := docker compose -f docker/compose.yml --project-directory $(ROOT)
 # Set FORCE=1 to re-run npm install even when node_modules exists.
 FORCE ?= 0
 CVE_LITE_CLI := cve-lite-cli@1.33.0
+ARGS ?=
 
 # Published API image (local compose still tags rustashop-api:local).
 HUB_IMAGE ?= interchouette/rustashop
@@ -37,7 +38,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -84,6 +85,8 @@ help:
 	@echo "  make run-api    start Actix API on the host (RUSTASHOP_BIND, default $(API_BIND))"
 	@echo "  make run-mcp    start rustashop-mcp over stdio"
 	@echo "  make run-mcp-http start rustashop-mcp Streamable HTTP (RUSTASHOP_MCP_ADDR, default $(MCP_ADDR))"
+	@echo "  make console    Serenade console (ARGS='serenade:about' / list / messenger:consume …)"
+	@echo "  make worker     messenger:consume (Redis multi-process; pass ARGS='--once' for empty drain)"
 	@echo "  make db-up      start Postgres via docker compose"
 	@echo "  make db-down    stop the compose project (Postgres and API if started)"
 	@echo "  make stack-up   build and start Postgres + migrate + API"
@@ -428,6 +431,12 @@ run-mcp-http:
 	fi; \
 	cd $(ROOT) && RUSTASHOP_API_BASE=$${RUSTASHOP_API_BASE:-http://$(API_BIND)} \
 		$(CARGO) run -p rustashop-mcp --bin rustashop-mcp -- --http --listen "$${RUSTASHOP_MCP_ADDR:-$(MCP_ADDR)}"
+
+console:
+	cd $(ROOT) && $(CARGO) run -p rustashop-worker --bin rustashop-console -- $(ARGS)
+
+worker:
+	cd $(ROOT) && $(CARGO) run -p rustashop-worker --bin rustashop-console -- messenger:consume $(ARGS)
 
 stack-up:
 	cd $(ROOT) && $(COMPOSE) up --build -d

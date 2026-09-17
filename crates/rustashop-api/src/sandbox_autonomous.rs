@@ -1,10 +1,7 @@
 //! Autonomous sandbox jobs: guest proposal + host-mediated commit.
 
 use rustashop_persist::CatalogRepository;
-use rustashop_sandbox::{
-    CART_UPDATE_QUANTITY_HOOK, DomainEventDraft, LegacyHookInput, accept_validated_domain_event,
-    invoke_php_migration_hook, php_migration_hook_source,
-};
+use rustashop_sandbox::{CART_UPDATE_QUANTITY_HOOK, LegacyHookInput, php_migration_hook_source};
 use serenade_http::Response;
 use utoipa::ToSchema;
 
@@ -17,7 +14,7 @@ use crate::sandbox_jobs::{
     SandboxJobStatus, SandboxProposalResponse, source_hash,
 };
 use crate::sandbox_messenger::{SandboxJobMessenger, SandboxJobWork, enqueue_sandbox_job};
-use crate::sandbox_realtime::{SandboxJobEvent, SandboxJobHub, SandboxProposalEventBody};
+use crate::sandbox_realtime::{SandboxJobEvent, SandboxJobHub};
 
 /// Creates a `cart_quantity` job, enqueues the PHP migration guest, returns 202.
 pub async fn create_cart_quantity_job(
@@ -77,67 +74,6 @@ pub async fn create_cart_quantity_job(
     json_response(202, &job)
 }
 
-pub async fn run_cart_quantity_job(
-    registry: &SandboxJobRegistry,
-    hub: &SandboxJobHub,
-    job_id: &str,
-    input: &LegacyHookInput,
-    source: &str,
-) {
-    hub.publish(&SandboxJobEvent::log(
-        job_id,
-        "starting Wasmer PHP cart_quantity guest",
-    ));
-    match invoke_php_migration_hook(input, source).await {
-        Ok(raw) => match accept_validated_domain_event(raw) {
-            Ok(draft) => {
-                let proposal = proposal_from_draft(&draft);
-                hub.publish(&SandboxJobEvent::log(
-                    job_id,
-                    format!(
-                        "validated proposal {} on cart {}",
-                        proposal.event_type, proposal.cart_id
-                    ),
-                ));
-                registry.set_awaiting_commit(job_id, proposal.clone());
-                hub.publish(&SandboxJobEvent::proposal(
-                    job_id,
-                    SandboxProposalEventBody {
-                        event_type: proposal.event_type,
-                        cart_id: proposal.cart_id,
-                        product_id: proposal.product_id,
-                        quantity: proposal.quantity,
-                        operator: proposal.operator,
-                    },
-                ));
-            }
-            Err(error) => {
-                let message = format!("validation failed: {error:#}");
-                hub.publish(&SandboxJobEvent::log(job_id, &message));
-                registry.finish_job(job_id, SandboxJobStatus::Failed, None, Some(message));
-                hub.publish(&SandboxJobEvent::finished(job_id, "error"));
-            }
-        },
-        Err(error) => {
-            let message = format!("guest failed: {error:#}");
-            hub.publish(&SandboxJobEvent::log(job_id, &message));
-            registry.finish_job(job_id, SandboxJobStatus::Failed, None, Some(message));
-            hub.publish(&SandboxJobEvent::finished(job_id, "error"));
-        }
-    }
-}
-
-fn proposal_from_draft(draft: &DomainEventDraft) -> SandboxProposalResponse {
-    SandboxProposalResponse {
-        event_type: draft.event_type.clone(),
-        cart_id: draft.cart_id.clone(),
-        product_id: draft.product_id.clone(),
-        quantity: draft.quantity,
-        operator: draft.operator.clone(),
-    }
-}
-
-/// Inputs for [`commit_sandbox_job_response`].
 pub struct CommitSandboxJobContext<'a> {
     /// Admin bearer gate.
     pub auth: &'a AdminAuthConfig,
@@ -319,6 +255,7 @@ pub fn discard_sandbox_job() {}
 
 #[cfg(test)]
 mod tests {
+    use rustashop_jobs::run_cart_quantity_job;
     use rustashop_sandbox::php_migration_hook_source;
 
     use super::*;
@@ -371,15 +308,14 @@ mod tests {
     }
 
     #[test]
-    fn proposal_from_draft_maps_fields() {
-        let draft = DomainEventDraft {
+    fn proposal_response_fields_round_trip() {
+        let proposal = SandboxProposalResponse {
             event_type: "cart.line_quantity_proposed".into(),
             cart_id: "c1".into(),
             product_id: "p1".into(),
             quantity: 4,
             operator: "up".into(),
         };
-        let proposal = proposal_from_draft(&draft);
         assert_eq!(proposal.cart_id, "c1");
         assert_eq!(proposal.product_id, "p1");
         assert_eq!(proposal.quantity, 4);
