@@ -16,12 +16,14 @@ use crate::sandbox_jobs::{
     CreateSandboxJobRequest, JOB_TYPE_CART_QUANTITY, SandboxJobRegistry, SandboxJobResponse,
     SandboxJobStatus, SandboxProposalResponse, source_hash,
 };
+use crate::sandbox_messenger::{SandboxJobMessenger, SandboxJobWork, enqueue_sandbox_job};
 use crate::sandbox_realtime::{SandboxJobEvent, SandboxJobHub, SandboxProposalEventBody};
 
-/// Creates a `cart_quantity` job, spawns the PHP migration guest, returns 202.
-pub fn create_cart_quantity_job(
+/// Creates a `cart_quantity` job, enqueues the PHP migration guest, returns 202.
+pub async fn create_cart_quantity_job(
     registry: &SandboxJobRegistry,
     hub: &SandboxJobHub,
+    messenger: &SandboxJobMessenger,
     request: &CreateSandboxJobRequest,
 ) -> Response {
     let (cart_id, variant_id, quantity, operator) = match (
@@ -53,7 +55,6 @@ pub fn create_cart_quantity_job(
     let source = php_migration_hook_source();
     let hash = source_hash(&source);
     let job = registry.start_job(JOB_TYPE_CART_QUANTITY, &hash, "admin-bearer");
-    let job_id = job.id.clone();
     let input = LegacyHookInput {
         hook: CART_UPDATE_QUANTITY_HOOK.into(),
         cart_id,
@@ -61,17 +62,22 @@ pub fn create_cart_quantity_job(
         quantity,
         operator,
     };
-    let registry_runner = registry.clone();
-    let hub_runner = hub.clone();
-
-    tokio::spawn(async move {
-        run_cart_quantity_job(&registry_runner, &hub_runner, &job_id, &input, &source).await;
-    });
+    let work = SandboxJobWork::CartQuantity {
+        job_id: job.id.clone(),
+        input,
+        source,
+    };
+    if let Err(message) = enqueue_sandbox_job(messenger, work).await {
+        let detail = format!("enqueue failed: {message}");
+        hub.publish(&SandboxJobEvent::log(&job.id, detail.clone()));
+        registry.finish_job(&job.id, SandboxJobStatus::Failed, None, Some(detail));
+        return api_error_json_response(&ApiError::Internal);
+    }
 
     json_response(202, &job)
 }
 
-async fn run_cart_quantity_job(
+pub async fn run_cart_quantity_job(
     registry: &SandboxJobRegistry,
     hub: &SandboxJobHub,
     job_id: &str,
@@ -380,28 +386,68 @@ mod tests {
         assert_eq!(proposal.operator, "up");
     }
 
-    #[test]
-    fn create_cart_quantity_job_rejects_incomplete_request() {
+    #[tokio::test]
+    async fn create_cart_quantity_job_rejects_incomplete_request() {
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
         let response = create_cart_quantity_job(
             &registry,
             &hub,
+            &messenger,
             &create_request(Some("cart"), Some("v"), None, Some("set")),
-        );
+        )
+        .await;
         assert_eq!(response.status(), 422);
     }
 
-    #[test]
-    fn create_cart_quantity_job_rejects_bad_operator() {
+    #[tokio::test]
+    async fn create_cart_quantity_job_rejects_bad_operator() {
         let registry = SandboxJobRegistry::new();
         let hub = SandboxJobHub::new();
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
         let response = create_cart_quantity_job(
             &registry,
             &hub,
+            &messenger,
             &create_request(Some("cart"), Some("v"), Some(1), Some("noop")),
-        );
+        )
+        .await;
         assert_eq!(response.status(), 422);
+    }
+
+    #[tokio::test]
+    async fn create_cart_quantity_job_enqueues_and_returns_202() {
+        crate::sandbox_messenger::force_enqueue_failure(false);
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
+        let response = create_cart_quantity_job(
+            &registry,
+            &hub,
+            &messenger,
+            &create_request(Some("cart"), Some("v1"), Some(2), Some("set")),
+        )
+        .await;
+        assert_eq!(response.status(), 202);
+        assert_eq!(messenger.transport().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn create_cart_quantity_job_reports_enqueue_failure() {
+        crate::sandbox_messenger::force_enqueue_failure(true);
+        let registry = SandboxJobRegistry::new();
+        let hub = SandboxJobHub::new();
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
+        let response = create_cart_quantity_job(
+            &registry,
+            &hub,
+            &messenger,
+            &create_request(Some("cart"), Some("v1"), Some(2), Some("set")),
+        )
+        .await;
+        assert_eq!(response.status(), 500);
+        crate::sandbox_messenger::force_enqueue_failure(false);
     }
 
     #[tokio::test]

@@ -59,8 +59,17 @@ Parent epic: [#43](https://github.com/Interchouette-ITC/rustashop/issues/43). Sl
 
 1. ~~Admin / shop AI UIs calling the same names.~~ Done (#187 / #189).
 2. ~~Provider API-key routing for first-party model calls (keys never in Wasmer guests).~~ Done (#191 / #192).
-3. ~~Autonomous jobs: sandbox + host commit.~~ Done (#207): `POST …/sandbox/jobs` with `job_type=cart_quantity`, then `…/commit` or `…/discard`; WS `job.proposal` / `job.finished`. Serenade messenger remains future (#49).
+3. ~~Autonomous jobs: sandbox + host commit.~~ Done (#207): `POST …/sandbox/jobs` with `job_type=cart_quantity`, then `…/commit` or `…/discard`; WS `job.proposal` / `job.finished`. Enqueue runs through `serenade-messenger` (in-memory by default; Redis via feature `messenger-redis` + `RUSTASHOP_MESSENGER_REDIS_URL`, #246).
 4. ~~Expand model provider catalog beyond the MVP four.~~ Done (#209): OpenAI-compatible cloud set + `custom`.
+
+### Sandbox messenger env
+
+| Variable | Role |
+| --- | --- |
+| `RUSTASHOP_MESSENGER_REDIS_URL` | When set (and API built with `--features messenger-redis`), enqueue/consume use a Redis list instead of the in-process queue |
+| `RUSTASHOP_MESSENGER_REDIS_LIST` | Redis list key (default `rustashop:sandbox:jobs`) |
+
+Compose includes an optional `redis` service for local durable workers (`docker compose --profile messenger up`).
 
 ### Model provider env (host only)
 

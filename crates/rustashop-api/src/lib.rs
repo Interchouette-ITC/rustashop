@@ -24,6 +24,7 @@ mod realtime;
 mod request_param;
 mod sandbox_autonomous;
 mod sandbox_jobs;
+pub mod sandbox_messenger;
 mod sandbox_realtime;
 mod sandbox_ws;
 mod session_http;

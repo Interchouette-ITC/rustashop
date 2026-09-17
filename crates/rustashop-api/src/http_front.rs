@@ -88,6 +88,8 @@ pub struct CommerceFrontConfig {
     pub sandbox_hub: Option<crate::sandbox_realtime::SandboxJobHub>,
     /// Optional in-process sandbox job + audit registry.
     pub sandbox_registry: Option<crate::sandbox_jobs::SandboxJobRegistry>,
+    /// Optional Serenade messenger for sandbox job enqueue.
+    pub sandbox_messenger: Option<crate::sandbox_messenger::SandboxJobMessenger>,
     /// Shared readiness flag for `GET /readyz` (flip before HTTP drain).
     pub readiness: Readiness,
 }
@@ -104,6 +106,7 @@ impl CommerceFrontConfig {
             cart_hub: None,
             sandbox_hub: None,
             sandbox_registry: None,
+            sandbox_messenger: None,
             readiness: Readiness::new(),
         }
     }
@@ -288,13 +291,7 @@ async fn dispatch_sandbox_route(
     input: &DispatchInput<'_>,
 ) -> Response {
     match route_name {
-        CREATE_SANDBOX_JOB_ROUTE => create_sandbox_job_via_registry(
-            &config.admin_auth,
-            input.bearer,
-            config.sandbox_registry.as_ref(),
-            config.sandbox_hub.as_ref(),
-            input.body,
-        ),
+        CREATE_SANDBOX_JOB_ROUTE => create_sandbox_job_from_front(config, input).await,
         GET_SANDBOX_JOB_ROUTE => get_sandbox_job_via_registry(
             &config.admin_auth,
             input.bearer,
@@ -327,6 +324,14 @@ async fn dispatch_sandbox_route(
         ),
         _ => Response::new(404).with_body(b"no handler".to_vec()),
     }
+}
+
+#[rustfmt::skip]
+async fn create_sandbox_job_from_front(
+    config: &CommerceFrontConfig,
+    input: &DispatchInput<'_>,
+) -> Response {
+    create_sandbox_job_via_registry(&config.admin_auth, input.bearer, config.sandbox_registry.as_ref(), config.sandbox_hub.as_ref(), config.sandbox_messenger.as_ref(), input.body).await
 }
 
 async fn list_products_via_catalog(
@@ -500,11 +505,12 @@ async fn patch_admin_order_via_catalog(
     patch_admin_order_response(auth, bearer, catalog, order_id, body).await
 }
 
-fn create_sandbox_job_via_registry(
+async fn create_sandbox_job_via_registry(
     auth: &AdminAuthConfig,
     bearer: Option<&str>,
     registry: Option<&crate::sandbox_jobs::SandboxJobRegistry>,
     hub: Option<&crate::sandbox_realtime::SandboxJobHub>,
+    messenger: Option<&crate::sandbox_messenger::SandboxJobMessenger>,
     body: &[u8],
 ) -> Response {
     let Some(registry) = registry else {
@@ -513,7 +519,11 @@ fn create_sandbox_job_via_registry(
     let Some(hub) = hub else {
         return api_error_json_response(&ApiError::Internal);
     };
-    crate::sandbox_jobs::create_sandbox_job_response(auth, bearer, registry, hub, body)
+    let Some(messenger) = messenger else {
+        return api_error_json_response(&ApiError::Internal);
+    };
+    crate::sandbox_jobs::create_sandbox_job_response(auth, bearer, registry, hub, messenger, body)
+        .await
 }
 
 fn get_sandbox_job_via_registry(
@@ -1452,6 +1462,67 @@ mod tests {
         let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
         let response = get_sandbox_job_via_registry(&auth, Some("tok"), Some(&registry), None);
         assert_eq!(response.status(), 404);
+    }
+
+    #[tokio::test]
+    async fn create_sandbox_job_via_registry_requires_messenger() {
+        let auth = AdminAuthConfig::from_token("tok");
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let body = br#"{"job_type":"quote","currency":"EUR","lines":[{"sku":"a","quantity":1,"unit_price_minor":1}]}"#;
+        assert_eq!(
+            create_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                None,
+                body,
+            )
+            .await
+            .status(),
+            500
+        );
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
+        assert_eq!(
+            create_sandbox_job_via_registry(
+                &auth,
+                Some("tok"),
+                Some(&registry),
+                Some(&hub),
+                Some(&messenger),
+                body,
+            )
+            .await
+            .status(),
+            202
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_create_sandbox_job_route_uses_messenger() {
+        let registry = crate::sandbox_jobs::SandboxJobRegistry::new();
+        let hub = crate::sandbox_realtime::SandboxJobHub::new();
+        let messenger = crate::sandbox_messenger::SandboxJobMessenger::new();
+        let config = CommerceFrontConfig {
+            admin_auth: AdminAuthConfig::from_token("tok"),
+            sandbox_registry: Some(registry),
+            sandbox_hub: Some(hub),
+            sandbox_messenger: Some(messenger.clone()),
+            ..CommerceFrontConfig::test_default()
+        };
+        let body = br#"{"job_type":"quote","currency":"EUR","lines":[{"sku":"a","quantity":1,"unit_price_minor":1}]}"#;
+        let input = DispatchInput {
+            query: None,
+            id: None,
+            line_id: None,
+            body,
+            idempotency: None,
+            bearer: Some("tok"),
+        };
+        let response = dispatch_sandbox_route(CREATE_SANDBOX_JOB_ROUTE, &config, &input).await;
+        assert_eq!(response.status(), 202);
+        assert_eq!(messenger.transport().len(), 1);
     }
 
     #[tokio::test]
