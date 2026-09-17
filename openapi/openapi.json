@@ -1648,10 +1648,19 @@
             "type": "string",
             "description": "Cart to convert into an order.",
             "example": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional confirmation recipient (`serenade-mailer` when set).",
+            "example": "buyer@example.test"
           }
         },
         "example": {
-          "cart_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+          "cart_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          "email": "buyer@example.test"
         }
       },
       "CommitSandboxJobResponse": {

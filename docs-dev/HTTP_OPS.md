@@ -53,6 +53,15 @@ Mutating cart and checkout routes (`POST /v1/carts`, cart line mutations, `POST 
 
 Multi-node: use Serenade `RedisRateLimiterStorage` (crate feature `redis`) instead of `InMemoryRateLimiterStorage`.
 
+## Order confirmation mail
+
+After a successful `POST /v1/checkout`, when the body includes `email`, the API sends a plain-text confirmation via `serenade-mailer`. Failures are logged and do not fail the order response.
+
+| Env | Role |
+| --- | --- |
+| `RUSTASHOP_ORDER_MAIL_FROM` | From address (default `orders@rustashop.local`) |
+| `RUSTASHOP_MAIL_DIR` | When set, `FileTransport` dumps messages under this directory; otherwise `NullTransport` |
+
 ## Logging
 
 Process logging goes through `serenade-observability` (`LoggingConfig` + `init`). Default sinks: stderr and rolling files under `var/log/` (stem from `RUSTASHOP_ENV`, default `dev`). Filter: `SERENADE_LOG` or `RUST_LOG`.

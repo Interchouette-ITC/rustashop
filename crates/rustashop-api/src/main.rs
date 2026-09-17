@@ -6,6 +6,7 @@ use rustashop_api::{
     INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobRegistry, bind_address, bind_commerce_server,
     catalog_cache::CatalogCache,
     commerce_http_kernel, install_artefacts_present,
+    order_mail::OrderMailer,
     public_rate_limit::PublicWriteRateLimiter,
     sandbox_messenger::{SandboxJobMessenger, spawn_configured_worker},
     shop_root,
@@ -184,6 +185,7 @@ async fn run() -> std::io::Result<()> {
         sandbox_messenger: Some(sandbox_messenger),
         catalog_cache: Some(CatalogCache::from_env()),
         public_rate_limiter: Some(PublicWriteRateLimiter::from_env()),
+        order_mailer: Some(OrderMailer::from_env()),
         readiness: readiness.clone(),
     });
     let bound = bind_commerce_server(

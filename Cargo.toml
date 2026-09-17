@@ -49,6 +49,8 @@ serenade-session = { git = "https://github.com/Interchouette-ITC/Serenade.git", 
 serenade-messenger = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-cache = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-rate-limiter = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-mailer = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
+serenade-validator = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-component-host = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-sandbox = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 actix-web = "4"

@@ -6,11 +6,15 @@ use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
 use serde_json::json;
 use serenade_http::Response;
+use serenade_validator::{
+    Constraint, ConstraintViolationList, Length, NotBlank, Range, Validatable, Validator,
+};
 use utoipa::ToSchema;
 
 use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
 use crate::realtime::{CartHub, CartRealtimeEvent};
 use crate::request_param::{ensure_request_param, ensure_request_param_opt};
+use crate::request_validate::validate_request;
 
 /// Body for `POST /v1/carts`.
 #[derive(Debug, Deserialize, ToSchema)]
@@ -36,6 +40,25 @@ pub struct AddCartLineRequest {
     pub quantity: i32,
 }
 
+impl Validatable for AddCartLineRequest {
+    fn validate(&self, validator: &dyn Validator) -> ConstraintViolationList {
+        let mut list = validator.validate_value(
+            &self.variant_id,
+            "variant_id",
+            &[&NotBlank as &dyn Constraint, &Length::new(1, 128)],
+        );
+        let quantity = validator.validate_value(
+            &self.quantity.to_string(),
+            "quantity",
+            &[&Range::new(1, i64::from(i32::MAX))],
+        );
+        for violation in quantity.as_slice() {
+            list.add(violation.clone());
+        }
+        list
+    }
+}
+
 /// Body for `PATCH /v1/carts/{id}/lines/{line_id}`.
 #[derive(Debug, Deserialize, ToSchema)]
 #[schema(example = json!({"quantity": 2}))]
@@ -43,6 +66,16 @@ pub struct UpdateCartLineRequest {
     /// Replacement quantity greater than zero.
     #[schema(example = 2)]
     pub quantity: i32,
+}
+
+impl Validatable for UpdateCartLineRequest {
+    fn validate(&self, validator: &dyn Validator) -> ConstraintViolationList {
+        validator.validate_value(
+            &self.quantity.to_string(),
+            "quantity",
+            &[&Range::new(1, i64::from(i32::MAX))],
+        )
+    }
 }
 
 /// Money JSON for cart responses.
@@ -227,6 +260,9 @@ pub async fn add_cart_line_response(
         Ok(request) => request,
         Err(error) => return api_error_json_response(&error),
     };
+    if let Err(error) = validate_request(&request) {
+        return api_error_json_response(&error);
+    }
     if let Err(error) = ensure_request_param(&request.variant_id) {
         return api_error_json_response(&error);
     }
@@ -274,6 +310,9 @@ pub async fn update_cart_line_response(
         Ok(request) => request,
         Err(error) => return api_error_json_response(&error),
     };
+    if let Err(error) = validate_request(&request) {
+        return api_error_json_response(&error);
+    }
     let mut cart = match catalog.find_cart_by_id(cart_id).await {
         Ok(Some(cart)) => cart,
         Ok(None) => return api_error_json_response(&ApiError::NotFound),

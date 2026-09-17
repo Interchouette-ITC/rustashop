@@ -65,6 +65,8 @@ serenade-session = { workspace = true }
 serenade-messenger = { workspace = true }
 serenade-cache = { workspace = true }
 serenade-rate-limiter = { workspace = true }
+serenade-mailer = { workspace = true }
+serenade-validator = { workspace = true }
 sqlx = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
