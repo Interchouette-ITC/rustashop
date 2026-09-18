@@ -8,7 +8,7 @@ use wasm_bindgen::closure::Closure;
 use web_sys::{MessageEvent, WebSocket};
 
 use crate::api::{self, Cart};
-use crate::cart_ws::{cart_ws_url, default_api_base, parse_cart_updated_message};
+use crate::cart_ws::{cart_ws_url, parse_cart_updated_message};
 
 const CART_ID_KEY: &str = "rs.cartId";
 
@@ -180,7 +180,7 @@ fn sync_socket(cart: Option<&Cart>, cart_signal: RwSignal<Option<Cart>>) {
 }
 
 fn open_socket(cart: &Cart, cart_signal: RwSignal<Option<Cart>>) {
-    let Ok(url) = cart_ws_url(default_api_base(), &cart.id, &cart.token) else {
+    let Ok(url) = cart_ws_url(&crate::api::api_base(), &cart.id, &cart.token) else {
         return;
     };
     let Ok(socket) = WebSocket::new(&url) else {

@@ -20,6 +20,7 @@ ADMIN_LEPTOS_DIR := admin/leptos-rangular
 ADMIN_LEPTOS_PORT ?= 4251
 ADMIN_LEPTOS_ADDR ?= 127.0.0.1
 ADMIN_TAURI_DIR := admin/tauri
+SHOP_TAURI_DIR := shops/tauri
 TRUNK_BIN ?= $(HOME)/.cargo/bin/trunk
 TRUNK ?= env -u NO_COLOR $(TRUNK_BIN)
 # Compose file lives under docker/; project name keeps container names stable.
@@ -42,7 +43,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test test-workspace test-shops test-shop-angular test-shop-leptos test-admin-leptos test-admin-tauri lint lint-shop-angular lint-admin-angular lint-shop-leptos lint-admin-leptos lint-admin-tauri lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular admin-leptos-rangular admin-tauri build-admin-tauri install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test test-workspace test-shops test-shop-angular test-shop-leptos test-admin-leptos test-admin-tauri test-shop-tauri lint lint-shop-angular lint-admin-angular lint-shop-leptos lint-admin-leptos lint-admin-tauri lint-shop-tauri lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular admin-leptos-rangular admin-tauri build-admin-tauri shop-tauri build-shop-tauri install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -82,9 +83,13 @@ help:
 	@echo "  make shop-leptos-rangular  serve Leptos+rangular shop ($(SHOP_LEPTOS_DIR), port $(SHOP_LEPTOS_PORT))"
 	@echo "  make admin-leptos-rangular  serve Leptos+rangular admin ($(ADMIN_LEPTOS_DIR), port $(ADMIN_LEPTOS_PORT))"
 	@echo "  make admin-tauri            Trunk + debug Tauri admin desktop ($(ADMIN_TAURI_DIR))"
-	@echo "  make build-admin-tauri      Trunk release + release Tauri binary (no open)"
+	@echo "  make build-admin-tauri      Trunk release + release Tauri admin binary (no open)"
 	@echo "  make test-admin-tauri       cargo check admin Tauri crate (no GUI)"
 	@echo "  make lint-admin-tauri       clippy admin Tauri crate"
+	@echo "  make shop-tauri             Trunk + debug Tauri shop desktop ($(SHOP_TAURI_DIR))"
+	@echo "  make build-shop-tauri       Trunk release + release Tauri shop binary (no open)"
+	@echo "  make test-shop-tauri        cargo check shop Tauri crate (no GUI)"
+	@echo "  make lint-shop-tauri        clippy shop Tauri crate"
 	@echo "  make install-ui  build Vite+Vue install funnel into install/dist (API serves /install when present)"
 	@echo "  make install-dev Vite dev server for install UI (proxies /install/api via RUSTASHOP_API_PROXY / RUSTASHOP_BIND)"
 	@echo "  make install-cli run rustashop-install (writes .env; then mv install install.off)"
@@ -135,9 +140,13 @@ test-shop-leptos:
 test-admin-leptos:
 	cd $(ROOT)/$(ADMIN_LEPTOS_DIR) && $(CARGO) test
 
-## Compiles the Tauri host (no window). Needs system WebKitGTK on Linux.
+## Compiles the admin Tauri host (no window). Needs system WebKitGTK on Linux.
 test-admin-tauri:
 	cd $(ROOT)/$(ADMIN_TAURI_DIR) && $(CARGO) check
+
+## Compiles the shop Tauri host (no window). Needs system WebKitGTK on Linux.
+test-shop-tauri:
+	cd $(ROOT)/$(SHOP_TAURI_DIR) && $(CARGO) check
 
 test-shops: test-shop-angular test-shop-leptos test-admin-leptos
 
@@ -274,6 +283,10 @@ lint-admin-leptos:
 # Admin Tauri clippy (standalone Cargo workspace under admin/tauri).
 lint-admin-tauri:
 	cd $(ROOT)/$(ADMIN_TAURI_DIR) && $(CARGO) clippy --all-targets -- $(CLIPPY_FLAGS)
+
+# Shop Tauri clippy (standalone Cargo workspace under shops/tauri).
+lint-shop-tauri:
+	cd $(ROOT)/$(SHOP_TAURI_DIR) && $(CARGO) clippy --all-targets -- $(CLIPPY_FLAGS)
 
 lint-install:
 	@if [ ! -d "$(ROOT)/install/node_modules" ]; then \
@@ -473,12 +486,25 @@ admin-tauri:
 	@command -v cargo-tauri >/dev/null 2>&1 || { echo "cargo-tauri not found (install: cargo install tauri-cli)"; exit 1; }
 	cd $(ROOT)/$(ADMIN_TAURI_DIR) && $(CARGO) tauri dev
 
-## Trunk release + release Tauri binary (does not open a window).
+## Trunk release + release admin Tauri binary (does not open a window).
 build-admin-tauri:
 	@test -x $(TRUNK_BIN) || { echo "trunk not found at $(TRUNK_BIN) (install: cargo install trunk)"; exit 1; }
 	@command -v cargo-tauri >/dev/null 2>&1 || { echo "cargo-tauri not found (install: cargo install tauri-cli)"; exit 1; }
 	cd $(ROOT)/$(ADMIN_LEPTOS_DIR) && env -u NO_COLOR $(TRUNK) build --release
 	cd $(ROOT)/$(ADMIN_TAURI_DIR) && $(CARGO) build --release
+
+## Trunk + debug shop Tauri window (`cargo tauri dev`).
+shop-tauri:
+	@test -x $(TRUNK_BIN) || { echo "trunk not found at $(TRUNK_BIN) (install: cargo install trunk)"; exit 1; }
+	@command -v cargo-tauri >/dev/null 2>&1 || { echo "cargo-tauri not found (install: cargo install tauri-cli)"; exit 1; }
+	cd $(ROOT)/$(SHOP_TAURI_DIR) && $(CARGO) tauri dev
+
+## Trunk release + release shop Tauri binary (does not open a window).
+build-shop-tauri:
+	@test -x $(TRUNK_BIN) || { echo "trunk not found at $(TRUNK_BIN) (install: cargo install trunk)"; exit 1; }
+	@command -v cargo-tauri >/dev/null 2>&1 || { echo "cargo-tauri not found (install: cargo install tauri-cli)"; exit 1; }
+	cd $(ROOT)/$(SHOP_LEPTOS_DIR) && env -u NO_COLOR $(TRUNK) build --release
+	cd $(ROOT)/$(SHOP_TAURI_DIR) && $(CARGO) build --release
 
 run-api:
 	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) RUSTASHOP_BIND=$${RUSTASHOP_BIND:-$(API_BIND)} $(CARGO) run -p rustashop-api --bin rustashop-api

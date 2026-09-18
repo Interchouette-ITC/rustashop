@@ -1,0 +1,26 @@
+[package]
+name = "rustashop-shop-tauri"
+description = "rustashop shop desktop shell (Tauri 2 + Leptos shop wasm)"
+version = "0.1.0"
+edition = "2024"
+license = "OSL-3.0"
+publish = false
+
+# Standalone package (not a member of the rustashop workspace).
+[workspace]
+
+[lib]
+name = "rustashop_shop_tauri_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "rustashop-shop-tauri"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde_json = "1"
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"

@@ -4,8 +4,6 @@ use serde::Deserialize;
 
 use crate::api::Cart;
 
-const API_BASE: &str = "/api";
-
 #[derive(Debug, Deserialize)]
 struct CartUpdatedEnvelope {
     #[serde(rename = "type")]
@@ -31,6 +29,7 @@ pub fn parse_cart_updated_message(raw: &str) -> Option<Cart> {
 /// Builds `ws(s)://…/v1/carts/{id}/ws?token=` from an HTTP API base URL.
 ///
 /// Relative bases (e.g. `/api`) resolve against `window.location.origin` on wasm.
+/// Absolute bases (e.g. `http://127.0.0.1:8080`) map http→ws without an `/api` prefix.
 ///
 /// # Errors
 ///
@@ -52,12 +51,6 @@ pub fn cart_ws_url(api_base: &str, cart_id: &str, token: &str) -> Result<String,
     let id = urlencoding_encode(cart_id);
     let tok = urlencoding_encode(token);
     Ok(format!("{ws_base}/v1/carts/{id}/ws?token={tok}"))
-}
-
-/// Default shop API base (`/api`, same as Angular).
-#[must_use]
-pub const fn default_api_base() -> &'static str {
-    API_BASE
 }
 
 fn browser_origin() -> Result<String, String> {

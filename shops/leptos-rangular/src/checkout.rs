@@ -5,9 +5,7 @@ use rangular_host::{Regex, first_error, min_length, pattern, required};
 /// Compiled once; reused for each email check.
 fn email_pattern() -> &'static Regex {
     static RE: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"^[^@\s]+@[^@\s]+\.[^@\s]+$").expect("email pattern compiles")
-    })
+    RE.get_or_init(|| Regex::new(r"^[^@\s]+@[^@\s]+\.[^@\s]+$").expect("email pattern compiles"))
 }
 
 /// Validates an optional checkout email.

@@ -102,10 +102,7 @@ fn first_variant_id(detail: &ProductDetail) -> String {
 }
 
 fn variant_label(variant: &ProductVariant) -> String {
-    let name = variant
-        .name
-        .clone()
-        .unwrap_or_else(|| variant.sku.clone());
+    let name = variant.name.clone().unwrap_or_else(|| variant.sku.clone());
     format!(
         "{name} - {} (stock {}) [{}]",
         variant.price.display(),
