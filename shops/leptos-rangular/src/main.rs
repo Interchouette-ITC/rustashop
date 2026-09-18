@@ -10,6 +10,7 @@ use leptos::mount::mount_to_body;
 mod api;
 mod app;
 mod cart;
+mod cart_ws;
 mod components;
 mod pages;
 mod shell;
