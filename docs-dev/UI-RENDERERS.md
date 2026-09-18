@@ -117,7 +117,8 @@ HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart 
 | Browse (product list) | `GET /v1/products` | — | shipped | shipped | blocked | Shared templates under `templates/shop/default/` |
 | Product detail | `GET /v1/products/{id}` | — | shipped | shipped | blocked | Add-to-cart is HTTP today |
 | Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` | shipped | shipped | blocked | Angular WS [#263](https://github.com/Interchouette-ITC/rustashop/pull/263); Leptos WS [#265](https://github.com/Interchouette-ITC/rustashop/pull/265) |
-| Checkout | `POST /v1/checkout` | not yet (order lifecycle later) | shipped | missing | blocked | Leptos checkout is **product dogfood** (upstream Host validators shipped; [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**) |
+| Checkout | `POST /v1/checkout` | not yet (order lifecycle later) | shipped | shipped | blocked | Leptos checkout dogfoods Host validators ([rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**); [#268](https://github.com/Interchouette-ITC/rustashop/issues/268) |
+
 | Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | not yet | shipped (`admin/angular`) | missing | blocked | Leptos admin = product sample; native waits [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
 
 **missing** = not built in this host yet (no upstream forms blocker). **blocked** = waiting on GPUI (#37) or similar.
@@ -135,7 +136,7 @@ Admin sandbox job logs already use WS (`GET /v1/{admin_api_prefix}/sandbox/jobs/
 
 1. Commerce API + Angular shop + Leptos browse/cart - **landed**
 2. UI parity docs + cart WS clients - N0–N2 ([#51](https://github.com/Interchouette-ITC/rustashop/issues/51), [#31](https://github.com/Interchouette-ITC/rustashop/issues/31))
-3. Leptos checkout (+ optional Leptos admin sample) - product dogfood of closed #22 surface
+3. Leptos checkout - **shipped** (Host validators dogfood; [#268](https://github.com/Interchouette-ITC/rustashop/issues/268))
 4. Realtime deepen (inventory / order) - when ordered
 5. rangular #37 - native admin/desktop
 
