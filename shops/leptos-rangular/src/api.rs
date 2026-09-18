@@ -108,6 +108,8 @@ impl CartLine {
 #[derive(Clone, Debug, Deserialize)]
 pub struct Cart {
     pub id: String,
+    /// Opaque session token (HTTP body + WebSocket `?token=`).
+    pub token: String,
     pub status: String,
     pub currency: String,
     pub lines: Vec<CartLine>,
@@ -256,6 +258,7 @@ mod tests {
         assert_eq!(line.variant_ref(), "v1");
         let cart = Cart {
             id: "c1".into(),
+            token: "tok".into(),
             status: "open".into(),
             currency: "EUR".into(),
             lines: vec![line],

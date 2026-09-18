@@ -1718,6 +1718,7 @@ dependencies = [
  "rustashop-template-shop-default",
  "serde",
  "serde_json",
+ "wasm-bindgen",
  "web-sys",
 ]
 
