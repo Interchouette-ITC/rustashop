@@ -2,12 +2,15 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { CartApi, type CartResponse } from '../../api';
+import { environment } from '../../../environments/environment';
 import { formatApiError } from '../http/api-error';
+import { cartWsUrl, parseCartUpdatedMessage } from './cart-ws';
 
 const CART_ID_KEY = 'rs.cartId';
 
 /**
  * Browser cart session: persists cart id and keeps a live cart snapshot.
+ * Subscribes to `cart.updated` WebSocket push when a cart is open.
  */
 @Injectable({ providedIn: 'root' })
 export class CartStore {
@@ -16,6 +19,9 @@ export class CartStore {
   private readonly cartSignal = signal<CartResponse | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<string | null>(null);
+
+  private socket: WebSocket | null = null;
+  private socketCartId: string | null = null;
 
   readonly cart = this.cartSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
@@ -35,7 +41,7 @@ export class CartStore {
       try {
         const cart = await firstValueFrom(this.cartApi.getCart(existingId));
         if (cart.status === 'open') {
-          this.cartSignal.set(cart);
+          this.applyCart(cart);
           this.errorSignal.set(null);
           return cart;
         }
@@ -50,14 +56,13 @@ export class CartStore {
   async refresh(): Promise<void> {
     const id = this.cartSignal()?.id ?? readCartId();
     if (!id) {
-      this.cartSignal.set(null);
+      this.applyCart(null);
       return;
     }
     this.busySignal.set(true);
     try {
       const cart = await firstValueFrom(this.cartApi.getCart(id));
-      this.cartSignal.set(cart);
-      writeCartId(cart.id);
+      this.applyCart(cart);
       this.errorSignal.set(null);
     } catch (err) {
       this.errorSignal.set(formatError(err));
@@ -75,8 +80,7 @@ export class CartStore {
       const updated = await firstValueFrom(
         this.cartApi.addLine(cart.id, { variant_id: variantId, quantity }),
       );
-      this.cartSignal.set(updated);
-      writeCartId(updated.id);
+      this.applyCart(updated);
       return updated;
     } catch (err) {
       this.errorSignal.set(formatError(err));
@@ -95,7 +99,7 @@ export class CartStore {
     this.errorSignal.set(null);
     try {
       const updated = await firstValueFrom(this.cartApi.updateLine(cart.id, lineId, { quantity }));
-      this.cartSignal.set(updated);
+      this.applyCart(updated);
       return updated;
     } catch (err) {
       this.errorSignal.set(formatError(err));
@@ -114,7 +118,7 @@ export class CartStore {
     this.errorSignal.set(null);
     try {
       const updated = await firstValueFrom(this.cartApi.deleteLine(cart.id, lineId));
-      this.cartSignal.set(updated);
+      this.applyCart(updated);
       return updated;
     } catch (err) {
       this.errorSignal.set(formatError(err));
@@ -127,7 +131,7 @@ export class CartStore {
   /** Clears the local cart session after a successful checkout. */
   clearSession(): void {
     clearCartId();
-    this.cartSignal.set(null);
+    this.applyCart(null);
     this.errorSignal.set(null);
   }
 
@@ -135,8 +139,7 @@ export class CartStore {
     this.busySignal.set(true);
     try {
       const cart = await firstValueFrom(this.cartApi.createCart({ currency: 'EUR' }));
-      this.cartSignal.set(cart);
-      writeCartId(cart.id);
+      this.applyCart(cart);
       this.errorSignal.set(null);
       return cart;
     } catch (err) {
@@ -145,6 +148,66 @@ export class CartStore {
     } finally {
       this.busySignal.set(false);
     }
+  }
+
+  private applyCart(cart: CartResponse | null): void {
+    this.cartSignal.set(cart);
+    if (cart) {
+      writeCartId(cart.id);
+    }
+    this.syncSocket(cart);
+  }
+
+  private syncSocket(cart: CartResponse | null): void {
+    if (!cart || cart.status !== 'open' || !cart.token) {
+      this.closeSocket();
+      return;
+    }
+    if (
+      this.socketCartId === cart.id &&
+      this.socket &&
+      (this.socket.readyState === WebSocket.CONNECTING ||
+        this.socket.readyState === WebSocket.OPEN)
+    ) {
+      return;
+    }
+    this.closeSocket();
+    this.openSocket(cart);
+  }
+
+  private openSocket(cart: CartResponse): void {
+    const url = cartWsUrl(environment.apiBaseUrl, cart.id, cart.token);
+    const socket = new WebSocket(url);
+    this.socket = socket;
+    this.socketCartId = cart.id;
+    socket.onmessage = (event) => {
+      const next = parseCartUpdatedMessage(String(event.data));
+      if (!next) {
+        return;
+      }
+      this.cartSignal.set(next);
+      writeCartId(next.id);
+    };
+    socket.onerror = () => {
+      // HTTP cart path remains authoritative; ignore socket noise.
+    };
+    socket.onclose = () => {
+      if (this.socket === socket) {
+        this.socket = null;
+        this.socketCartId = null;
+      }
+    };
+  }
+
+  private closeSocket(): void {
+    if (this.socket) {
+      this.socket.onmessage = null;
+      this.socket.onerror = null;
+      this.socket.onclose = null;
+      this.socket.close();
+      this.socket = null;
+    }
+    this.socketCartId = null;
   }
 }
 
