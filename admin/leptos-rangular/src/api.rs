@@ -1,16 +1,85 @@
-//! Admin Commerce API client (`/api` → Actix; Trunk proxy).
+//! Admin Commerce API client (Trunk `/api` proxy or absolute Actix base).
 
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
 
 use crate::money::Money;
 
-const API_BASE: &str = "/api";
+/// sessionStorage override for desktop / tip hosts (no trailing slash).
+pub const API_BASE_STORAGE_KEY: &str = "rs.adminApiBase";
+
+/// Browser / Trunk default (proxied to Actix).
+pub const API_BASE_BROWSER: &str = "/api";
+/// Desktop / non-http origin default (Actix on loopback).
+pub const API_BASE_DESKTOP: &str = "http://127.0.0.1:8080";
 /// Must match `RUSTASHOP_ADMIN_API_PREFIX` (Angular `environment.adminApiPrefix`).
 const ADMIN_PREFIX: &str = "admin";
 
 fn admin_url(path: &str) -> String {
-    format!("{API_BASE}/v1/{ADMIN_PREFIX}/{path}")
+    admin_url_with_base(&api_base(), path)
+}
+
+fn admin_url_with_base(base: &str, path: &str) -> String {
+    format!("{}/v1/{ADMIN_PREFIX}/{path}", base.trim_end_matches('/'))
+}
+
+/// Resolves the Commerce API base: storage override, else `/api` on http(s), else loopback Actix.
+#[must_use]
+pub fn api_base() -> String {
+    let (browser, desktop) = default_api_bases();
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(stored) = read_stored_api_base() {
+            return stored;
+        }
+        if browser_http_origin() {
+            return browser.to_owned();
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = browser;
+    desktop.to_owned()
+}
+
+/// Browser and desktop default bases (for docs / UI hints).
+#[must_use]
+pub const fn default_api_bases() -> (&'static str, &'static str) {
+    (API_BASE_BROWSER, API_BASE_DESKTOP)
+}
+
+/// Persists an API base override (trimmed; empty clears).
+pub fn save_api_base(raw: &str) {
+    let trimmed = raw.trim().trim_end_matches('/').to_owned();
+    #[cfg(target_arch = "wasm32")]
+    if let Some(storage) = window_session_storage() {
+        if trimmed.is_empty() {
+            let _ = storage.remove_item(API_BASE_STORAGE_KEY);
+        } else {
+            let _ = storage.set_item(API_BASE_STORAGE_KEY, &trimmed);
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = trimmed;
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_stored_api_base() -> Option<String> {
+    window_session_storage()
+        .and_then(|s| s.get_item(API_BASE_STORAGE_KEY).ok().flatten())
+        .map(|s| s.trim().trim_end_matches('/').to_owned())
+        .filter(|s| !s.is_empty())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn browser_http_origin() -> bool {
+    web_sys::window()
+        .and_then(|w| w.location().protocol().ok())
+        .is_some_and(|p| p == "http:" || p == "https:")
+}
+
+#[cfg(target_arch = "wasm32")]
+fn window_session_storage() -> Option<web_sys::Storage> {
+    web_sys::window()?.session_storage().ok().flatten()
 }
 
 /// Order fulfillment statuses accepted by admin PATCH.
@@ -131,8 +200,20 @@ mod tests {
 
     #[test]
     fn admin_url_uses_prefix() {
-        assert_eq!(admin_url("orders"), "/api/v1/admin/orders");
-        assert_eq!(admin_url("orders/abc"), "/api/v1/admin/orders/abc");
+        assert_eq!(
+            admin_url_with_base("/api", "orders"),
+            "/api/v1/admin/orders"
+        );
+        assert_eq!(
+            admin_url_with_base("http://127.0.0.1:8080", "orders/abc"),
+            "http://127.0.0.1:8080/v1/admin/orders/abc"
+        );
+    }
+
+    #[test]
+    fn api_base_constants() {
+        assert_eq!(default_api_bases(), ("/api", "http://127.0.0.1:8080"));
+        assert_eq!(API_BASE_STORAGE_KEY, "rs.adminApiBase");
     }
 
     #[test]

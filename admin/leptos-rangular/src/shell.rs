@@ -2,6 +2,7 @@ use leptos::prelude::*;
 use leptos_router::components::A;
 use wasm_bindgen::JsCast;
 
+use crate::api::{API_BASE_STORAGE_KEY, api_base, save_api_base};
 use crate::auth::validate_admin_token;
 use crate::token::use_token;
 
@@ -10,6 +11,7 @@ use crate::token::use_token;
 pub fn AdminShell(children: Children) -> impl IntoView {
     let tokens = use_token();
     let draft = RwSignal::new(tokens.token.get_untracked());
+    let api_draft = RwSignal::new(api_base());
     let error = RwSignal::new(Option::<String>::None);
 
     let on_save = move |_| match validate_admin_token(&draft.get()) {
@@ -23,6 +25,12 @@ pub fn AdminShell(children: Children) -> impl IntoView {
         draft.set(String::new());
         tokens.clear();
         error.set(None);
+    };
+    let on_save_api = move |_| {
+        save_api_base(&api_draft.get());
+        if let Some(window) = web_sys::window() {
+            let _ = window.location().reload();
+        }
     };
 
     view! {
@@ -41,6 +49,23 @@ pub fn AdminShell(children: Children) -> impl IntoView {
                         </nav>
                     </div>
                     <div class="admin__token">
+                        <label class="visually-hidden" for="admin-api-base">"API base URL"</label>
+                        <input
+                            id="admin-api-base"
+                            type="text"
+                            class="admin__input admin__input--base"
+                            placeholder="API base (/api or http://…)"
+                            title=format!("sessionStorage {API_BASE_STORAGE_KEY}; empty restores default")
+                            prop:value=move || api_draft.get()
+                            on:input=move |ev| {
+                                let input: web_sys::HtmlInputElement = ev.target().unwrap().unchecked_into();
+                                api_draft.set(input.value());
+                            }
+                            autocomplete="off"
+                        />
+                        <button type="button" class="admin__btn admin__btn--ghost" on:click=on_save_api>
+                            "Save API"
+                        </button>
                         <label class="visually-hidden" for="admin-token">"Admin API token"</label>
                         <input
                             id="admin-token"
