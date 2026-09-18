@@ -16,6 +16,9 @@ ADMIN_ANGULAR_PORT ?= 4250
 SHOP_LEPTOS_DIR := shops/leptos-rangular
 SHOP_LEPTOS_PORT ?= 4181
 SHOP_LEPTOS_ADDR ?= 127.0.0.1
+ADMIN_LEPTOS_DIR := admin/leptos-rangular
+ADMIN_LEPTOS_PORT ?= 4251
+ADMIN_LEPTOS_ADDR ?= 127.0.0.1
 TRUNK_BIN ?= $(HOME)/.cargo/bin/trunk
 TRUNK ?= env -u NO_COLOR $(TRUNK_BIN)
 # Compose file lives under docker/; project name keeps container names stable.
@@ -38,7 +41,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test test-workspace test-shops test-shop-angular test-shop-leptos lint lint-shop-angular lint-admin-angular lint-shop-leptos lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test test-workspace test-shops test-shop-angular test-shop-leptos test-admin-leptos lint lint-shop-angular lint-admin-angular lint-shop-leptos lint-admin-leptos lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular admin-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -53,7 +56,7 @@ help:
 	@echo "  make check      cargo check --workspace, then SeaORM features"
 	@echo "  make test       workspace + SeaORM tests, then make test-shops"
 	@echo "  make test-workspace  cargo test --workspace, then SeaORM feature tests"
-	@echo "  make test-shops Angular shop npm test + Leptos shop cargo test"
+	@echo "  make test-shops Angular shop npm test + Leptos shop + Leptos admin cargo test"
 	@echo "  make extensions-fixture  rebuild pricing-adjust component wasm (needs wasm-tools)"
 	@echo "  make sandbox-quote-rust-fixture  rebuild Rust WASI quote.wasm for Wasmer sandbox"
 	@echo "  make coverage         cargo llvm-cov lcov → coverage/lcov.info (needs DATABASE_URL; CI / Codecov)"
@@ -66,7 +69,7 @@ help:
 	@echo "  make fuzz-build       cargo +nightly fuzz build"
 	@echo "  make geiger           cargo geiger (unsafe dependency audit)"
 	@echo "  make coverage-js Vitest coverage for shop, admin, and install → coverage/*-lcov.info"
-	@echo "  make lint       fmt check + SQL safety + clippy (workspace + Leptos shop) + Angular lint (when node_modules present)"
+	@echo "  make lint       fmt check + SQL safety + clippy (workspace + Leptos shop/admin) + Angular lint (when node_modules present)"
 	@echo "  make ci         lint + test + doc + audit + deny (local mirror of core CI jobs before opening a PR)"
 	@echo "  make check-sql-safety  cargo test: deny format!-built SQL in persist crates"
 	@echo "  make doc        rustdoc → docs/api-rust/ (-D warnings)"
@@ -76,6 +79,7 @@ help:
 	@echo "  make shop-angular  serve Angular shop ($(SHOP_ANGULAR_DIR), port $(SHOP_ANGULAR_PORT); FORCE=1 reinstalls; RUSTASHOP_BASE_HREF=/)"
 	@echo "  make admin-angular serve Angular admin ($(ADMIN_ANGULAR_DIR), port $(ADMIN_ANGULAR_PORT); FORCE=1 reinstalls)"
 	@echo "  make shop-leptos-rangular  serve Leptos+rangular shop ($(SHOP_LEPTOS_DIR), port $(SHOP_LEPTOS_PORT))"
+	@echo "  make admin-leptos-rangular  serve Leptos+rangular admin ($(ADMIN_LEPTOS_DIR), port $(ADMIN_LEPTOS_PORT))"
 	@echo "  make install-ui  build Vite+Vue install funnel into install/dist (API serves /install when present)"
 	@echo "  make install-dev Vite dev server for install UI (proxies /install/api via RUSTASHOP_API_PROXY / RUSTASHOP_BIND)"
 	@echo "  make install-cli run rustashop-install (writes .env; then mv install install.off)"
@@ -123,7 +127,10 @@ test-shop-angular:
 test-shop-leptos:
 	cd $(ROOT)/$(SHOP_LEPTOS_DIR) && $(CARGO) test
 
-test-shops: test-shop-angular test-shop-leptos
+test-admin-leptos:
+	cd $(ROOT)/$(ADMIN_LEPTOS_DIR) && $(CARGO) test
+
+test-shops: test-shop-angular test-shop-leptos test-admin-leptos
 
 test: test-workspace test-shops
 
@@ -251,6 +258,10 @@ lint-admin-angular:
 lint-shop-leptos:
 	cd $(ROOT)/$(SHOP_LEPTOS_DIR) && $(CARGO) clippy --all-targets -- $(CLIPPY_FLAGS)
 
+# Leptos admin clippy (standalone Cargo workspace under admin/leptos-rangular).
+lint-admin-leptos:
+	cd $(ROOT)/$(ADMIN_LEPTOS_DIR) && $(CARGO) clippy --all-targets -- $(CLIPPY_FLAGS)
+
 lint-install:
 	@if [ ! -d "$(ROOT)/install/node_modules" ]; then \
 		echo "skip lint-install: install/node_modules missing (make install-ui)"; \
@@ -258,7 +269,7 @@ lint-install:
 		cd $(ROOT)/install && npm run build; \
 	fi
 
-lint: format-check check-sql-safety lint-shop-angular lint-admin-angular lint-shop-leptos lint-install
+lint: format-check check-sql-safety lint-shop-angular lint-admin-angular lint-shop-leptos lint-admin-leptos lint-install
 	cd $(ROOT) && $(CARGO) clippy --workspace --all-targets -- $(CLIPPY_FLAGS)
 	cd $(ROOT) && $(CARGO) clippy $(SEAORM_PACKAGES) --all-targets $(SEAORM_FEATURES) -- $(CLIPPY_FLAGS)
 
@@ -434,6 +445,14 @@ shop-leptos-rangular:
 	fi
 	@test -x $(TRUNK_BIN) || { echo "trunk not found at $(TRUNK_BIN) (install: cargo install trunk)"; exit 1; }
 	cd $(ROOT)/$(SHOP_LEPTOS_DIR) && env -u NO_COLOR $(TRUNK) serve --release --port $(SHOP_LEPTOS_PORT) --address $(SHOP_LEPTOS_ADDR)
+
+admin-leptos-rangular:
+	@if ss -tlnp 2>/dev/null | grep -q ':$(ADMIN_LEPTOS_PORT) '; then \
+		echo "Port $(ADMIN_LEPTOS_PORT) already in use - reuse that server or set ADMIN_LEPTOS_PORT"; \
+		exit 1; \
+	fi
+	@test -x $(TRUNK_BIN) || { echo "trunk not found at $(TRUNK_BIN) (install: cargo install trunk)"; exit 1; }
+	cd $(ROOT)/$(ADMIN_LEPTOS_DIR) && env -u NO_COLOR $(TRUNK) serve --release --port $(ADMIN_LEPTOS_PORT) --address $(ADMIN_LEPTOS_ADDR)
 
 run-api:
 	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) RUSTASHOP_BIND=$${RUSTASHOP_BIND:-$(API_BIND)} $(CARGO) run -p rustashop-api --bin rustashop-api

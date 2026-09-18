@@ -85,7 +85,7 @@ back-office.
 
 ## Admin (pluggable)
 
-The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may plug in (Angular, React, Vue, Leptos+rangular, …). rustashop ships an **Angular sample** as the default operator SPA; that is not a stack lock. A Leptos+rangular admin sample is **product work** (Host validators already landed upstream); native GPUI admin waits on [rangular #37](https://github.com/Interchouette-ITC/rangular/issues/37).
+The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may plug in (Angular, React, Vue, Leptos+rangular, …). rustashop ships an **Angular sample** (`admin/angular`) and a **Leptos+rangular sample** (`admin/leptos-rangular`, orders + products). Native desktop shells use Tauri webview around those hosts (product next); GPUI admin waits on [rangular #37](https://github.com/Interchouette-ITC/rangular/issues/37).
 
 ## Make targets (shops)
 
@@ -93,6 +93,8 @@ The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may p
 | --------------------------- | ------------------------------------------------------- |
 | `make shop-angular`         | Serve Angular shop (port `4242` by default)             |
 | `make shop-leptos-rangular` | Serve Leptos+rangular shop (Trunk; default port `4181`) |
+| `make admin-angular`        | Serve Angular admin (port `4250` by default)            |
+| `make admin-leptos-rangular`| Serve Leptos+rangular admin (Trunk; default port `4251`) |
 
 Product vocabulary: **shop** (not storefront / vitrine).
 
@@ -118,9 +120,11 @@ HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart 
 | Product detail | `GET /v1/products/{id}` | — | shipped | shipped | blocked | Add-to-cart is HTTP today |
 | Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` | shipped | shipped | blocked | Angular WS [#263](https://github.com/Interchouette-ITC/rustashop/pull/263); Leptos WS [#265](https://github.com/Interchouette-ITC/rustashop/pull/265) |
 | Checkout | `POST /v1/checkout` | — | shipped | shipped | blocked | Leptos checkout dogfoods Host validators ([rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**); [#268](https://github.com/Interchouette-ITC/rustashop/issues/268) |
-| Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | `order.updated` (API) | shipped (`admin/angular` HTTP) | missing | blocked | WS API [#270](https://github.com/Interchouette-ITC/rustashop/issues/270); clients later; native waits [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
+| Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | `order.updated` (API) | shipped (`admin/angular` HTTP) | partial (`admin/leptos-rangular` orders + products) | blocked | Leptos admin web [#272](https://github.com/Interchouette-ITC/rustashop/issues/272); Tauri wrap later; GPUI waits [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
 
-**missing** = not built in this host yet (no upstream forms blocker). **blocked** = waiting on GPUI (#37) or similar.
+**missing** = not built in this host yet (no upstream forms blocker). **blocked** = waiting on GPUI (#37) or similar. **partial** = subset of Angular admin screens on Leptos (orders + products; agents/sandbox still Angular).
+
+Admin Leptos host: `make admin-leptos-rangular` (Trunk, default port `4251`). Same bearer + `/v1/admin/…` contract as Angular. Desktop Tauri shells (admin + installable shop) are follow-up under [#50](https://github.com/Interchouette-ITC/rustashop/issues/50); they wrap the Leptos wasm in a webview (not GPUI).
 
 Admin sandbox job logs already use WS (`GET /v1/{admin_api_prefix}/sandbox/jobs/{id}/ws`) in `admin/angular` - that is not a storefront parity row.
 
