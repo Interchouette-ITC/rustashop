@@ -43,8 +43,10 @@ make coverage-js      # Vitest lcov for shop, admin, install
 
 | Target | Purpose |
 | --- | --- |
-| `make lint` | `fmt --check` + clippy (`-D warnings`, pedantic, nursery) for workspace and SeaORM features |
-| `make test` | workspace tests, then SeaORM feature tests |
+| `make lint` | `fmt --check` + SQL safety + clippy (workspace, SeaORM features, Leptos shop) + Angular lint when `node_modules` present |
+| `make test` | `make test-workspace` then `make test-shops` |
+| `make test-workspace` | Cargo workspace tests, then SeaORM feature tests |
+| `make test-shops` | Angular shop `npm test` + Leptos shop `cargo test` |
 | `make coverage` | Rust `cargo llvm-cov` lcov → `coverage/lcov.info` (CI / Codecov) |
 | `make coverage-summary` | Rust `cargo llvm-cov --summary-only` |
 | `make coverage-html` | Rust `cargo llvm-cov` HTML → `coverage/html/` |
