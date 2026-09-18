@@ -35,7 +35,7 @@ use crate::openapi::openapi_json_response;
 use crate::order_mail::OrderMailer;
 use crate::products::{ListProductsQuery, get_product_response, list_products_response};
 use crate::public_rate_limit::{PublicWriteRateLimiter, client_key_from_headers};
-use crate::realtime::CartHub;
+use crate::realtime::{CartHub, OrderHub};
 use crate::session_http::{csrf_manager_from_env, try_browser_security_route};
 use serenade_security::AsyncSessionTokenMiddleware;
 use serenade_session::{AsyncSessionMiddleware, CookieSession, MemorySessionStore, SessionStore};
@@ -90,6 +90,8 @@ pub struct CommerceFrontConfig {
     pub install_root: Option<PathBuf>,
     /// Optional cart WebSocket hub for mutation push.
     pub cart_hub: Option<CartHub>,
+    /// Optional order WebSocket hub for status push.
+    pub order_hub: Option<OrderHub>,
     /// Optional sandbox job hub for log push.
     pub sandbox_hub: Option<crate::sandbox_realtime::SandboxJobHub>,
     /// Optional in-process sandbox job + audit registry.
@@ -116,6 +118,7 @@ impl CommerceFrontConfig {
             admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
             install_root: None,
             cart_hub: None,
+            order_hub: None,
             sandbox_hub: None,
             sandbox_registry: None,
             sandbox_messenger: None,
@@ -337,6 +340,7 @@ async fn dispatch_operator_route(
                 config.catalog.as_ref(),
                 input.id,
                 input.body,
+                config.order_hub.as_ref(),
             )
             .await
         }
@@ -592,6 +596,7 @@ async fn patch_admin_order_via_catalog(
     catalog: Option<&CatalogRepository>,
     order_id: Option<&str>,
     body: &[u8],
+    hub: Option<&OrderHub>,
 ) -> Response {
     if let Err(error) = auth.authorize_bearer(bearer) {
         return api_error_json_response(&error);
@@ -602,7 +607,7 @@ async fn patch_admin_order_via_catalog(
     let Some(order_id) = order_id else {
         return api_error_json_response(&ApiError::NotFound);
     };
-    patch_admin_order_response(auth, bearer, catalog, order_id, body).await
+    patch_admin_order_response(auth, bearer, catalog, order_id, body, hub).await
 }
 
 async fn create_sandbox_job_via_registry(
@@ -1358,13 +1363,13 @@ mod tests {
             500
         );
         assert_eq!(
-            patch_admin_order_via_catalog(&auth, Some("tok"), None, Some("id"), b"{}")
+            patch_admin_order_via_catalog(&auth, Some("tok"), None, Some("id"), b"{}", None)
                 .await
                 .status(),
             500
         );
         assert_eq!(
-            patch_admin_order_via_catalog(&auth, None, None, None, b"{}")
+            patch_admin_order_via_catalog(&auth, None, None, None, b"{}", None)
                 .await
                 .status(),
             401
@@ -1401,7 +1406,7 @@ mod tests {
         let catalog = SqlxCatalogRepository::new(pool);
         let auth = AdminAuthConfig::from_token("tok");
         assert_eq!(
-            patch_admin_order_via_catalog(&auth, Some("tok"), Some(&catalog), None, b"{}")
+            patch_admin_order_via_catalog(&auth, Some("tok"), Some(&catalog), None, b"{}", None)
                 .await
                 .status(),
             404

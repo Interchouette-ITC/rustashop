@@ -5,7 +5,7 @@
 use actix_web::{test, web};
 use rustashop_api::{
     AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
-    DEFAULT_ADMIN_API_PREFIX, SandboxJobHub, commerce_app, commerce_http_kernel,
+    DEFAULT_ADMIN_API_PREFIX, OrderHub, SandboxJobHub, commerce_app, commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
@@ -20,6 +20,7 @@ fn listen_data(
     CommerceListenData {
         kernel: web::Data::new(kernel),
         cart_hub: web::Data::new(hub),
+        order_hub: web::Data::new(OrderHub::new()),
         catalog: web::Data::new(catalog),
         sandbox_hub: web::Data::new(SandboxJobHub::new()),
         admin_auth: web::Data::new(AdminAuthConfig::from_token("")),

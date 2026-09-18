@@ -83,7 +83,36 @@ Example payload shape:
 
 Clients must treat the server snapshot as authoritative. Integration coverage lives in `crates/rustashop-api/tests/cart_ws.rs`.
 
-Storefront hosts (Angular / Leptos) still use HTTP for cart today; WS subscribe is tracked under epic [#31](https://github.com/Interchouette-ITC/rustashop/issues/31). Admin sandbox job logs already use a separate WS path under `/v1/{admin_api_prefix}/sandbox/jobs/{id}/ws`.
+## WebSocket (admin order status)
+
+| Item | Value |
+| --- | --- |
+| Endpoint | `GET /v1/{admin_api_prefix}/orders/{id}/ws?token=<admin bearer>` |
+| Auth | Same admin bearer secret as HTTP operator routes (query `token`, mirror sandbox job WS) |
+| Event | `order.updated` JSON after admin `PATCH …/orders/{id}` status change |
+
+Example payload shape:
+
+```json
+{
+  "type": "order.updated",
+  "version": 1,
+  "order": {
+    "id": "…",
+    "number": "…",
+    "state": "shipped",
+    "payment_status": "pending",
+    "currency": "EUR",
+    "items_total": { "amount_minor": 4500, "currency": "EUR" },
+    "total": { "amount_minor": 4500, "currency": "EUR" },
+    "lines": []
+  }
+}
+```
+
+Integration coverage: `crates/rustashop-api/tests/order_ws.rs`. Shop hosts do not subscribe yet (API-first).
+
+Admin sandbox job logs use `GET /v1/{admin_api_prefix}/sandbox/jobs/{id}/ws`.
 
 Design notes: [`docs-dev/REALTIME.md`](../docs-dev/REALTIME.md).
 

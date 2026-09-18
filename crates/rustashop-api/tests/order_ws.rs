@@ -1,4 +1,4 @@
-//! Integration: HTTP cart mutation pushes a WebSocket `cart.updated` event.
+//! Integration: admin order status PATCH pushes `order.updated` over WebSocket.
 
 #![cfg(feature = "persist-sqlx")]
 
@@ -8,37 +8,41 @@ use actix_web::web;
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
     AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
-    DEFAULT_ADMIN_API_PREFIX, OrderHub, SandboxJobHub, bind_commerce_server, commerce_http_kernel,
+    DEFAULT_ADMIN_API_PREFIX, OrderHub, OrderResponse, SandboxJobHub, bind_commerce_server,
+    commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
 use tokio_tungstenite::tungstenite::Message;
 
 const HOODIE_VARIANT: &str = "33333333-3333-3333-3333-333333333331";
-const SCHEMA_LOCK: i64 = 874_514;
+const SCHEMA_LOCK: i64 = 874_520;
+const ADMIN_TOKEN: &str = "order-ws-admin-token";
 
 #[tokio::test]
-async fn cart_line_add_pushes_ws_event() {
+async fn admin_order_patch_pushes_ws_event() {
     let Ok(_) = std::env::var("DATABASE_URL") else {
         eprintln!("skip: DATABASE_URL is not set");
         return;
     };
     let catalog = exclusive_seeded_catalog().await;
-    let hub = CartHub::new();
+    let order_hub = OrderHub::new();
+    let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
     let kernel = commerce_http_kernel(CommerceFrontConfig {
         catalog: Some(catalog.clone()),
-        cart_hub: Some(hub.clone()),
+        admin_auth: auth.clone(),
+        order_hub: Some(order_hub.clone()),
         ..CommerceFrontConfig::test_default()
     });
     let bound = bind_commerce_server(
         "127.0.0.1:0",
         CommerceListenData {
             kernel: web::Data::new(kernel),
-            cart_hub: web::Data::new(hub),
-            order_hub: web::Data::new(OrderHub::new()),
+            cart_hub: web::Data::new(CartHub::new()),
+            order_hub: web::Data::new(order_hub),
             catalog: web::Data::new(catalog),
             sandbox_hub: web::Data::new(SandboxJobHub::new()),
-            admin_auth: web::Data::new(AdminAuthConfig::from_token("")),
+            admin_auth: web::Data::new(auth),
             admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
         },
     )
@@ -57,20 +61,41 @@ async fn cart_line_add_pushes_ws_event() {
     assert_eq!(create.status(), 201);
     let cart: CartResponse = create.json().await.expect("cart json");
 
-    let ws_url = format!("ws://{addr}/v1/carts/{}/ws?token={}", cart.id, cart.token);
+    let add = http
+        .post(format!("http://{addr}/v1/carts/{}/lines", cart.id))
+        .json(&json!({ "variant_id": HOODIE_VARIANT, "quantity": 1 }))
+        .send()
+        .await
+        .expect("add line");
+    assert_eq!(add.status(), 200);
+
+    let checkout = http
+        .post(format!("http://{addr}/v1/checkout"))
+        .json(&json!({ "cart_id": cart.id }))
+        .send()
+        .await
+        .expect("checkout");
+    assert_eq!(checkout.status(), 201);
+    let placed: OrderResponse = checkout.json().await.expect("order json");
+
+    let ws_url = format!(
+        "ws://{addr}/v1/admin/orders/{}/ws?token={ADMIN_TOKEN}",
+        placed.id
+    );
     let (mut ws, _) = tokio_tungstenite::connect_async(&ws_url)
         .await
         .expect("ws connect");
 
     tokio::time::sleep(Duration::from_millis(50)).await;
 
-    let add = http
-        .post(format!("http://{addr}/v1/carts/{}/lines", cart.id))
-        .json(&json!({ "variant_id": HOODIE_VARIANT, "quantity": 2 }))
+    let patch = http
+        .patch(format!("http://{addr}/v1/admin/orders/{}", placed.id))
+        .header("Authorization", format!("Bearer {ADMIN_TOKEN}"))
+        .json(&json!({ "status": "shipped" }))
         .send()
         .await
-        .expect("add line");
-    assert_eq!(add.status(), 200);
+        .expect("patch");
+    assert_eq!(patch.status(), 200);
 
     let event = tokio::time::timeout(Duration::from_secs(3), async {
         loop {
@@ -88,17 +113,13 @@ async fn cart_line_add_pushes_ws_event() {
     .expect("ws event timeout");
 
     let parsed: serde_json::Value = serde_json::from_str(&event).expect("event json");
-    assert_eq!(parsed["type"], "cart.updated");
+    assert_eq!(parsed["type"], "order.updated");
     assert_eq!(parsed["version"], 1);
-    assert_eq!(parsed["cart"]["id"], cart.id);
-    assert_eq!(parsed["cart"]["items_total"]["amount_minor"], 9000);
+    assert_eq!(parsed["order"]["id"], placed.id);
+    assert_eq!(parsed["order"]["state"], "shipped");
+    assert!(parsed["order"]["total"]["amount_minor"].as_i64().is_some());
 
-    ws.send(Message::Ping(vec![b'x'].into()))
-        .await
-        .expect("client ping");
-    tokio::time::sleep(Duration::from_millis(50)).await;
     ws.close(None).await.expect("client close");
-
     handle.stop(true).await;
 }
 

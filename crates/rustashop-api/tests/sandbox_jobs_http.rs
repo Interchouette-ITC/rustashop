@@ -8,9 +8,9 @@ use actix_web::{App, test, web};
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
     AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
-    CommitSandboxJobResponse, DEFAULT_ADMIN_API_PREFIX, SandboxJobHub, SandboxJobRegistry,
-    SandboxJobResponse, SandboxJobStatus, bind_commerce_server, commerce_app, commerce_http_kernel,
-    routes,
+    CommitSandboxJobResponse, DEFAULT_ADMIN_API_PREFIX, OrderHub, SandboxJobHub,
+    SandboxJobRegistry, SandboxJobResponse, SandboxJobStatus, bind_commerce_server, commerce_app,
+    commerce_http_kernel, routes,
     sandbox_messenger::{SandboxJobMessenger, spawn_configured_worker},
 };
 use rustashop_persist::CatalogRepository;
@@ -214,6 +214,7 @@ async fn sandbox_job_ws_rejects_bad_token() {
     let app = test::init_service(commerce_app(CommerceListenData {
         kernel: web::Data::new(kernel),
         cart_hub: web::Data::new(CartHub::new()),
+        order_hub: web::Data::new(OrderHub::new()),
         catalog: web::Data::new(catalog),
         sandbox_hub: web::Data::new(hub),
         admin_auth: web::Data::new(auth),
@@ -250,12 +251,15 @@ async fn sandbox_job_ws_streams_finished_event() {
     });
     let bound = bind_commerce_server(
         "127.0.0.1:0",
-        kernel,
-        CartHub::new(),
-        catalog,
-        hub,
-        auth,
-        DEFAULT_ADMIN_API_PREFIX,
+        CommerceListenData {
+            kernel: web::Data::new(kernel),
+            cart_hub: web::Data::new(CartHub::new()),
+            order_hub: web::Data::new(OrderHub::new()),
+            catalog: web::Data::new(catalog),
+            sandbox_hub: web::Data::new(hub),
+            admin_auth: web::Data::new(auth),
+            admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
+        },
     )
     .expect("bind");
     let addr = bound.addrs[0];
