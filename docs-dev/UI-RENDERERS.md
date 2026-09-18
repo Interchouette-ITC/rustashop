@@ -96,7 +96,7 @@ The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may p
 
 Product vocabulary: **shop** (not storefront / vitrine).
 
-**Note:** `shops/leptos-rangular` is excluded from the root Cargo workspace. Root `make test` does not run its tests; use `cd shops/leptos-rangular && cargo test` (and wasm build) for that host.
+**Note:** `shops/leptos-rangular` is its own Cargo workspace (not a root member). Root `make test` runs it via `make test-shops` (`make test-shop-leptos`). Clippy for that host is `make lint-shop-leptos` (also from `make lint`).
 
 ## Domains map (reminder)
 
@@ -116,7 +116,7 @@ HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart 
 | --- | --- | --- | --- | --- | --- | --- |
 | Browse (product list) | `GET /v1/products` | — | shipped | shipped | blocked | Shared templates under `templates/shop/default/` |
 | Product detail | `GET /v1/products/{id}` | — | shipped | shipped | blocked | Add-to-cart is HTTP today |
-| Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` | shipped | partial | blocked | Angular WS [#263](https://github.com/Interchouette-ITC/rustashop/pull/263); Leptos WS [#265](https://github.com/Interchouette-ITC/rustashop/pull/265) when merged |
+| Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` | shipped | shipped | blocked | Angular WS [#263](https://github.com/Interchouette-ITC/rustashop/pull/263); Leptos WS [#265](https://github.com/Interchouette-ITC/rustashop/pull/265) |
 | Checkout | `POST /v1/checkout` | not yet (order lifecycle later) | shipped | missing | blocked | Leptos checkout is **product dogfood** (upstream Host validators shipped; [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**) |
 | Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | not yet | shipped (`admin/angular`) | missing | blocked | Leptos admin = product sample; native waits [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
 

@@ -38,7 +38,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test lint lint-shop-angular lint-admin-angular lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test test-workspace test-shops test-shop-angular test-shop-leptos lint lint-shop-angular lint-admin-angular lint-shop-leptos lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -51,7 +51,9 @@ help:
 	@echo "rustashop targets"
 	@echo ""
 	@echo "  make check      cargo check --workspace, then SeaORM features"
-	@echo "  make test       cargo test --workspace, then SeaORM feature tests"
+	@echo "  make test       workspace + SeaORM tests, then make test-shops"
+	@echo "  make test-workspace  cargo test --workspace, then SeaORM feature tests"
+	@echo "  make test-shops Angular shop npm test + Leptos shop cargo test"
 	@echo "  make extensions-fixture  rebuild pricing-adjust component wasm (needs wasm-tools)"
 	@echo "  make sandbox-quote-rust-fixture  rebuild Rust WASI quote.wasm for Wasmer sandbox"
 	@echo "  make coverage         cargo llvm-cov lcov → coverage/lcov.info (needs DATABASE_URL; CI / Codecov)"
@@ -64,7 +66,7 @@ help:
 	@echo "  make fuzz-build       cargo +nightly fuzz build"
 	@echo "  make geiger           cargo geiger (unsafe dependency audit)"
 	@echo "  make coverage-js Vitest coverage for shop, admin, and install → coverage/*-lcov.info"
-	@echo "  make lint       fmt check + SQL safety + clippy + Angular shop/admin lint (when node_modules present)"
+	@echo "  make lint       fmt check + SQL safety + clippy (workspace + Leptos shop) + Angular lint (when node_modules present)"
 	@echo "  make ci         lint + test + doc + audit + deny (local mirror of core CI jobs before opening a PR)"
 	@echo "  make check-sql-safety  cargo test: deny format!-built SQL in persist crates"
 	@echo "  make doc        rustdoc → docs/api-rust/ (-D warnings)"
@@ -107,9 +109,23 @@ check:
 	cd $(ROOT) && $(CARGO) check --workspace
 	cd $(ROOT) && $(CARGO) check $(SEAORM_PACKAGES) $(SEAORM_FEATURES)
 
-test:
+test-workspace:
 	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) $(CARGO) test --workspace
 	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) $(CARGO) test $(SEAORM_PACKAGES) $(SEAORM_FEATURES)
+
+## All shop hosts (Angular + Leptos). Required by `make test` / `make ci`.
+test-shop-angular:
+	@set -e; \
+	cd $(ROOT)/$(SHOP_ANGULAR_DIR) && \
+		if [ "$(FORCE)" = "1" ] || [ ! -d node_modules ]; then npm ci; fi && \
+		npm test
+
+test-shop-leptos:
+	cd $(ROOT)/$(SHOP_LEPTOS_DIR) && $(CARGO) test
+
+test-shops: test-shop-angular test-shop-leptos
+
+test: test-workspace test-shops
 
 ## Rebuild the checked-in pricing-adjust Component Model fixture (issue #35).
 extensions-fixture:
@@ -231,6 +247,10 @@ lint-admin-angular:
 		cd $(ROOT)/$(ADMIN_ANGULAR_DIR) && npm run lint; \
 	fi
 
+# Leptos shop clippy (standalone Cargo workspace under shops/leptos-rangular).
+lint-shop-leptos:
+	cd $(ROOT)/$(SHOP_LEPTOS_DIR) && $(CARGO) clippy --all-targets -- $(CLIPPY_FLAGS)
+
 lint-install:
 	@if [ ! -d "$(ROOT)/install/node_modules" ]; then \
 		echo "skip lint-install: install/node_modules missing (make install-ui)"; \
@@ -238,7 +258,7 @@ lint-install:
 		cd $(ROOT)/install && npm run build; \
 	fi
 
-lint: format-check check-sql-safety lint-shop-angular lint-admin-angular lint-install
+lint: format-check check-sql-safety lint-shop-angular lint-admin-angular lint-shop-leptos lint-install
 	cd $(ROOT) && $(CARGO) clippy --workspace --all-targets -- $(CLIPPY_FLAGS)
 	cd $(ROOT) && $(CARGO) clippy $(SEAORM_PACKAGES) --all-targets $(SEAORM_FEATURES) -- $(CLIPPY_FLAGS)
 
