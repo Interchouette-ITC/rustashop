@@ -135,6 +135,59 @@ a:hover {
   color: var(--rs-muted);
 }
 
+.shell__api {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin-left: auto;
+}
+
+.shell__api-input {
+  font: inherit;
+  font-size: 0.8rem;
+  min-width: 10rem;
+  max-width: 14rem;
+  padding: 0.25rem 0.45rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--rs-line);
+  background: var(--rs-panel);
+  color: var(--rs-ink);
+}
+
+.shell__api-input:focus {
+  outline: 2px solid var(--rs-orange);
+  outline-offset: 1px;
+}
+
+.shell__api-btn {
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--rs-line);
+  background: var(--rs-panel);
+  color: var(--rs-ink);
+  cursor: pointer;
+}
+
+.shell__api-btn:hover {
+  border-color: var(--rs-orange);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .shop__cart-lines {
   list-style: none;
   padding: 0;

@@ -318,6 +318,34 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         run: make lint-admin-tauri
 
+  shop-tauri:
+    name: shop-tauri
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Markdown-only
+        if: needs.changes.outputs.code != 'true'
+        run: echo "markdown-only; skipping shop-tauri"
+      - uses: dtolnay/rust-toolchain@stable
+        if: needs.changes.outputs.code == 'true'
+      - name: Install WebKitGTK (Tauri Linux)
+        if: needs.changes.outputs.code == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - uses: Swatinem/rust-cache@v2
+        if: needs.changes.outputs.code == 'true'
+        with:
+          workspaces: shops/tauri
+      - name: Check
+        if: needs.changes.outputs.code == 'true'
+        run: make test-shop-tauri
+      - name: Clippy
+        if: needs.changes.outputs.code == 'true'
+        run: make lint-shop-tauri
+
   admin-angular:
     name: admin-angular
     needs: changes

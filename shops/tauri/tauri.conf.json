@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "rustashop",
+  "version": "0.1.0",
+  "identifier": "ai.rustashop.shop",
+  "build": {
+    "beforeDevCommand": {
+      "script": "trunk serve --release --port 4181 --address 127.0.0.1",
+      "cwd": "../leptos-rangular"
+    },
+    "devUrl": "http://127.0.0.1:4181",
+    "beforeBuildCommand": {
+      "script": "trunk build --release",
+      "cwd": "../leptos-rangular"
+    },
+    "frontendDist": "../leptos-rangular/dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "rustashop",
+        "width": 1100,
+        "height": 760,
+        "minWidth": 880,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' ipc: http://ipc.localhost; connect-src 'self' ipc: http://ipc.localhost http: https: ws: wss:; font-src 'self' data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

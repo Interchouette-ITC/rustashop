@@ -1,9 +1,82 @@
-//! Commerce API client (same `/api` prefix as the Angular shop; Trunk proxies to Actix).
+//! Commerce API client (Trunk `/api` proxy or absolute Actix base).
 
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
 
-const API_BASE: &str = "/api";
+/// sessionStorage override for desktop / tip hosts (no trailing slash).
+pub const API_BASE_STORAGE_KEY: &str = "rs.shopApiBase";
+
+/// Browser / Trunk default (proxied to Actix).
+pub const API_BASE_BROWSER: &str = "/api";
+/// Desktop / non-http origin default (Actix on loopback).
+pub const API_BASE_DESKTOP: &str = "http://127.0.0.1:8080";
+
+fn url(path: &str) -> String {
+    url_with_base(&api_base(), path)
+}
+
+fn url_with_base(base: &str, path: &str) -> String {
+    format!("{}{}", base.trim_end_matches('/'), path)
+}
+
+/// Resolves the Commerce API base: storage override, else `/api` on http(s), else loopback Actix.
+#[must_use]
+pub fn api_base() -> String {
+    let (browser, desktop) = default_api_bases();
+    #[cfg(target_arch = "wasm32")]
+    {
+        if let Some(stored) = read_stored_api_base() {
+            return stored;
+        }
+        if browser_http_origin() {
+            return browser.to_owned();
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = browser;
+    desktop.to_owned()
+}
+
+/// Browser and desktop default bases (for docs / UI hints).
+#[must_use]
+pub const fn default_api_bases() -> (&'static str, &'static str) {
+    (API_BASE_BROWSER, API_BASE_DESKTOP)
+}
+
+/// Persists an API base override (trimmed; empty clears).
+pub fn save_api_base(raw: &str) {
+    let trimmed = raw.trim().trim_end_matches('/').to_owned();
+    #[cfg(target_arch = "wasm32")]
+    if let Some(storage) = window_session_storage() {
+        if trimmed.is_empty() {
+            let _ = storage.remove_item(API_BASE_STORAGE_KEY);
+        } else {
+            let _ = storage.set_item(API_BASE_STORAGE_KEY, &trimmed);
+        }
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    let _ = trimmed;
+}
+
+#[cfg(target_arch = "wasm32")]
+fn read_stored_api_base() -> Option<String> {
+    window_session_storage()
+        .and_then(|s| s.get_item(API_BASE_STORAGE_KEY).ok().flatten())
+        .map(|s| s.trim().trim_end_matches('/').to_owned())
+        .filter(|s| !s.is_empty())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn browser_http_origin() -> bool {
+    web_sys::window()
+        .and_then(|w| w.location().protocol().ok())
+        .is_some_and(|p| p == "http:" || p == "https:")
+}
+
+#[cfg(target_arch = "wasm32")]
+fn window_session_storage() -> Option<web_sys::Storage> {
+    web_sys::window()?.session_storage().ok().flatten()
+}
 
 /// Money amount from the Commerce API (`amount_minor` + ISO currency).
 #[derive(Clone, Debug, Deserialize)]
@@ -16,9 +89,15 @@ impl Money {
     /// Formats as `major.cents CURRENCY` (minor units ÷ 100).
     #[must_use]
     pub fn display(&self) -> String {
-        let major = self.amount_minor / 100;
-        let cents = self.amount_minor.rem_euclid(100);
-        format!("{major}.{cents:02} {}", self.currency)
+        let negative = self.amount_minor < 0;
+        let abs = self.amount_minor.unsigned_abs();
+        let major = abs / 100;
+        let cents = abs % 100;
+        if negative {
+            format!("-{major}.{cents:02} {}", self.currency)
+        } else {
+            format!("{major}.{cents:02} {}", self.currency)
+        }
     }
 }
 
@@ -161,11 +240,9 @@ struct CheckoutBody<'body> {
     email: Option<&'body str>,
 }
 
-fn url(path: &str) -> String {
-    format!("{API_BASE}{path}")
-}
-
-async fn read_json<T: for<'de> Deserialize<'de>>(resp: gloo_net::http::Response) -> Result<T, String> {
+async fn read_json<T: for<'de> Deserialize<'de>>(
+    resp: gloo_net::http::Response,
+) -> Result<T, String> {
     if !resp.ok() {
         return Err(format!("HTTP {}", resp.status()));
     }
@@ -265,6 +342,17 @@ mod tests {
             currency: "USD".into(),
         };
         assert_eq!(zero.display(), "0.05 USD");
+    }
+
+    #[test]
+    fn api_url_joins_base_and_path() {
+        assert_eq!(url_with_base("/api", "/v1/products"), "/api/v1/products");
+        assert_eq!(
+            url_with_base("http://127.0.0.1:8080", "/v1/carts"),
+            "http://127.0.0.1:8080/v1/carts"
+        );
+        assert_eq!(default_api_bases(), ("/api", "http://127.0.0.1:8080"));
+        assert_eq!(API_BASE_STORAGE_KEY, "rs.shopApiBase");
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use leptos::prelude::*;
+use leptos_router::NavigateOptions;
 use leptos_router::components::A;
 use leptos_router::hooks::use_navigate;
-use leptos_router::NavigateOptions;
 
 use crate::api::{self, Cart};
 use crate::cart::{CartCtx, use_cart};
@@ -113,7 +113,10 @@ fn cart_main(
                 Ok(order) => {
                     order_ctx.last.set(Some(order.clone()));
                     cart_ctx.clear_session();
-                    navigate(&format!("/checkout/{}", order.id), NavigateOptions::default());
+                    navigate(
+                        &format!("/checkout/{}", order.id),
+                        NavigateOptions::default(),
+                    );
                 }
                 Err(err) => page_error.set(Some(err)),
             }
@@ -156,7 +159,10 @@ fn cart_main(
     .into_any()
 }
 
-async fn place_order_flow(cart_ctx: CartCtx, email: Option<&str>) -> Result<crate::api::Order, String> {
+async fn place_order_flow(
+    cart_ctx: CartCtx,
+    email: Option<&str>,
+) -> Result<crate::api::Order, String> {
     let cart = cart_ctx.ensure_cart().await?;
     if cart.lines.is_empty() {
         return Err("Cart is empty.".into());

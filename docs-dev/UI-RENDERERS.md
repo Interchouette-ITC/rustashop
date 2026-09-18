@@ -96,6 +96,7 @@ The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may p
 | `make admin-angular`        | Serve Angular admin (port `4250` by default)            |
 | `make admin-leptos-rangular`| Serve Leptos+rangular admin (Trunk; default port `4251`) |
 | `make admin-tauri`          | Tauri 2 desktop shell around the Leptos admin wasm     |
+| `make shop-tauri`           | Tauri 2 desktop shop install around the Leptos shop wasm |
 
 Product vocabulary: **shop** (not storefront / vitrine).
 
@@ -106,7 +107,7 @@ Product vocabulary: **shop** (not storefront / vitrine).
 | Host                    | Typical UI                                     |
 | ----------------------- | ---------------------------------------------- |
 | `rustashop.io` / `.dev` | Angular or Leptos+rangular **shop**            |
-| Desktop installer       | rangular **native** (GPUI)                     |
+| Desktop installer       | Tauri webview (shop + admin) or later GPUI |
 | `rustashop.app`         | Ionic / mobile (later; likely Angular-aligned) |
 
 ## UI parity matrix (screens × track)
@@ -128,10 +129,12 @@ HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart 
 | Host | Make | Role |
 | --- | --- | --- |
 | Leptos admin (browser) | `make admin-leptos-rangular` | Trunk, default port `4251`; bearer + `/api` proxy |
-| Admin Tauri (desktop) | `make admin-tauri` | Same wasm in webview; File/Edit/View/Help; API base via bar / `rs.adminApiBase` |
+| Admin Tauri (desktop) | `make admin-tauri` | Same admin wasm in webview; File/Edit/View/Help; API base via bar / `rs.adminApiBase` |
+| Leptos shop (browser) | `make shop-leptos-rangular` | Trunk, default port `4181`; `/api` proxy |
+| Shop Tauri (desktop install) | `make shop-tauri` | Same shop wasm for customer PC shopping; API base via bar / `rs.shopApiBase` |
 | Angular admin | `make admin-angular` | Full sample (orders, products, agents, sandbox) |
 
-Desktop Tauri is a **webview** around Leptos wasm (not GPUI). Shop Tauri install is a separate slice under [#50](https://github.com/Interchouette-ITC/rustashop/issues/50).
+Desktop Tauri is a **webview** around Leptos wasm (not GPUI). Merchants may ship the shop Tauri binary so customers install a heavy desktop shop pointed at that merchant’s Commerce API; browser Trunk remains the default web path.
 
 Admin sandbox job logs already use WS (`GET /v1/{admin_api_prefix}/sandbox/jobs/{id}/ws`) in `admin/angular` - that is not a storefront parity row.
 
