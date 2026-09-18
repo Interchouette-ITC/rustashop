@@ -85,7 +85,7 @@ back-office.
 
 ## Admin (pluggable)
 
-The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may plug in (Angular, React, Vue, Leptos+rangular, …). rustashop ships an **Angular sample** as the default operator SPA; that is not a stack lock. Leptos+rangular admin follows once forms (rangular #22) and optionally GPUI (#37) are ready.
+The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may plug in (Angular, React, Vue, Leptos+rangular, …). rustashop ships an **Angular sample** as the default operator SPA; that is not a stack lock. A Leptos+rangular admin sample is **product work** (Host validators already landed upstream); native GPUI admin waits on [rangular #37](https://github.com/Interchouette-ITC/rangular/issues/37).
 
 ## Make targets (shops)
 
@@ -95,6 +95,8 @@ The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may p
 | `make shop-leptos-rangular` | Serve Leptos+rangular shop (Trunk; default port `4181`) |
 
 Product vocabulary: **shop** (not storefront / vitrine).
+
+**Note:** `shops/leptos-rangular` is excluded from the root Cargo workspace. Root `make test` does not run its tests; use `cd shops/leptos-rangular && cargo test` (and wasm build) for that host.
 
 ## Domains map (reminder)
 
@@ -108,35 +110,34 @@ Product vocabulary: **shop** (not storefront / vitrine).
 
 Honest status on org `dev` (not aspirational). Cell values: **shipped** | **partial** | **blocked** | **n/a**.
 
-HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart push: `GET /v1/carts/{id}/ws` + `cart.updated` (API shipped; **storefront clients not yet** - product plan N1/N2).
+HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart push: `GET /v1/carts/{id}/ws` + `cart.updated`.
 
 | Screen | OpenAPI (HTTP) | WS events | Angular shop | Leptos+rangular web | GPUI native | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Browse (product list) | `GET /v1/products` | — | shipped | shipped | blocked | Shared templates under `templates/shop/default/` |
 | Product detail | `GET /v1/products/{id}` | — | shipped | shipped | blocked | Add-to-cart is HTTP today |
-| Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` (API yes; shop clients no) | partial | partial | blocked | HTTP cart shipped; live badge/lines wait N1/N2 |
-| Checkout | `POST /v1/checkout` | not yet (order lifecycle later) | shipped | blocked | blocked | Leptos checkout needs [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) forms |
-| Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | not yet | shipped (`admin/angular`) | blocked | blocked | Leptos admin forms blocked on #22; native on [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
+| Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` | shipped | partial | blocked | Angular WS [#263](https://github.com/Interchouette-ITC/rustashop/pull/263); Leptos WS [#265](https://github.com/Interchouette-ITC/rustashop/pull/265) when merged |
+| Checkout | `POST /v1/checkout` | not yet (order lifecycle later) | shipped | missing | blocked | Leptos checkout is **product dogfood** (upstream Host validators shipped; [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**) |
+| Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | not yet | shipped (`admin/angular`) | missing | blocked | Leptos admin = product sample; native waits [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
 
-**partial** on cart = HTTP + shared cart id (`rs.cartId`) work; WebSocket subscribe on shops is the remaining gap (epic [#31](https://github.com/Interchouette-ITC/rustashop/issues/31)).
+**missing** = not built in this host yet (no upstream forms blocker). **blocked** = waiting on GPUI (#37) or similar.
 
 Admin sandbox job logs already use WS (`GET /v1/{admin_api_prefix}/sandbox/jobs/{id}/ws`) in `admin/angular` - that is not a storefront parity row.
 
-## Upstream blockers
+## Upstream status
 
-| Upstream | Blocks | Does not block |
+| Upstream | State | What it means for rustashop |
 | --- | --- | --- |
-| [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) (forms / validators) | Leptos+rangular **checkout**, **admin CRUD**, multi-field UX on **any** renderer (Leptos or GPUI) | API; Angular shop; Leptos+rangular browse + cart HTTP |
-| [rangular #37](https://github.com/Interchouette-ITC/rangular/issues/37) (GPUI backend) | rangular **native** host only | Leptos web shop; Angular; API |
+| [rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) (forms / validators) | **CLOSED** (completed via [rangular #44](https://github.com/Interchouette-ITC/rangular/pull/44)) | Host `required` / `min_length` / `pattern` / `first_error` available; Leptos checkout/admin are product PRs, not “wait for #22” |
+| [rangular #37](https://github.com/Interchouette-ITC/rangular/issues/37) (GPUI backend) | **OPEN** | Blocks **native** GPUI host only |
 
 ## Delivery order (current)
 
 1. Commerce API + Angular shop + Leptos browse/cart - **landed**
-2. UI parity docs (this matrix) - [#51](https://github.com/Interchouette-ITC/rustashop/issues/51)
-3. Storefront cart WS clients (Angular, then Leptos) - under [#31](https://github.com/Interchouette-ITC/rustashop/issues/31)
-4. rangular #22 - unlocks Leptos checkout + future BO forms
-5. Realtime deepen (inventory / order) - when ordered
-6. rangular #37 - native admin/desktop
+2. UI parity docs + cart WS clients - N0–N2 ([#51](https://github.com/Interchouette-ITC/rustashop/issues/51), [#31](https://github.com/Interchouette-ITC/rustashop/issues/31))
+3. Leptos checkout (+ optional Leptos admin sample) - product dogfood of closed #22 surface
+4. Realtime deepen (inventory / order) - when ordered
+5. rangular #37 - native admin/desktop
 
 ## Non-goals (early)
 
