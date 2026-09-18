@@ -139,6 +139,13 @@ impl CartCtx {
         result
     }
 
+    /// Clears the local cart session after a successful checkout.
+    pub fn clear_session(&self) {
+        self.apply_cart(None);
+        self.error.set(None);
+        self.busy.set(false);
+    }
+
     fn apply_cart(&self, cart: Option<&Cart>) {
         if let Some(cart) = cart {
             write_cart_id(&cart.id);

@@ -124,10 +124,41 @@ impl Cart {
     }
 }
 
+/// Order line from `POST /v1/checkout`.
+#[derive(Clone, Debug, Deserialize)]
+pub struct OrderLine {
+    pub id: String,
+    pub quantity: i32,
+    pub unit_price: Money,
+    pub line_total: Money,
+    pub product_name: String,
+    pub variant_sku: String,
+}
+
+/// Order JSON from `POST /v1/checkout`.
+#[derive(Clone, Debug, Deserialize)]
+pub struct Order {
+    pub id: String,
+    pub number: String,
+    pub state: String,
+    pub payment_status: String,
+    pub currency: String,
+    pub items_total: Money,
+    pub total: Money,
+    pub lines: Vec<OrderLine>,
+}
+
 #[derive(Serialize)]
 struct AddLineBody<'body> {
     variant_id: &'body str,
     quantity: i32,
+}
+
+#[derive(Serialize)]
+struct CheckoutBody<'body> {
+    cart_id: &'body str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    email: Option<&'body str>,
 }
 
 fn url(path: &str) -> String {
@@ -191,6 +222,25 @@ pub async fn add_cart_line(cart_id: &str, variant_id: &str, quantity: i32) -> Re
     .map_err(|err| format!("encode: {err}"))?;
     let resp = Request::post(&url(&format!("/v1/carts/{cart_id}/lines")))
         .header("content-type", "application/json")
+        .body(body)
+        .map_err(|err| format!("body: {err}"))?
+        .send()
+        .await
+        .map_err(|err| format!("network: {err}"))?;
+    read_json(resp).await
+}
+
+/// `POST /v1/checkout` with optional `Idempotency-Key`.
+pub async fn place_order(
+    cart_id: &str,
+    email: Option<&str>,
+    idempotency_key: &str,
+) -> Result<Order, String> {
+    let body = serde_json::to_string(&CheckoutBody { cart_id, email })
+        .map_err(|err| format!("encode: {err}"))?;
+    let resp = Request::post(&url("/v1/checkout"))
+        .header("content-type", "application/json")
+        .header("Idempotency-Key", idempotency_key)
         .body(body)
         .map_err(|err| format!("body: {err}"))?
         .send()

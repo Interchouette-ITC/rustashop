@@ -17,6 +17,7 @@ leptos_router = "0.8"
 rangular-aot = { git = "https://github.com/Interchouette-ITC/rangular.git", branch = "dev" }
 rangular-expr = { git = "https://github.com/Interchouette-ITC/rangular.git", branch = "dev" }
 rangular-host = { git = "https://github.com/Interchouette-ITC/rangular.git", branch = "dev" }
+js-sys = "0.3"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 web-sys = { version = "0.3.104", features = [

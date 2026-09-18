@@ -11,7 +11,9 @@ mod api;
 mod app;
 mod cart;
 mod cart_ws;
+mod checkout;
 mod components;
+mod order;
 mod pages;
 mod shell;
 
