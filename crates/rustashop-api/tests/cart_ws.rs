@@ -4,10 +4,11 @@
 
 use std::time::Duration;
 
+use actix_web::web;
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
-    AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX,
-    SandboxJobHub, bind_commerce_server, commerce_http_kernel,
+    AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
+    DEFAULT_ADMIN_API_PREFIX, OrderHub, SandboxJobHub, bind_commerce_server, commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
@@ -31,12 +32,15 @@ async fn cart_line_add_pushes_ws_event() {
     });
     let bound = bind_commerce_server(
         "127.0.0.1:0",
-        kernel,
-        hub,
-        catalog,
-        SandboxJobHub::new(),
-        AdminAuthConfig::from_token(""),
-        DEFAULT_ADMIN_API_PREFIX,
+        CommerceListenData {
+            kernel: web::Data::new(kernel),
+            cart_hub: web::Data::new(hub),
+            order_hub: web::Data::new(OrderHub::new()),
+            catalog: web::Data::new(catalog),
+            sandbox_hub: web::Data::new(SandboxJobHub::new()),
+            admin_auth: web::Data::new(AdminAuthConfig::from_token("")),
+            admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
+        },
     )
     .expect("bind");
     let addr = bound.addrs[0];

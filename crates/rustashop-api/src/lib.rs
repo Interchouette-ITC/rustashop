@@ -21,6 +21,7 @@ mod listen_app;
 mod model_providers;
 mod openapi;
 pub mod order_mail;
+mod order_ws;
 mod products;
 pub mod public_rate_limit;
 mod realtime;
@@ -72,7 +73,7 @@ pub use products::{
     ProductDetailResponse, ProductListResponse, ProductResponse, ProductVariantResponse,
     get_product, list_products,
 };
-pub use realtime::{CartHub, CartRealtimeEvent};
+pub use realtime::{CartHub, CartRealtimeEvent, OrderHub, OrderRealtimeEvent};
 pub use sandbox_autonomous::{CommitSandboxJobResponse, commit_sandbox_job, discard_sandbox_job};
 pub use sandbox_jobs::{
     CreateSandboxJobRequest, SandboxAuditRecord, SandboxJobRegistry, SandboxJobResponse,
@@ -234,6 +235,7 @@ mod tests {
         let app = test::init_service(commerce_app(CommerceListenData {
             kernel: web::Data::new(kernel),
             cart_hub: web::Data::new(CartHub::new()),
+            order_hub: web::Data::new(OrderHub::new()),
             catalog: web::Data::new(catalog),
             sandbox_hub: web::Data::new(SandboxJobHub::new()),
             admin_auth: web::Data::new(AdminAuthConfig::from_token("")),

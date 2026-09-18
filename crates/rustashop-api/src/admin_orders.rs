@@ -12,6 +12,7 @@ use utoipa::{IntoParams, ToSchema};
 use crate::admin_auth::AdminAuthConfig;
 use crate::checkout::OrderResponse;
 use crate::error::{ApiError, ErrorBody, api_error_json_response, json_response};
+use crate::realtime::{OrderHub, OrderRealtimeEvent};
 use crate::request_param::ensure_request_param;
 
 const DEFAULT_LIMIT: u32 = 20;
@@ -107,6 +108,7 @@ pub async fn patch_admin_order_response(
     catalog: &CatalogRepository,
     order_id: &str,
     body: &[u8],
+    hub: Option<&OrderHub>,
 ) -> Response {
     if let Err(error) = auth.authorize_bearer(bearer) {
         return api_error_json_response(&error);
@@ -123,7 +125,13 @@ pub async fn patch_admin_order_response(
         Err(error) => return api_error_json_response(&ApiError::from_domain(&error)),
     };
     match catalog.update_order_state(order_id, state).await {
-        Ok(order) => json_response(200, &OrderResponse::from(order)),
+        Ok(order) => {
+            let response = OrderResponse::from(order);
+            if let Some(hub) = hub {
+                hub.publish(&OrderRealtimeEvent::updated(response.clone()));
+            }
+            json_response(200, &response)
+        }
         Err(error) => api_error_json_response(&ApiError::from_persist(&error)),
     }
 }
@@ -226,7 +234,7 @@ mod admin_orders_response_tests {
             401
         );
         assert_eq!(
-            patch_admin_order_response(&auth, None, &catalog, "id", br#"{"status":"paid"}"#)
+            patch_admin_order_response(&auth, None, &catalog, "id", br#"{"status":"paid"}"#, None)
                 .await
                 .status(),
             401
@@ -238,13 +246,14 @@ mod admin_orders_response_tests {
                 &catalog,
                 "a\0b",
                 br#"{"status":"paid"}"#,
+                None,
             )
             .await
             .status(),
             422
         );
         assert_eq!(
-            patch_admin_order_response(&auth, Some("secret"), &catalog, "oid", b"{")
+            patch_admin_order_response(&auth, Some("secret"), &catalog, "oid", b"{", None)
                 .await
                 .status(),
             422
@@ -256,6 +265,7 @@ mod admin_orders_response_tests {
                 &catalog,
                 "11111111-1111-1111-1111-111111111111",
                 br#"{"status":"nope"}"#,
+                None,
             )
             .await
             .status(),
@@ -268,6 +278,7 @@ mod admin_orders_response_tests {
                 &catalog,
                 "11111111-1111-1111-1111-111111111111",
                 br#"{"status":"paid"}"#,
+                None,
             )
             .await
             .status(),
@@ -298,6 +309,7 @@ mod admin_orders_response_tests {
                 &catalog,
                 "11111111-1111-1111-1111-111111111111",
                 br#"{"status":"paid"}"#,
+                None,
             )
             .await
             .status(),

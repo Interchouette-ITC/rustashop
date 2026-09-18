@@ -110,16 +110,15 @@ Product vocabulary: **shop** (not storefront / vitrine).
 
 Honest status on org `dev` (not aspirational). Cell values: **shipped** | **partial** | **blocked** | **n/a**.
 
-HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart push: `GET /v1/carts/{id}/ws` + `cart.updated`.
+HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart push: `GET /v1/carts/{id}/ws` + `cart.updated`. Order push (admin): `GET /v1/{admin}/orders/{id}/ws` + `order.updated` (API-first; shop clients later).
 
 | Screen | OpenAPI (HTTP) | WS events | Angular shop | Leptos+rangular web | GPUI native | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | Browse (product list) | `GET /v1/products` | — | shipped | shipped | blocked | Shared templates under `templates/shop/default/` |
 | Product detail | `GET /v1/products/{id}` | — | shipped | shipped | blocked | Add-to-cart is HTTP today |
 | Cart | `GET/POST /v1/carts…`, line PATCH/DELETE | `cart.updated` | shipped | shipped | blocked | Angular WS [#263](https://github.com/Interchouette-ITC/rustashop/pull/263); Leptos WS [#265](https://github.com/Interchouette-ITC/rustashop/pull/265) |
-| Checkout | `POST /v1/checkout` | not yet (order lifecycle later) | shipped | shipped | blocked | Leptos checkout dogfoods Host validators ([rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**); [#268](https://github.com/Interchouette-ITC/rustashop/issues/268) |
-
-| Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | not yet | shipped (`admin/angular`) | missing | blocked | Leptos admin = product sample; native waits [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
+| Checkout | `POST /v1/checkout` | — | shipped | shipped | blocked | Leptos checkout dogfoods Host validators ([rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**); [#268](https://github.com/Interchouette-ITC/rustashop/issues/268) |
+| Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | `order.updated` (API) | shipped (`admin/angular` HTTP) | missing | blocked | WS API [#270](https://github.com/Interchouette-ITC/rustashop/issues/270); clients later; native waits [#37](https://github.com/Interchouette-ITC/rangular/issues/37) |
 
 **missing** = not built in this host yet (no upstream forms blocker). **blocked** = waiting on GPUI (#37) or similar.
 

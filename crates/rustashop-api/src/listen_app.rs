@@ -11,7 +11,8 @@ use serenade_http_actix::dispatch_async;
 
 use crate::admin_auth::AdminAuthConfig;
 use crate::cart_ws::cart_ws;
-use crate::realtime::CartHub;
+use crate::order_ws::order_ws;
+use crate::realtime::{CartHub, OrderHub};
 use crate::sandbox_realtime::SandboxJobHub;
 use crate::sandbox_ws::sandbox_job_ws;
 
@@ -22,13 +23,15 @@ pub struct CommerceListenData {
     pub kernel: web::Data<AsyncHttpKernel>,
     /// Cart push hub.
     pub cart_hub: web::Data<CartHub>,
+    /// Order push hub.
+    pub order_hub: web::Data<OrderHub>,
     /// Catalog for cart WS auth.
     pub catalog: web::Data<CatalogRepository>,
     /// Sandbox job push hub.
     pub sandbox_hub: web::Data<SandboxJobHub>,
-    /// Admin bearer for sandbox WS.
+    /// Admin bearer for sandbox / order WS.
     pub admin_auth: web::Data<AdminAuthConfig>,
-    /// Operator API path segment (sandbox WS path).
+    /// Operator API path segment (sandbox / order WS path).
     pub admin_prefix: String,
 }
 
@@ -46,9 +49,11 @@ pub fn commerce_app(
     >,
 > {
     let sandbox_ws_path = format!("/v1/{}/sandbox/jobs/{{id}}/ws", data.admin_prefix);
+    let order_ws_path = format!("/v1/{}/orders/{{id}}/ws", data.admin_prefix);
     let app = App::new()
         .app_data(data.kernel)
         .app_data(data.cart_hub)
+        .app_data(data.order_hub)
         .app_data(data.catalog)
         .app_data(data.sandbox_hub)
         .app_data(data.admin_auth);
@@ -56,6 +61,7 @@ pub fn commerce_app(
     let app = app.configure(|cfg| crate::openapi::configure_openapi_ui(cfg, None));
     app.route("/v1/carts/{id}/ws", web::get().to(cart_ws))
         .route(&sandbox_ws_path, web::get().to(sandbox_job_ws))
+        .route(&order_ws_path, web::get().to(order_ws))
         .default_service(web::to(kernel_service))
 }
 
@@ -74,21 +80,8 @@ pub struct BoundCommerce {
 /// Propagates bind errors.
 pub fn bind_commerce_server(
     addr: impl ToSocketAddrs,
-    kernel: AsyncHttpKernel,
-    cart_hub: CartHub,
-    catalog: CatalogRepository,
-    sandbox_hub: SandboxJobHub,
-    admin_auth: AdminAuthConfig,
-    admin_prefix: impl Into<String>,
+    data: CommerceListenData,
 ) -> std::io::Result<BoundCommerce> {
-    let data = CommerceListenData {
-        kernel: web::Data::new(kernel),
-        cart_hub: web::Data::new(cart_hub),
-        catalog: web::Data::new(catalog),
-        sandbox_hub: web::Data::new(sandbox_hub),
-        admin_auth: web::Data::new(admin_auth),
-        admin_prefix: admin_prefix.into(),
-    };
     let http = HttpServer::new(move || commerce_app(data.clone())).bind(addr)?;
     let addrs = http.addrs();
     Ok(BoundCommerce {

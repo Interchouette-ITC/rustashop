@@ -1,9 +1,11 @@
 //! Serenade listen entry point for the commerce HTTP API.
 
+use actix_web::web;
 use rustashop_api::{
     ADMIN_API_PREFIX_ENV, ADMIN_TOKEN_ENV, ADMIN_TOKEN_ENV_ALT, AdminApiPrefix, AdminAuthConfig,
-    BIND_ENV, CartHub, CommerceFrontConfig, DEFAULT_ADMIN_API_PREFIX, INSTALL_DIR_NAME,
-    INSTALL_OFF_DIR_NAME, SandboxJobHub, SandboxJobRegistry, bind_address, bind_commerce_server,
+    BIND_ENV, CartHub, CommerceFrontConfig, CommerceListenData, DEFAULT_ADMIN_API_PREFIX,
+    INSTALL_DIR_NAME, INSTALL_OFF_DIR_NAME, OrderHub, SandboxJobHub, SandboxJobRegistry,
+    bind_address, bind_commerce_server,
     catalog_cache::CatalogCache,
     commerce_http_kernel, install_artefacts_present,
     order_mail::OrderMailer,
@@ -146,6 +148,7 @@ async fn run() -> std::io::Result<()> {
         .map_err(std::io::Error::other)?;
     info!("catalog repository ready");
     let hub = CartHub::new();
+    let order_hub = OrderHub::new();
     let sandbox_hub = SandboxJobHub::new();
     let sandbox_registry = SandboxJobRegistry::new();
     let sandbox_messenger = SandboxJobMessenger::new();
@@ -185,6 +188,7 @@ async fn run() -> std::io::Result<()> {
         admin_prefix: admin_prefix.as_str().to_owned(),
         install_root: Some(root),
         cart_hub: Some(hub.clone()),
+        order_hub: Some(order_hub.clone()),
         sandbox_hub: Some(sandbox_hub.clone()),
         sandbox_registry: Some(sandbox_registry),
         sandbox_messenger: Some(sandbox_messenger),
@@ -195,15 +199,18 @@ async fn run() -> std::io::Result<()> {
     });
     let bound = bind_commerce_server(
         &bind,
-        http_kernel,
-        hub,
-        catalog,
-        sandbox_hub,
-        admin_auth,
-        admin_prefix.as_str(),
+        CommerceListenData {
+            kernel: web::Data::new(http_kernel),
+            cart_hub: web::Data::new(hub),
+            order_hub: web::Data::new(order_hub),
+            catalog: web::Data::new(catalog),
+            sandbox_hub: web::Data::new(sandbox_hub),
+            admin_auth: web::Data::new(admin_auth),
+            admin_prefix: admin_prefix.as_str().to_owned(),
+        },
     )
     .map_err(|error| bind_error(&bind, &error))?;
-    info!("listening on http://{bind} (Serenade listen + cart/sandbox WS)");
+    info!("listening on http://{bind} (Serenade listen + cart/order/sandbox WS)");
     let result = await_bound(bound.server).await;
     readiness.mark_not_ready();
     if let Err(error) = kernel.shutdown() {
