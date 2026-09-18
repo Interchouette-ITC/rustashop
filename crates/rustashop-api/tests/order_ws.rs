@@ -13,11 +13,15 @@ use rustashop_api::{
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
+use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 
 const HOODIE_VARIANT: &str = "33333333-3333-3333-3333-333333333331";
-const SCHEMA_LOCK: i64 = 874_520;
+/// Distinct from other rustashop-api integration locks.
+const SCHEMA_LOCK: i64 = 874_540;
 const ADMIN_TOKEN: &str = "order-ws-admin-token";
+
+static ORDER_WS_SCHEMA_GATE: Mutex<()> = Mutex::const_new(());
 
 #[tokio::test]
 async fn admin_order_patch_pushes_ws_event() {
@@ -25,6 +29,7 @@ async fn admin_order_patch_pushes_ws_event() {
         eprintln!("skip: DATABASE_URL is not set");
         return;
     };
+    let _gate = ORDER_WS_SCHEMA_GATE.lock().await;
     let catalog = exclusive_seeded_catalog().await;
     let order_hub = OrderHub::new();
     let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
@@ -58,7 +63,12 @@ async fn admin_order_patch_pushes_ws_event() {
         .send()
         .await
         .expect("create cart");
-    assert_eq!(create.status(), 201);
+    assert_eq!(
+        create.status(),
+        201,
+        "body={}",
+        create.text().await.unwrap_or_default()
+    );
     let cart: CartResponse = create.json().await.expect("cart json");
 
     let add = http
@@ -129,7 +139,9 @@ async fn order_ws_rejects_bad_token() {
         eprintln!("skip: DATABASE_URL is not set");
         return;
     };
-    let catalog = exclusive_seeded_catalog().await;
+    // Auth fails before catalog IO; connect only (no DROP SCHEMA) so we do not race the
+    // happy-path integration test that reseeds the same database.
+    let catalog = connected_catalog().await;
     let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
     let kernel = commerce_http_kernel(CommerceFrontConfig {
         admin_auth: auth.clone(),
@@ -151,6 +163,19 @@ async fn order_ws_rejects_bad_token() {
         .uri("/v1/admin/orders/00000000-0000-0000-0000-000000000001/ws?token=wrong")
         .to_request();
     assert_eq!(test::call_service(&app, bad).await.status(), 401);
+}
+
+async fn connected_catalog() -> CatalogRepository {
+    use rustashop_persist_sqlx::SqlxCatalogRepository;
+    use sqlx::postgres::PgPoolOptions;
+
+    let url = std::env::var("DATABASE_URL").expect("DATABASE_URL");
+    let pool = PgPoolOptions::new()
+        .max_connections(1)
+        .connect(&url)
+        .await
+        .expect("connect");
+    SqlxCatalogRepository::new(pool)
 }
 
 async fn exclusive_seeded_catalog() -> CatalogRepository {
