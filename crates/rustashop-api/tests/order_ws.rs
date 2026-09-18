@@ -4,12 +4,12 @@
 
 use std::time::Duration;
 
-use actix_web::web;
+use actix_web::{test, web};
 use futures_util::{SinkExt, StreamExt};
 use rustashop_api::{
     AdminAuthConfig, CartHub, CartResponse, CommerceFrontConfig, CommerceListenData,
     DEFAULT_ADMIN_API_PREFIX, OrderHub, OrderResponse, SandboxJobHub, bind_commerce_server,
-    commerce_http_kernel,
+    commerce_app, commerce_http_kernel,
 };
 use rustashop_persist::CatalogRepository;
 use serde_json::json;
@@ -121,6 +121,36 @@ async fn admin_order_patch_pushes_ws_event() {
 
     ws.close(None).await.expect("client close");
     handle.stop(true).await;
+}
+
+#[actix_web::test]
+async fn order_ws_rejects_bad_token() {
+    let Ok(_) = std::env::var("DATABASE_URL") else {
+        eprintln!("skip: DATABASE_URL is not set");
+        return;
+    };
+    let catalog = exclusive_seeded_catalog().await;
+    let auth = AdminAuthConfig::from_token(ADMIN_TOKEN);
+    let kernel = commerce_http_kernel(CommerceFrontConfig {
+        admin_auth: auth.clone(),
+        order_hub: Some(OrderHub::new()),
+        ..CommerceFrontConfig::test_default()
+    });
+    let app = test::init_service(commerce_app(CommerceListenData {
+        kernel: web::Data::new(kernel),
+        cart_hub: web::Data::new(CartHub::new()),
+        order_hub: web::Data::new(OrderHub::new()),
+        catalog: web::Data::new(catalog),
+        sandbox_hub: web::Data::new(SandboxJobHub::new()),
+        admin_auth: web::Data::new(auth),
+        admin_prefix: DEFAULT_ADMIN_API_PREFIX.to_owned(),
+    }))
+    .await;
+
+    let bad = test::TestRequest::get()
+        .uri("/v1/admin/orders/00000000-0000-0000-0000-000000000001/ws?token=wrong")
+        .to_request();
+    assert_eq!(test::call_service(&app, bad).await.status(), 401);
 }
 
 async fn exclusive_seeded_catalog() -> CatalogRepository {
