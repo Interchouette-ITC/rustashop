@@ -1,0 +1,8 @@
+# Trunk / wasm
+/dist
+/pkg
+/target
+
+# Template SCSS → CSS (build.rs)
+/generated/*
+!/generated/.gitkeep

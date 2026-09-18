@@ -1,0 +1,10 @@
+[package]
+name = "rustashop-template-admin-default"
+description = "Default admin template assets (HTML/SCSS). Path package for admin hosts."
+version = "0.1.0"
+edition = "2024"
+license = "OSL-3.0"
+publish = false
+
+[lib]
+path = "lib.rs"

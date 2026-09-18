@@ -1,0 +1,17 @@
+[build]
+target = "index.html"
+dist = "dist"
+no_sri = true
+
+[watch]
+watch = ["."]
+
+[serve]
+no_autoreload = false
+
+[tools]
+wasm_opt = "version_132"
+
+[[proxy]]
+rewrite = "/api/"
+backend = "http://127.0.0.1:8080/"
