@@ -78,7 +78,7 @@ fn render_orders_body(
             <p class="admin__empty">
                 "No orders yet. Place one from the shop checkout, then refresh."
             </p>
-            <button type="button" class="btn btn-outline-secondary btn-sm" on:click=move |_| load()>
+            <button type="button" class="admin__btn admin__btn--muted" on:click=move |_| load()>
                 "Refresh"
             </button>
         }
@@ -104,10 +104,10 @@ fn render_orders_body(
                 </tbody>
             </table>
         </div>
-        <p class="admin__tagline mt-3">
+        <p class="admin__toolbar">
             <button
                 type="button"
-                class="btn btn-outline-secondary btn-sm"
+                class="admin__btn admin__btn--muted"
                 disabled=move || busy.get()
                 on:click=move |_| load()
             >
@@ -168,15 +168,23 @@ fn order_row(
         });
     };
 
+    let badge_class = match state_for_options {
+        "placed" => "admin__badge admin__badge--placed",
+        "paid" => "admin__badge admin__badge--paid",
+        "shipped" => "admin__badge admin__badge--shipped",
+        "cancelled" => "admin__badge admin__badge--cancelled",
+        _ => "admin__badge",
+    };
+
     view! {
         <tr>
             <td>{number}</td>
-            <td>{state_label}</td>
+            <td><span class=badge_class>{state_label}</span></td>
             <td>{total}</td>
             <td><code>{id_display}</code></td>
             <td>
                 <select
-                    class="form-select form-select-sm"
+                    class="admin__select"
                     prop:value=select_value
                     disabled=move || busy.get()
                     on:change=on_change

@@ -36,8 +36,8 @@ pub fn AdminShell(children: Children) -> impl IntoView {
                             " admin"
                         </span>
                         <nav class="admin__nav" aria-label="Admin">
-                            <A href="/" attr:class="">"Orders"</A>
-                            <A href="/products" attr:class="">"Products"</A>
+                            <A href="/" exact=true>"Orders"</A>
+                            <A href="/products">"Products"</A>
                         </nav>
                     </div>
                     <div class="admin__token">
@@ -45,7 +45,7 @@ pub fn AdminShell(children: Children) -> impl IntoView {
                         <input
                             id="admin-token"
                             type="password"
-                            class="form-control form-control-sm"
+                            class="admin__input"
                             placeholder="Bearer token"
                             prop:value=move || draft.get()
                             on:input=move |ev| {
@@ -54,10 +54,10 @@ pub fn AdminShell(children: Children) -> impl IntoView {
                             }
                             autocomplete="off"
                         />
-                        <button type="button" class="btn btn-sm btn-primary" on:click=on_save>
+                        <button type="button" class="admin__btn admin__btn--primary" on:click=on_save>
                             "Save token"
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-light" on:click=on_clear>
+                        <button type="button" class="admin__btn admin__btn--ghost" on:click=on_clear>
                             "Clear"
                         </button>
                     </div>

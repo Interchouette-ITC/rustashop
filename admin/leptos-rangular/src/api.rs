@@ -139,4 +139,28 @@ mod tests {
     fn order_statuses_match_angular() {
         assert_eq!(ORDER_STATUSES, &["placed", "paid", "shipped", "cancelled"]);
     }
+
+    #[test]
+    fn order_deserializes_admin_payload() {
+        let json = r#"{
+            "id":"o1","number":"1001","state":"placed","payment_status":"pending",
+            "currency":"EUR","items_total":{"amount_minor":1000,"currency":"EUR"},
+            "total":{"amount_minor":1000,"currency":"EUR"},
+            "lines":[{"id":"l1","quantity":1,
+              "unit_price":{"amount_minor":1000,"currency":"EUR"},
+              "line_total":{"amount_minor":1000,"currency":"EUR"}}]
+        }"#;
+        let order: Order = serde_json::from_str(json).unwrap();
+        assert_eq!(order.number, "1001");
+        assert_eq!(order.lines.len(), 1);
+        assert_eq!(order.total.display(), "10.00 EUR");
+    }
+
+    #[test]
+    fn product_deserializes_admin_payload() {
+        let json = r#"{"id":"p1","slug":"mug","name":"Mug","enabled":true}"#;
+        let product: Product = serde_json::from_str(json).unwrap();
+        assert!(product.enabled);
+        assert_eq!(product.slug, "mug");
+    }
 }

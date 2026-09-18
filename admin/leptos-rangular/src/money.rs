@@ -13,9 +13,15 @@ impl Money {
     /// Formats as `major.cents CURRENCY` (minor units ÷ 100).
     #[must_use]
     pub fn display(&self) -> String {
-        let major = self.amount_minor / 100;
-        let cents = self.amount_minor.rem_euclid(100);
-        format!("{major}.{cents:02} {}", self.currency)
+        let negative = self.amount_minor < 0;
+        let abs = self.amount_minor.unsigned_abs();
+        let major = abs / 100;
+        let cents = abs % 100;
+        if negative {
+            format!("-{major}.{cents:02} {}", self.currency)
+        } else {
+            format!("{major}.{cents:02} {}", self.currency)
+        }
     }
 }
 
@@ -35,5 +41,10 @@ mod tests {
             currency: "EUR".into(),
         };
         assert_eq!(m.display(), "0.99 EUR");
+        let m = Money {
+            amount_minor: -150,
+            currency: "EUR".into(),
+        };
+        assert_eq!(m.display(), "-1.50 EUR");
     }
 }
