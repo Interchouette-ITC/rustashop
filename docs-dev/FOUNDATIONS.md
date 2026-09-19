@@ -4,15 +4,15 @@ This document frames the **technical identity** of rustashop for a modern, Wasm-
 
 ## Product identity (short)
 
-| Pillar            | Opinion                                                                                                                                                                                  |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Core**          | One Rust commerce kernel: catalog, cart, checkout, orders, money as integers, inventory, payments, webhooks                                                                              |
-| Clients       | Angular **shop** or Leptos+rangular **shop** on one API; rangular → Leptos (web) + GPUI (native). See [UI-RENDERERS.md](UI-RENDERERS.md) |
-| **AI native**     | Discovery, shopping agents, catalog assist, pricing/promos, support, MCP, and autonomous jobs are product surfaces on that API - not a side app ([AI-NATIVE.md](AI-NATIVE.md))           |
-| **Live state**    | WebSocket (then optionally WebTransport) is first-class for shop and admin live updates; REST/OpenAPI for bootstrap, clear mutations, and inbound provider webhooks                      |
-| **Extensibility** | Stable interfaces: OpenAPI for UIs; WIT / Component Model for plugins; optional sandboxed polyglot scripts for merchants, migrations, and agents                                         |
+| Pillar            | Opinion                                                                                                                                                                                                         |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Core**          | One Rust commerce kernel: catalog, cart, checkout, orders, money as integers, inventory, payments, webhooks                                                                                                     |
+| Clients           | Angular **shop** or Leptos+rangular **shop** on one API; GPUI **ops** + **POS/TPV** as separate native clients. See [UI-RENDERERS.md](UI-RENDERERS.md)                                                          |
+| **AI native**     | Discovery, shopping agents, catalog assist, pricing/promos, support, MCP, and autonomous jobs are product surfaces on that API - not a side app ([AI-NATIVE.md](AI-NATIVE.md))                                  |
+| **Live state**    | WebSocket (then optionally WebTransport) is first-class for shop and admin live updates; REST/OpenAPI for bootstrap, clear mutations, and inbound provider webhooks                                             |
+| **Extensibility** | Stable interfaces: OpenAPI for UIs; WIT / Component Model for plugins; optional sandboxed polyglot scripts for merchants, migrations, and agents                                                                |
 | **Persistence**   | A transactional store owned by the host kernel (**Postgres** via Docker compose + SQLx/SeaORM adapters). Analytics engines, embedded scratch databases, and GraphQL (if added) are **not** the system of record |
-| **Surfaces**      | Domains and deploy tips in [DOMAINS.md](DOMAINS.md) (`interchouette.net` tip, `.ai` / `.io` / `.dev` / `.app`, geo redirects)                                                            |
+| **Surfaces**      | Domains and deploy tips in [DOMAINS.md](DOMAINS.md) (`interchouette.net` tip, `.ai` / `.io` / `.dev` / `.app`, geo redirects)                                                                                   |
 
 GraphQL and columnar/analytics tools may appear later as **API or reporting choices**. They are independent product questions from “where do orders live.”
 

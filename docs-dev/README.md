@@ -13,7 +13,7 @@ Public contributor docs (`docs/ARCHITECTURE.md`, `docs/CONTRIBUTING.md`, …) li
 | [AI-NATIVE.md](AI-NATIVE.md)           | AI across API and UIs: discovery, agents, catalog, pricing, support, MCP                 |
 | [AI-TOOLS.md](AI-TOOLS.md)             | v0 commerce tool / function schema (MCP + in-app agents)                                 |
 | [DOMAINS.md](DOMAINS.md)               | Hostnames (`ai` / `io` / `dev` / `app` / redirects) and deploy surfaces                  |
-| [UI-RENDERERS.md](UI-RENDERERS.md)     | Angular + rangular dual track; Leptos web vs GPUI native hosts                           |
+| [UI-RENDERERS.md](UI-RENDERERS.md)     | Angular + Leptos/rangular shops; Tauri webview; GPUI ops + POS natives                   |
 | [WASM-LAYERS.md](WASM-LAYERS.md)       | Storefront Wasm vs plugin Component Model vs sandbox runtimes                            |
 | [REALTIME.md](REALTIME.md)             | WebSocket-first live shop state (Meteor-like opinion, rustashop protocol)                |
 | [EXTENSIONS.md](EXTENSIONS.md)         | WIT plugin ABI, host capabilities, OpenAPI vs WIT                                        |

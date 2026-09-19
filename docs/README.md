@@ -18,7 +18,7 @@
   <a href="https://codecov.io/gh/Interchouette-ITC/rustashop"><img src="https://codecov.io/gh/Interchouette-ITC/rustashop/branch/dev/graph/badge.svg" alt="codecov" /></a>
 </p>
 
-One **Rust** commerce API. **Angular** or **rangular** clients on the same OpenAPI contracts. Shared storefront markup lives in `templates/shop/default/`; each shop host adapts it. rangular targets **two renderers**: Leptos (web/DOM) and GPUI (native GPU). See [`../docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md).
+One **Rust** commerce API. **Angular** or **rangular** (Leptos web, optional Tauri webview) clients on the same OpenAPI contracts. Shared storefront markup lives in `templates/shop/default/`; each shop host adapts it. Native **GPUI** apps (ops + POS / TPV) are separate clients, not a second rangular renderer. See [`../docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md).
 
 AI is on the product map (discovery, shopping agents, catalog assist, pricing, support, MCP), not glued on later. See [`../docs-dev/AI-NATIVE.md`](../docs-dev/AI-NATIVE.md).
 
@@ -26,15 +26,15 @@ AI is on the product map (discovery, shopping agents, catalog assist, pricing, s
 
 ## What you get today
 
-| Piece            | Role                                                                                                                                                |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Commerce API** | Actix-web: products, carts, checkout → orders; money as integers                                                                                    |
-| **OpenAPI**      | utoipa document at `/openapi.json`; explorers at `/swagger-ui/`, `/redoc`, `/rapidoc`, `/scalar`; `make openapi` writes `openapi/openapi.json` |
-| **Persistence**  | Postgres; SQLx default, SeaORM feature path; Docker compose                                                                                         |
-| **Templates**    | `templates/shop/default/` (shops) and `templates/admin/default/` (operator BO)                                                                           |
-| **UI A**         | `shops/angular` - Angular storefront (catalog, cart, checkout)                                                                                      |
-| **UI B**         | `shops/leptos-rangular` - Leptos + rangular (catalog, product, cart)                                                                                |
-| **Admin**        | `admin/angular` - Angular sample BO (orders table + status PATCH; bearer token)                                                                     |
+| Piece            | Role                                                                                                                                                                                     |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Commerce API** | Actix-web: products, carts, checkout → orders; money as integers                                                                                                                         |
+| **OpenAPI**      | utoipa document at `/openapi.json`; explorers at `/swagger-ui/`, `/redoc`, `/rapidoc`, `/scalar`; `make openapi` writes `openapi/openapi.json`                                           |
+| **Persistence**  | Postgres; SQLx default, SeaORM feature path; Docker compose                                                                                                                              |
+| **Templates**    | `templates/shop/default/` (shops) and `templates/admin/default/` (operator BO)                                                                                                           |
+| **UI A**         | `shops/angular` - Angular storefront (catalog, cart, checkout)                                                                                                                           |
+| **UI B**         | `shops/leptos-rangular` - Leptos + rangular (catalog, product, cart)                                                                                                                     |
+| **Admin**        | `admin/angular` - Angular sample BO (orders table + status PATCH; bearer token)                                                                                                          |
 | **Framework**    | [Serenade](https://github.com/Interchouette-ITC/Serenade) kernel boot in `rustashop` ([#49](https://github.com/Interchouette-ITC/rustashop/issues/49)); Actix still serves commerce HTTP |
 
 Still building toward: one payment provider, WebSocket live surfaces, MCP / agent tools (Axum).
@@ -122,21 +122,21 @@ Detail: [`../docs-dev/DOMAINS.md`](../docs-dev/DOMAINS.md).
 
 **rustashop** stands on excellent open-source projects and hosts:
 
-| Project | Role here |
-| --- | --- |
-| [Rust](https://www.rust-lang.org/) | Commerce API, workers, and Wasm shop host |
-| [Tokio](https://tokio.rs/) | Async runtime |
-| [Actix Web](https://actix.rs/) | Commerce HTTP API and OpenAPI explorers |
-| [utoipa](https://github.com/juhaku/utoipa) | OpenAPI types, dump, and explorer UIs |
-| [SQLx](https://github.com/launchbadge/sqlx) | Default Postgres persistence (no ORM) |
-| [SeaORM](https://www.sea-ql.org/SeaORM/) | Alternate ORM persistence path |
-| [PostgreSQL](https://www.postgresql.org/) | System of record |
-| [Angular](https://angular.dev/) | UI track A storefront |
-| [Leptos](https://leptos.dev/) | UI track B web renderer (CSR / Trunk) |
-| [rangular](https://github.com/Interchouette-ITC/rangular) | Shared Angular-shaped templates → Leptos |
-| [Serenade](https://github.com/Interchouette-ITC/Serenade) | Application framework / contracts |
-| [Axum](https://github.com/tokio-rs/axum) | MCP / agent HTTP surfaces (next) |
-| [Render](https://render.com/) | Hosting tip / demos (operator-owned) |
+| Project                                                   | Role here                                 |
+| --------------------------------------------------------- | ----------------------------------------- |
+| [Rust](https://www.rust-lang.org/)                        | Commerce API, workers, and Wasm shop host |
+| [Tokio](https://tokio.rs/)                                | Async runtime                             |
+| [Actix Web](https://actix.rs/)                            | Commerce HTTP API and OpenAPI explorers   |
+| [utoipa](https://github.com/juhaku/utoipa)                | OpenAPI types, dump, and explorer UIs     |
+| [SQLx](https://github.com/launchbadge/sqlx)               | Default Postgres persistence (no ORM)     |
+| [SeaORM](https://www.sea-ql.org/SeaORM/)                  | Alternate ORM persistence path            |
+| [PostgreSQL](https://www.postgresql.org/)                 | System of record                          |
+| [Angular](https://angular.dev/)                           | UI track A storefront                     |
+| [Leptos](https://leptos.dev/)                             | UI track B web renderer (CSR / Trunk)     |
+| [rangular](https://github.com/Interchouette-ITC/rangular) | Shared Angular-shaped templates → Leptos  |
+| [Serenade](https://github.com/Interchouette-ITC/Serenade) | Application framework / contracts         |
+| [Axum](https://github.com/tokio-rs/axum)                  | MCP / agent HTTP surfaces (next)          |
+| [Render](https://render.com/)                             | Hosting tip / demos (operator-owned)      |
 
 Thank you to their maintainers and communities.
 
