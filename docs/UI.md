@@ -1,6 +1,6 @@
 # UI tracks
 
-One commerce API. Two storefront hosts. Admin SPA samples (Angular + Leptos). Leptos is the **web renderer** for the rangular track. Native **GPUI** apps (ops + POS / TPV) are separate clients, not a second rangular renderer.
+One commerce API. Two storefront hosts. Admin SPA samples (Angular + Leptos). Leptos is the **web renderer** for the rangular track. Native **GPUI** apps (ops + POS) are separate clients, not a second rangular renderer.
 
 ## Same contract
 
@@ -52,7 +52,7 @@ Orders list and status PATCH use the same `/v1/{admin_api_prefix}/...` routes as
 | Rust/Wasm shop host         | Track B (`shops/leptos-rangular`)                       |
 | Operator back-office sample | `admin/angular` or `admin/leptos-rangular`              |
 | Native logistics / stock    | GPUI ops (`make ops-gpui`; partial)                     |
-| Native caisse / TPV / POS   | GPUI POS (planned; see UI-RENDERERS)                    |
+| Native POS                  | GPUI POS (`make pos-gpui`; partial, not certified)      |
 | Change shared layout/CSS    | `templates/shop/default/` or `templates/admin/default/` |
 
 API work stays in `crates/rustashop-api` and the OpenAPI dump. UI hosts consume; they do not redefine commerce routes.

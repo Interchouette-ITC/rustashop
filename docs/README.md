@@ -18,7 +18,7 @@
   <a href="https://codecov.io/gh/Interchouette-ITC/rustashop"><img src="https://codecov.io/gh/Interchouette-ITC/rustashop/branch/dev/graph/badge.svg" alt="codecov" /></a>
 </p>
 
-One **Rust** commerce API. **Angular** or **rangular** (Leptos web, optional Tauri webview) clients on the same OpenAPI contracts. Shared storefront markup lives in `templates/shop/default/`; each shop host adapts it. Native **GPUI** apps (ops + POS / TPV) are separate clients, not a second rangular renderer. See [`../docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md).
+One **Rust** commerce API. **Angular** or **rangular** (Leptos web, optional Tauri webview) clients on the same OpenAPI contracts. Shared storefront markup lives in `templates/shop/default/`; each shop host adapts it. Native **GPUI** apps (ops + POS) are separate clients, not a second rangular renderer. See [`../docs-dev/UI-RENDERERS.md`](../docs-dev/UI-RENDERERS.md).
 
 AI is on the product map (discovery, shopping agents, catalog assist, pricing, support, MCP), not glued on later. See [`../docs-dev/AI-NATIVE.md`](../docs-dev/AI-NATIVE.md).
 

@@ -22,6 +22,7 @@ ADMIN_LEPTOS_ADDR ?= 127.0.0.1
 ADMIN_TAURI_DIR := admin/tauri
 SHOP_TAURI_DIR := shops/tauri
 OPS_GPUI_DIR := ops/gpui
+POS_GPUI_DIR := pos/gpui
 TRUNK_BIN ?= $(HOME)/.cargo/bin/trunk
 TRUNK ?= env -u NO_COLOR $(TRUNK_BIN)
 # Compose file lives under docker/; project name keeps container names stable.
@@ -44,7 +45,7 @@ CI ?= 0
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check test test-workspace test-shops test-shop-angular test-shop-leptos test-admin-leptos test-admin-tauri test-shop-tauri test-ops-gpui lint lint-shop-angular lint-admin-angular lint-shop-leptos lint-admin-leptos lint-admin-tauri lint-shop-tauri lint-ops-gpui lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular admin-leptos-rangular admin-tauri build-admin-tauri shop-tauri build-shop-tauri ops-gpui install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
+.PHONY: help check test test-workspace test-shops test-shop-angular test-shop-leptos test-admin-leptos test-admin-tauri test-shop-tauri test-ops-gpui test-pos-gpui lint lint-shop-angular lint-admin-angular lint-shop-leptos lint-admin-leptos lint-admin-tauri lint-shop-tauri lint-ops-gpui lint-pos-gpui lint-install format format-check check-sql-safety doc doc-open doc-clean openapi openapi-check run-api run-mcp run-mcp-http console worker clean db-up db-down db-psql db-wait db-migrate db-migrate-seaorm db-seed db-reset stack-up shop-angular admin-angular shop-leptos-rangular admin-leptos-rangular admin-tauri build-admin-tauri shop-tauri build-shop-tauri ops-gpui pos-gpui install-ui install-dev install-cli audit deny audit-npm audit-all coverage coverage-summary coverage-html tarpaulin machete outdated fuzz fuzz-build geiger coverage-js ci extensions-fixture sandbox-quote-rust-fixture \
 	docker-build docker-build-no-cache docker-build-dev docker-push-dev \
 	docker-push-dev-hub docker-push-dev-ghcr-personal docker-push-dev-ghcr-itc \
 	docker-push-release docker-push-release-hub \
@@ -94,6 +95,9 @@ help:
 	@echo "  make ops-gpui               Run GPUI ops / logistics desktop ($(OPS_GPUI_DIR); needs RUSTASHOP_ADMIN_API_TOKEN)"
 	@echo "  make test-ops-gpui          cargo test ops GPUI crate (no window)"
 	@echo "  make lint-ops-gpui          clippy ops GPUI crate"
+	@echo "  make pos-gpui               Run GPUI POS desktop ($(POS_GPUI_DIR))"
+	@echo "  make test-pos-gpui          cargo test POS GPUI crate (no window)"
+	@echo "  make lint-pos-gpui          clippy POS GPUI crate"
 	@echo "  make install-ui  build Vite+Vue install funnel into install/dist (API serves /install when present)"
 	@echo "  make install-dev Vite dev server for install UI (proxies /install/api via RUSTASHOP_API_PROXY / RUSTASHOP_BIND)"
 	@echo "  make install-cli run rustashop-install (writes .env; then mv install install.off)"
@@ -155,6 +159,10 @@ test-shop-tauri:
 ## Unit tests for the GPUI ops host (HTTP helpers; no window).
 test-ops-gpui:
 	cd $(ROOT)/$(OPS_GPUI_DIR) && $(CARGO) test
+
+## Unit tests for the GPUI POS host (journal + sale; no window).
+test-pos-gpui:
+	cd $(ROOT)/$(POS_GPUI_DIR) && $(CARGO) test
 
 test-shops: test-shop-angular test-shop-leptos test-admin-leptos
 
@@ -299,6 +307,10 @@ lint-shop-tauri:
 # Ops GPUI clippy (standalone Cargo workspace under ops/gpui).
 lint-ops-gpui:
 	cd $(ROOT)/$(OPS_GPUI_DIR) && $(CARGO) clippy --all-targets -- $(CLIPPY_FLAGS)
+
+# POS GPUI clippy (standalone Cargo workspace under pos/gpui).
+lint-pos-gpui:
+	cd $(ROOT)/$(POS_GPUI_DIR) && $(CARGO) clippy --all-targets -- $(CLIPPY_FLAGS)
 
 lint-install:
 	@if [ ! -d "$(ROOT)/install/node_modules" ]; then \
@@ -521,6 +533,10 @@ build-shop-tauri:
 ## GPUI ops / logistics desktop (needs API + RUSTASHOP_ADMIN_API_TOKEN).
 ops-gpui:
 	cd $(ROOT)/$(OPS_GPUI_DIR) && $(CARGO) run --bin rustashop-ops-gpui
+
+## GPUI POS desktop (needs API; journal under RUSTASHOP_POS_JOURNAL).
+pos-gpui:
+	cd $(ROOT)/$(POS_GPUI_DIR) && $(CARGO) run --bin rustashop-pos-gpui
 
 run-api:
 	cd $(ROOT) && DATABASE_URL=$(DATABASE_URL) RUSTASHOP_BIND=$${RUSTASHOP_BIND:-$(API_BIND)} $(CARGO) run -p rustashop-api --bin rustashop-api
