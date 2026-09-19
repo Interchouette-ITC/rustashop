@@ -23,6 +23,7 @@ shops/**/.angular/
 shops/**/coverage/
 shops/angular/.vscode/
 admin/**/coverage/
+ops/**/target/
 *.snap.new
 
 # Generated rustdoc copy (rebuild with `make doc`)

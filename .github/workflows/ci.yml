@@ -346,6 +346,38 @@ jobs:
         if: needs.changes.outputs.code == 'true'
         run: make lint-shop-tauri
 
+  ops-gpui:
+    name: ops-gpui
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Markdown-only
+        if: needs.changes.outputs.code != 'true'
+        run: echo "markdown-only; skipping ops-gpui"
+      - uses: dtolnay/rust-toolchain@stable
+        if: needs.changes.outputs.code == 'true'
+      - name: Install GPUI Linux deps
+        if: needs.changes.outputs.code == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxcb-xfixes0-dev libxcb-shape0-dev libxcb-render0-dev \
+            libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libasound2-dev \
+            libfontconfig-dev libfreetype6-dev pkg-config
+      - uses: Swatinem/rust-cache@v2
+        if: needs.changes.outputs.code == 'true'
+        with:
+          workspaces: ops/gpui
+      - name: Test
+        if: needs.changes.outputs.code == 'true'
+        run: make test-ops-gpui
+      - name: Clippy
+        if: needs.changes.outputs.code == 'true'
+        run: make lint-ops-gpui
+
   admin-angular:
     name: admin-angular
     needs: changes
