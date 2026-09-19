@@ -259,16 +259,11 @@ fn orders_pane(orders: &[Order], cx: &Context<OpsApp>) -> impl IntoElement {
                                 .font_weight(gpui::FontWeight::SEMIBOLD)
                                 .child(format!("{}  ·  {}", order.number, order.state)),
                         )
-                        .child(
-                            div()
-                                .text_xs()
-                                .text_color(rgb(0x8a90a0))
-                                .child(format!(
-                                    "pay {}  |  total {}",
-                                    order.payment_status,
-                                    order.total.display()
-                                )),
-                        ),
+                        .child(div().text_xs().text_color(rgb(0x8a90a0)).child(format!(
+                            "pay {}  |  total {}",
+                            order.payment_status,
+                            order.total.display()
+                        ))),
                 )
                 .when(can_advance, |row| {
                     row.child(action_chip(

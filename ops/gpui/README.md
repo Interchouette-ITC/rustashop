@@ -16,11 +16,11 @@ make ops-gpui
 
 Overrides:
 
-| Env / flag | Role |
-| --- | --- |
-| `RUSTASHOP_API_BASE` / `--api-base` | Actix base (default `http://127.0.0.1:8080`) |
-| `RUSTASHOP_ADMIN_API_PREFIX` / `--admin-prefix` | Admin path segment (default `admin`) |
-| `RUSTASHOP_ADMIN_API_TOKEN` / `--token` | Bearer (required) |
+| Env / flag                                      | Role                                         |
+| ----------------------------------------------- | -------------------------------------------- |
+| `RUSTASHOP_API_BASE` / `--api-base`             | Actix base (default `http://127.0.0.1:8080`) |
+| `RUSTASHOP_ADMIN_API_PREFIX` / `--admin-prefix` | Admin path segment (default `admin`)         |
+| `RUSTASHOP_ADMIN_API_TOKEN` / `--token`         | Bearer (required)                            |
 
 On weak GPUs, set `WGPU_BACKEND=gl` before launch if the native GPU backend fails.
 

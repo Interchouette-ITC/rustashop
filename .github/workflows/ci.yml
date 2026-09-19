@@ -364,7 +364,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libxcb-xfixes0-dev libxcb-shape0-dev libxcb-render0-dev \
-            libxkbcommon-dev libwayland-dev libasound2-dev \
+            libxcb-xkb-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libwayland-dev libasound2-dev \
             libfontconfig-dev libfreetype6-dev pkg-config
       - uses: Swatinem/rust-cache@v2
         if: needs.changes.outputs.code == 'true'

@@ -14,7 +14,11 @@ use rustashop_ops_gpui::Config;
 )]
 struct Cli {
     /// Actix Commerce API base URL (no trailing slash).
-    #[arg(long, env = "RUSTASHOP_API_BASE", default_value = "http://127.0.0.1:8080")]
+    #[arg(
+        long,
+        env = "RUSTASHOP_API_BASE",
+        default_value = "http://127.0.0.1:8080"
+    )]
     api_base: String,
     /// Admin API path segment (`RUSTASHOP_ADMIN_API_PREFIX`).
     #[arg(long, env = "RUSTASHOP_ADMIN_API_PREFIX", default_value = "admin")]
