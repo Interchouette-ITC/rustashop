@@ -1,7 +1,7 @@
-# rustashop POS / TPV / caisse (GPUI)
+# rustashop POS (GPUI)
 
-Native **front-of-house** desktop client: catalog sync, encaissement, append-only
-ticket journal, and clôture stub. Speaks the public Commerce API catalog.
+Native **front-of-house** desktop client: catalog sync, checkout, append-only
+ticket journal, and period-close stub. Speaks the public Commerce API catalog.
 
 Not a shop Tauri clone. Not rangular templates.
 
@@ -35,4 +35,4 @@ make lint-pos-gpui
 
 1. **Sync catalog** - public `GET /v1/products` + detail (enabled SKUs with stock).
 2. Add lines to the sale → **Pay exact** writes a ticket to the journal.
-3. **Clôture** closes open tickets into a period summary record.
+3. **Period close** closes open tickets into a summary record.

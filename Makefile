@@ -95,7 +95,7 @@ help:
 	@echo "  make ops-gpui               Run GPUI ops / logistics desktop ($(OPS_GPUI_DIR); needs RUSTASHOP_ADMIN_API_TOKEN)"
 	@echo "  make test-ops-gpui          cargo test ops GPUI crate (no window)"
 	@echo "  make lint-ops-gpui          clippy ops GPUI crate"
-	@echo "  make pos-gpui               Run GPUI POS / TPV / caisse ($(POS_GPUI_DIR))"
+	@echo "  make pos-gpui               Run GPUI POS desktop ($(POS_GPUI_DIR))"
 	@echo "  make test-pos-gpui          cargo test POS GPUI crate (no window)"
 	@echo "  make lint-pos-gpui          clippy POS GPUI crate"
 	@echo "  make install-ui  build Vite+Vue install funnel into install/dist (API serves /install when present)"
@@ -534,7 +534,7 @@ build-shop-tauri:
 ops-gpui:
 	cd $(ROOT)/$(OPS_GPUI_DIR) && $(CARGO) run --bin rustashop-ops-gpui
 
-## GPUI POS / TPV / caisse desktop (needs API; journal under RUSTASHOP_POS_JOURNAL).
+## GPUI POS desktop (needs API; journal under RUSTASHOP_POS_JOURNAL).
 pos-gpui:
 	cd $(ROOT)/$(POS_GPUI_DIR) && $(CARGO) run --bin rustashop-pos-gpui
 

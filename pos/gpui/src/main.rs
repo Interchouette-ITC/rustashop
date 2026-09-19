@@ -1,4 +1,4 @@
-//! rustashop native POS / TPV / caisse desktop client (GPUI).
+//! rustashop native POS desktop client (GPUI).
 
 #![forbid(unsafe_code)]
 
@@ -12,7 +12,7 @@ use rustashop_pos_gpui::Config;
 #[derive(Parser, Debug)]
 #[command(
     name = "rustashop-pos-gpui",
-    about = "Native POS / TPV / caisse client for the rustashop Commerce API"
+    about = "Native POS client for the rustashop Commerce API"
 )]
 struct Cli {
     /// Actix Commerce API base URL (no trailing slash).

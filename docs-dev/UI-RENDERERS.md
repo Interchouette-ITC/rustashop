@@ -5,7 +5,7 @@ rustashop exposes **one Commerce API** (Actix + OpenAPI + WebSocket). All UIs ar
 The UI plane is:
 
 - **Shop / admin web:** Angular (track A) and Leptos + rangular (track B), including Tauri webview shells around the same wasm
-- **Native GPUI apps:** separate hand-written Rust binaries for **ops** (logistics / back-office) and **POS / TPV** (caisse). Not a rangular dual-renderer.
+- **Native GPUI apps:** separate hand-written Rust binaries for **ops** (logistics / back-office) and **POS** (point of sale). Not a rangular dual-renderer.
 
 ## Ambition
 
@@ -15,7 +15,7 @@ The UI plane is:
 | **Shop B**             | rangular templates + Rust controllers | **Leptos** → DOM / wasm (+ optional **Tauri** webview) | Same OpenAPI shop flows                                    |
 | **Admin samples**      | Angular or Leptos+rangular            | Browser / Tauri webview                                | Operator SPA samples                                       |
 | **Ops (native)**       | Hand-written Rust UI                  | **GPUI**                                               | Orders, stock, catalog sync (back-of-house)                |
-| **POS / TPV (native)** | Hand-written Rust UI                  | **GPUI**                                               | Encaissement, ticket, fiscal journal path (front-of-house) |
+| **POS (native)**       | Hand-written Rust UI                  | **GPUI**                                               | Checkout, ticket, fiscal journal path (front-of-house)     |
 
 Tracks A and B are developed **alike** against the same OpenAPI and realtime contracts for **shop** screens. GPUI apps are **different jobs** on the same API, not “shop templates on GPU”.
 
@@ -54,7 +54,7 @@ rustashop does not require Leptos full-stack monolith for the kernel. Leptos ser
 | Item                   | Note                                                                                                      |
 | ---------------------- | --------------------------------------------------------------------------------------------------------- |
 | **Ops / logistique**   | Gestion commerciale / WMS light: orders list + status PATCH, stock / mouvements, catalog sync             |
-| **Caisse / TPV / POS** | Encaissement, ticket, online catalog sync; FR fiscal path (NF525 / LNE: inaltérabilité, journal, clôture) |
+| **POS**            | Checkout, ticket, online catalog sync; FR fiscal path (NF525 / LNE: immutability, journal, period close) |
 | **Renderer**           | [GPUI](https://github.com/zed-industries/gpui) (GPU-native UI)                                            |
 | **Authoring**          | Hand-written Rust GPUI views (not rangular templates)                                                     |
 | **Not**                | Tauri webview shop clone; not “Angular admin rewritten in GPUI” as the only story                         |
@@ -97,7 +97,7 @@ The back-office is **API-first**. Any SPA that speaks admin OpenAPI + auth may p
 | `make admin-tauri`           | Tauri 2 desktop shell around the Leptos admin wasm       |
 | `make shop-tauri`            | Tauri 2 desktop shop install around the Leptos shop wasm |
 | `make ops-gpui`              | GPUI ops / logistics desktop (needs admin bearer)        |
-| `make pos-gpui`              | GPUI POS / TPV / caisse desktop (catalog + journal stub) |
+| `make pos-gpui`              | GPUI POS desktop (catalog + journal stub)                |
 
 Product vocabulary: **shop** (not storefront / vitrine). Ops and POS are not shops.
 
@@ -125,7 +125,7 @@ HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart 
 | Checkout                   | `POST /v1/checkout`                        | —                       | shipped                        | shipped                                             | n/a       | Leptos checkout dogfoods Host validators ([rangular #22](https://github.com/Interchouette-ITC/rangular/issues/22) **CLOSED**); [#268](https://github.com/Interchouette-ITC/rustashop/issues/268) |
 | Admin orders list / status | `GET/PATCH /v1/{admin_api_prefix}/orders…` | `order.updated` (API)   | shipped (`admin/angular` HTTP) | partial (`admin/leptos-rangular` orders + products) | n/a (SPA) | Leptos admin web [#272](https://github.com/Interchouette-ITC/rustashop/issues/272) **shipped**; Tauri desktop [#274](https://github.com/Interchouette-ITC/rustashop/issues/274)                  |
 | Ops orders / stock         | Admin orders + inventory APIs              | `order.updated` (later) | n/a                            | n/a                                                 | partial   | GPUI ops [#278](https://github.com/Interchouette-ITC/rustashop/issues/278) / [#280](https://github.com/Interchouette-ITC/rustashop/pull/280): orders list + PATCH; catalog sync with variant stock; no stock-mouvements API yet |
-| POS sale / ticket          | Commerce + fiscal journal APIs             | —                       | n/a                            | n/a                                                 | partial   | GPUI POS [#282](https://github.com/Interchouette-ITC/rustashop/issues/282): catalog sync, Pay exact, append-only journal + clôture stub (not NF525-certified) |
+| POS sale / ticket          | Commerce + fiscal journal APIs             | —                       | n/a                            | n/a                                                 | partial   | GPUI POS [#282](https://github.com/Interchouette-ITC/rustashop/issues/282): catalog sync, Pay exact, append-only journal + period-close stub (not NF525-certified) |
 
 **missing** = not built in this host yet. **partial** = subset of the intended surface (Leptos admin: orders + products; GPUI ops: orders + catalog stock sync; GPUI POS: sale + journal stub, no certification claim). **n/a** = wrong surface for that host.
 
@@ -137,7 +137,7 @@ HTTP contract: [`docs/API.md`](../docs/API.md) and `openapi/openapi.json`. Cart 
 | Shop Tauri (desktop install) | `make shop-tauri`            | Same shop wasm for customer PC shopping; API base via bar / `rs.shopApiBase`          |
 | Angular admin                | `make admin-angular`         | Full sample (orders, products, agents, sandbox)                                       |
 | GPUI ops                     | `make ops-gpui`              | Native logistics / commercial back-office (`ops/gpui`)                    |
-| GPUI POS                     | `make pos-gpui`              | Native caisse / TPV (`pos/gpui`; journal stub, not certified)             |
+| GPUI POS                     | `make pos-gpui`              | Native POS (`pos/gpui`; journal stub, not certified)                      |
 
 Desktop Tauri is a **webview** around Leptos wasm (not GPUI). Merchants may ship the shop Tauri binary so customers install a heavy desktop shop pointed at that merchant’s Commerce API; browser Trunk remains the default web path.
 
@@ -163,7 +163,7 @@ Admin sandbox job logs already use WS (`GET /v1/{admin_api_prefix}/sandbox/jobs/
 
 - One binary that is both Actix API and Leptos SSR for everything
 - Compiling rangular templates to GPUI for shop or admin
-- Treating Tauri webview shop as POS / NF525 caisse
+- Treating Tauri webview shop as POS / NF525 register software
 - Mandating Angular (or any single SPA framework) for admin
 - Forking Angular inside the Rust crates
 - Claiming NF525 / LNE certification before a real fiscal journal and audit path exist

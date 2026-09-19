@@ -1,6 +1,6 @@
 [package]
 name = "rustashop-pos-gpui"
-description = "rustashop native POS / TPV / caisse desktop client (GPUI)"
+description = "rustashop native POS desktop client (GPUI)"
 version = "0.1.0"
 edition = "2024"
 license = "OSL-3.0"

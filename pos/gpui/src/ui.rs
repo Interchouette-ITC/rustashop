@@ -1,4 +1,4 @@
-//! GPUI window for rustashop POS / TPV / caisse.
+//! GPUI window for rustashop POS.
 
 #![allow(clippy::unreadable_literal)]
 
@@ -102,7 +102,7 @@ impl PosApp {
         match self.journal.append_closure() {
             Ok(closure) => {
                 self.status = format!(
-                    "clôture {} · {} tickets · {}",
+                    "period close {} · {} tickets · {}",
                     closure.id,
                     closure.ticket_count,
                     rustashop_pos_gpui::Money {
@@ -116,7 +116,7 @@ impl PosApp {
             }
             Err(e) => {
                 self.error = Some(e.to_string().into());
-                self.status = "clôture failed".into();
+                self.status = "period close failed".into();
             }
         }
     }
@@ -146,7 +146,7 @@ impl Render for PosApp {
                         div()
                             .text_xl()
                             .font_weight(gpui::FontWeight::BOLD)
-                            .child("Caisse / TPV / POS"),
+                            .child("POS"),
                     )
                     .child(div().text_xs().text_color(rgb(0x9a9488)).child(header)),
             )
@@ -168,7 +168,7 @@ impl Render for PosApp {
                     ))
                     .child(action_chip(
                         "close",
-                        "Clôture",
+                        "Period close",
                         cx.listener(|this, _, _, cx| {
                             this.close_period();
                             cx.notify();

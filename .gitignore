@@ -35,3 +35,6 @@ pos/**/target/
 /extensions/fixtures/*/target/
 /extensions/fixtures/*/Cargo.lock
 /extensions/fixtures/*/wasi_snapshot_preview1*.wasm
+
+# Local Wasmer runtime cache
+.wasmer/

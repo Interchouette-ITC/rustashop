@@ -1,4 +1,4 @@
-//! rustashop GPUI POS / TPV library (catalog, sale, journal).
+//! rustashop GPUI POS library (catalog, sale, journal).
 
 #![forbid(unsafe_code)]
 

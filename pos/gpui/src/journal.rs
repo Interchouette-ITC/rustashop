@@ -52,7 +52,7 @@ pub struct TicketRecord {
     pub hash: String,
 }
 
-/// Period closure summary (clôture stub).
+/// Period closure summary (fiscal close stub).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ClosureSummary {
     /// Closure id.
@@ -233,7 +233,7 @@ impl Journal {
         Ok(ticket)
     }
 
-    /// Writes a clôture covering tickets since the previous closure.
+    /// Writes a period close covering tickets since the previous closure.
     ///
     /// # Errors
     ///
