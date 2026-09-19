@@ -24,6 +24,7 @@ shops/**/coverage/
 shops/angular/.vscode/
 admin/**/coverage/
 ops/**/target/
+pos/**/target/
 *.snap.new
 
 # Generated rustdoc copy (rebuild with `make doc`)
