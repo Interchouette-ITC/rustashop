@@ -2,13 +2,20 @@
 
 Product name: **rustashop**. DNS hostnames stay lowercase (`rustashop.ai`, …).
 
-Operator creates Render services; **no Render Blueprint / service YAML is maintained in this repo** for that hand-off. This note is the product map so DNS, images, and clients stay aligned.
+Operator creates Render (or other) services; **no Render Blueprint / service YAML is maintained in this repo** for that hand-off. This note is the product map so DNS, images, and clients stay aligned.
 
-## Hostnames
+## Scratch tip (not a product domain)
+
+| Host | Role |
+| --- | --- |
+| `rustashop.interchouette.net` | **Temporary trial** under Interchouette infra. Smoke-test a `:dev` image / stack **before** standing up the real rustashop domains. Not marketing, not demo, not the long-term tip hostname. |
+
+Do not treat this subdomain as the product launch surface. When the real domains are live, this host may go away or stay as an internal scratch only.
+
+## Product hostnames
 
 | Host                          | Role                                                                |
 | ----------------------------- | ------------------------------------------------------------------- |
-| `rustashop.interchouette.net` | First **`:dev` image** deploy (API / stack tip while building)      |
 | `rustashop.ai`                | **Primary** marketing and public brand                              |
 | `rustashop.io`                | **Product**-oriented surface (docs, product home, API-facing story) |
 | `rustashop.dev`               | **Demo** shop / playground                                          |
@@ -27,22 +34,23 @@ Operator creates Render services; **no Render Blueprint / service YAML is mainta
 
 Local compose continues to build `rustashop-api:local` via `make stack-up`. See [`docker/README.md`](../docker/README.md).
 
+The `:dev` image is what you try on the scratch tip first; the same image (or a release tag) later attaches to product hosts when those DNS / services exist.
+
 ## Deploy order (intent)
 
-1. Ship a **dev image** and attach it to `rustashop.interchouette.net` (Render service owned by the operator; pull `interchouette/rustashop:dev`).
-2. Point marketing at `rustashop.ai`.
-3. Stand up `rustashop.io` / `rustashop.dev` when product and demo builds exist.
-4. `rustashop.app` follows the mobile client.
-5. Keep `.nl` / `.eu` / `.fr` as redirects until localized sites are justified.
+1. **Optional scratch:** publish `:dev` and try it on `rustashop.interchouette.net` (operator-owned; throwaway).
+2. Stand up **product** DNS and services: marketing on `rustashop.ai`, then `rustashop.io` / `rustashop.dev` when product and demo builds exist.
+3. `rustashop.app` follows the mobile client.
+4. Keep `.nl` / `.eu` / `.fr` as redirects until localized sites are justified.
 
 ## Client mapping (later)
 
-| Surface                             | Likely client                    |
-| ----------------------------------- | -------------------------------- |
-| Marketing (`ai`)                    | Static / Angular marketing       |
-| Product (`io`)                      | Docs + product pages             |
-| Demo (`dev`)                        | Full storefront against demo API |
-| App (`app`)                         | Ionic                            |
-| Tip (`interchouette.net` subdomain) | Dev API / preview                |
+| Surface | Likely client |
+| --- | --- |
+| Marketing (`ai`) | Static / Angular marketing |
+| Product (`io`) | Docs + product pages |
+| Demo (`dev`) | Full storefront against demo API |
+| App (`app`) | Ionic |
+| Scratch (`interchouette.net` subdomain) | Temporary API / stack trial only |
 
 Do not invent Render service files here.
