@@ -12,7 +12,7 @@ This document frames the **technical identity** of rustashop for a modern, Wasm-
 | **Live state**    | WebSocket (then optionally WebTransport) is first-class for shop and admin live updates; REST/OpenAPI for bootstrap, clear mutations, and inbound provider webhooks                                             |
 | **Extensibility** | Stable interfaces: OpenAPI for UIs; WIT / Component Model for plugins; optional sandboxed polyglot scripts for merchants, migrations, and agents                                                                |
 | **Persistence**   | A transactional store owned by the host kernel (**Postgres** via Docker compose + SQLx/SeaORM adapters). Analytics engines, embedded scratch databases, and GraphQL (if added) are **not** the system of record |
-| **Surfaces**      | Domains and deploy tips in [DOMAINS.md](DOMAINS.md) (`interchouette.net` tip, `.ai` / `.io` / `.dev` / `.app`, geo redirects)                                                                                   |
+| **Surfaces**      | Product domains in [DOMAINS.md](DOMAINS.md) (`.ai` / `.io` / `.dev` / `.app`, geo redirects); `interchouette.net` is scratch trial only                                                                         |
 
 GraphQL and columnar/analytics tools may appear later as **API or reporting choices**. They are independent product questions from “where do orders live.”
 
@@ -75,7 +75,7 @@ Catalog, cart, checkout, and orders ship over OpenAPI (and cart WebSocket). Rela
 4. **Polyglot / connectors** - PHP migration guest shipped; PyO3 reserved for trusted first-party connectors ([ADR 0003](adr/0003-pyo3-vs-wasmer-sandbox.md)).
 5. **Module isolation tests** - guest loads that deny DB and assert capability boundaries (extend in CI as the ABI grows).
 6. **AI-native tools** - backlog on the same domain ([AI-NATIVE.md](AI-NATIVE.md)); MCP crate is a workspace member without HTTP routes yet.
-7. **Deploy surfaces** - `:dev` tip then `.ai` / `.io` / `.dev` / `.app` ([DOMAINS.md](DOMAINS.md)).
+7. **Deploy surfaces** - optional scratch tip, then product `.ai` / `.io` / `.dev` / `.app` ([DOMAINS.md](DOMAINS.md)).
 
 Crate layout (`domain`, `persist`, **`api`** on Actix, **`mcp`** on Axum, **`extensions`**, **`sandbox`**) matches these axes.
 

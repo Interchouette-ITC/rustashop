@@ -12,7 +12,7 @@ Public contributor docs (`docs/ARCHITECTURE.md`, `docs/CONTRIBUTING.md`, …) li
 | [PERSISTENCE.md](PERSISTENCE.md)       | Parameterized queries, persist-param NUL hygiene, raw SQL gate                           |
 | [AI-NATIVE.md](AI-NATIVE.md)           | AI across API and UIs: discovery, agents, catalog, pricing, support, MCP                 |
 | [AI-TOOLS.md](AI-TOOLS.md)             | v0 commerce tool / function schema (MCP + in-app agents)                                 |
-| [DOMAINS.md](DOMAINS.md)               | Hostnames (`ai` / `io` / `dev` / `app` / redirects) and deploy surfaces                  |
+| [DOMAINS.md](DOMAINS.md)               | Product hostnames (`ai` / `io` / `dev` / `app`); scratch tip vs real domains             |
 | [UI-RENDERERS.md](UI-RENDERERS.md)     | Angular + Leptos/rangular shops; Tauri webview; GPUI ops + POS natives                   |
 | [WASM-LAYERS.md](WASM-LAYERS.md)       | Storefront Wasm vs plugin Component Model vs sandbox runtimes                            |
 | [REALTIME.md](REALTIME.md)             | WebSocket-first live shop state (Meteor-like opinion, rustashop protocol)                |
@@ -36,6 +36,6 @@ GitHub epics (created with this foundation set):
 | [#34](https://github.com/Interchouette-ITC/rustashop/issues/34) | WIT Component Model extension ABI                        |
 | [#37](https://github.com/Interchouette-ITC/rustashop/issues/37) | Wasmer polyglot sandbox and agent execution              |
 | [#43](https://github.com/Interchouette-ITC/rustashop/issues/43) | AI-native commerce (API + UIs + MCP)                     |
-| [#45](https://github.com/Interchouette-ITC/rustashop/issues/45) | Domains and `:dev` tip (`interchouette.net` / `.ai` / …) |
+| [#45](https://github.com/Interchouette-ITC/rustashop/issues/45) | Product domains (`.ai` / …); scratch tip is not the product launch |
 
 Child tasks use labels `area:wasm`, `area:realtime`, `area:extensions`, and `area:ai`. Filter the issues list by those labels for the full backlog.

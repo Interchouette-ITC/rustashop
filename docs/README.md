@@ -82,14 +82,14 @@ make test
 
 ## Domains
 
-| Host                           | Role                                    |
-| ------------------------------ | --------------------------------------- |
-| `rustashop.interchouette.net`  | First `:dev` image tip (operator-owned) |
-| `rustashop.ai`                 | Primary marketing                       |
-| `rustashop.io`                 | Product-oriented                        |
-| `rustashop.dev`                | Demo                                    |
-| `rustashop.app`                | Ionic app                               |
-| `rustashop.nl` / `.eu` / `.fr` | Redirect → `.ai` for now                |
+| Host                           | Role                                                         |
+| ------------------------------ | ------------------------------------------------------------ |
+| `rustashop.ai`                 | Primary marketing                                            |
+| `rustashop.io`                 | Product-oriented                                             |
+| `rustashop.dev`                | Demo                                                         |
+| `rustashop.app`                | Ionic app                                                    |
+| `rustashop.nl` / `.eu` / `.fr` | Redirect → `.ai` for now                                     |
+| `rustashop.interchouette.net`  | Scratch trial only (not a product domain; see DOMAINS.md)    |
 
 Detail: [`../docs-dev/DOMAINS.md`](../docs-dev/DOMAINS.md).
 
