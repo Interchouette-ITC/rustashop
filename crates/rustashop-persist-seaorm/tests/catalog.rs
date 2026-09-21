@@ -69,6 +69,17 @@ async fn seaorm_catalog_lists_and_finds_seeded_rows() {
         .expect("slug")
         .expect("hoodie");
     assert_eq!(product.name, "Hoodie");
+    let normalized = ProductRepository::find_by_slug(&repo, "Hoodie!")
+        .await
+        .expect("normalized slug")
+        .expect("hoodie via normalize");
+    assert_eq!(normalized.id, product.id);
+    assert!(
+        ProductRepository::find_by_slug(&repo, "!!!")
+            .await
+            .expect("empty slug")
+            .is_none()
+    );
     let by_id = ProductRepository::find_by_id(&repo, &product.id)
         .await
         .expect("id")

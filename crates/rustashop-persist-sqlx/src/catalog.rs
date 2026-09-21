@@ -1,6 +1,6 @@
 //! `SQLx` catalog repositories.
 
-use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository};
+use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository, product_slug};
 use serenade_contracts::{PageRequest, PersistenceError};
 use sqlx::FromRow;
 use sqlx::postgres::PgPool;
@@ -184,6 +184,9 @@ impl ProductRepository for SqlxCatalogRepository {
     }
 
     async fn find_by_slug(&self, slug: &str) -> Result<Option<Self::Product>, Self::Error> {
+        let Ok(slug) = product_slug(slug) else {
+            return Ok(None);
+        };
         let row = sqlx::query_as::<_, ProductRow>(
             "SELECT id::text AS id, category_id::text AS category_id, slug, name, description, enabled
              FROM product WHERE slug = $1",

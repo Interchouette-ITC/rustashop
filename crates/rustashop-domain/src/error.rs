@@ -43,4 +43,7 @@ pub enum DomainError {
         /// Requested fulfillment place.
         to: String,
     },
+    /// Product slug input produced an empty URL slug after normalization.
+    #[error("invalid product slug `{0}` (empty after normalization)")]
+    InvalidProductSlug(String),
 }

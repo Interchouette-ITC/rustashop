@@ -5812,6 +5812,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serenade-contracts",
+ "serenade-string",
  "serenade-workflow",
  "thiserror 2.0.20",
 ]
@@ -6802,6 +6803,11 @@ dependencies = [
  "serenade-http",
  "thiserror 2.0.20",
 ]
+
+[[package]]
+name = "serenade-string"
+version = "0.1.0"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 
 [[package]]
 name = "serenade-validator"
