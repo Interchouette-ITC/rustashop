@@ -35,4 +35,12 @@ pub enum DomainError {
     /// Stored or requested order state is not a known fulfillment value.
     #[error("invalid order state `{0}` (expected `placed`, `paid`, `shipped`, or `cancelled`)")]
     InvalidOrderState(String),
+    /// Requested order status jump is not allowed by the fulfillment workflow.
+    #[error("illegal order transition from `{from}` to `{to}`")]
+    IllegalOrderTransition {
+        /// Current fulfillment place.
+        from: String,
+        /// Requested fulfillment place.
+        to: String,
+    },
 }

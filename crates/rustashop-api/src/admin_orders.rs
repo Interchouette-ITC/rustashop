@@ -1,6 +1,6 @@
 //! Admin order list and status PATCH (JSON via Serenade front; utoipa path items for `OpenAPI`).
 
-use rustashop_domain::OrderState;
+use rustashop_domain::{OrderState, assert_order_transition};
 use rustashop_persist::CatalogRepository;
 use serde::{Deserialize, Serialize};
 #[allow(unused_imports)]
@@ -124,6 +124,17 @@ pub async fn patch_admin_order_response(
         Ok(state) => state,
         Err(error) => return api_error_json_response(&ApiError::from_domain(&error)),
     };
+    let current = match catalog.get_order(order_id).await {
+        Ok(order) => order,
+        Err(error) => return api_error_json_response(&ApiError::from_persist(&error)),
+    };
+    let from = match OrderState::parse(&current.state) {
+        Ok(from) => from,
+        Err(error) => return api_error_json_response(&ApiError::from_domain(&error)),
+    };
+    if let Err(error) = assert_order_transition(from, state) {
+        return api_error_json_response(&ApiError::from_domain(&error));
+    }
     match catalog.update_order_state(order_id, state).await {
         Ok(order) => {
             let response = OrderResponse::from(order);
@@ -163,7 +174,7 @@ pub fn list_admin_orders() {}
         (status = 200, description = "Updated order", body = OrderResponse),
         (status = 401, description = "Missing or invalid bearer", body = ErrorBody),
         (status = 404, description = "Order not found", body = ErrorBody),
-        (status = 422, description = "Invalid status", body = ErrorBody)
+        (status = 422, description = "Invalid status or illegal transition", body = ErrorBody)
     )
 )]
 #[allow(clippy::missing_const_for_fn)]

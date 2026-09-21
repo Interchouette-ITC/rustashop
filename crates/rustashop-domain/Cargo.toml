@@ -12,6 +12,7 @@ rust-version.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 serenade-contracts = { workspace = true }
+serenade-workflow = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
