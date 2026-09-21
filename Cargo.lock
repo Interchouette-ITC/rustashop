@@ -6525,7 +6525,7 @@ dependencies = [
 [[package]]
 name = "serenade-bundle"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "serenade-config",
  "serenade-console",
@@ -6536,6 +6536,7 @@ dependencies = [
  "serenade-kernel",
  "serenade-lock",
  "serenade-mailer",
+ "serenade-notifier",
  "serenade-rate-limiter",
  "serenade-scheduler",
  "thiserror 2.0.20",
@@ -6544,7 +6545,7 @@ dependencies = [
 [[package]]
 name = "serenade-cache"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "serenade-di",
  "thiserror 2.0.20",
@@ -6553,7 +6554,7 @@ dependencies = [
 [[package]]
 name = "serenade-component-host"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "anyhow",
  "thiserror 2.0.20",
@@ -6563,7 +6564,7 @@ dependencies = [
 [[package]]
 name = "serenade-config"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "dotenvy",
  "serde_json",
@@ -6576,7 +6577,7 @@ dependencies = [
 [[package]]
 name = "serenade-console"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "clap",
  "crossterm 0.28.1",
@@ -6590,27 +6591,24 @@ dependencies = [
 [[package]]
 name = "serenade-contracts"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
- "serde",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "serenade-di"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
- "serde",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "serenade-event"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
- "serde",
  "serenade-di",
  "thiserror 2.0.20",
 ]
@@ -6618,7 +6616,7 @@ dependencies = [
 [[package]]
 name = "serenade-http"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "thiserror 2.0.20",
 ]
@@ -6626,7 +6624,7 @@ dependencies = [
 [[package]]
 name = "serenade-http-actix"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "actix-web",
  "serenade-http",
@@ -6635,7 +6633,7 @@ dependencies = [
 [[package]]
 name = "serenade-http-axum"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "axum",
  "serenade-http",
@@ -6645,7 +6643,7 @@ dependencies = [
 [[package]]
 name = "serenade-http-client"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "reqwest 0.12.28",
  "serenade-di",
@@ -6655,7 +6653,7 @@ dependencies = [
 [[package]]
 name = "serenade-kernel"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "serde",
  "thiserror 2.0.20",
@@ -6664,7 +6662,7 @@ dependencies = [
 [[package]]
 name = "serenade-lock"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "getrandom 0.3.4",
  "serenade-di",
@@ -6674,7 +6672,7 @@ dependencies = [
 [[package]]
 name = "serenade-mailer"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "lettre",
  "serenade-di",
@@ -6684,7 +6682,7 @@ dependencies = [
 [[package]]
 name = "serenade-messenger"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "r2d2",
  "redis",
@@ -6692,9 +6690,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "serenade-notifier"
+version = "0.1.0"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
+dependencies = [
+ "serenade-di",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "serenade-observability"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "opentelemetry",
  "opentelemetry-otlp",
@@ -6710,7 +6717,7 @@ dependencies = [
 [[package]]
 name = "serenade-openapi"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "actix-web",
  "utoipa",
@@ -6723,7 +6730,7 @@ dependencies = [
 [[package]]
 name = "serenade-rate-limiter"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "serenade-di",
  "serenade-http",
@@ -6733,7 +6740,7 @@ dependencies = [
 [[package]]
 name = "serenade-sandbox"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "anyhow",
  "bytes",
@@ -6752,7 +6759,7 @@ dependencies = [
 [[package]]
 name = "serenade-scheduler"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "chrono",
  "cron",
@@ -6765,7 +6772,7 @@ dependencies = [
 [[package]]
 name = "serenade-security"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "argon2",
  "getrandom 0.3.4",
@@ -6780,7 +6787,7 @@ dependencies = [
 [[package]]
 name = "serenade-session"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "getrandom 0.3.4",
  "serenade-http",
@@ -6790,7 +6797,7 @@ dependencies = [
 [[package]]
 name = "serenade-validator"
 version = "0.1.0"
-source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#be0fd9bfff97d84dc9e3485a6d54d4926d841e83"
+source = "git+https://github.com/Interchouette-ITC/Serenade.git?branch=dev#a74744dc5fb00e6b3de39f46cf4a1111766053d2"
 dependencies = [
  "serenade-messenger",
  "thiserror 2.0.20",
