@@ -327,4 +327,77 @@ mod admin_orders_response_tests {
             500
         );
     }
+
+    #[tokio::test]
+    async fn covers_illegal_transition_and_corrupt_stored_state() {
+        let auth = AdminAuthConfig::from_token("secret");
+        let (catalog, pool) = seeded_catalog().await;
+        let order_id = place_seeded_order(&catalog).await;
+
+        assert_eq!(
+            patch_admin_order_response(
+                &auth,
+                Some("secret"),
+                &catalog,
+                &order_id,
+                br#"{"status":"shipped"}"#,
+                None,
+            )
+            .await
+            .status(),
+            422
+        );
+
+        sqlx::query(r#"UPDATE "order" SET state = 'bogus' WHERE id = $1::uuid"#)
+            .bind(&order_id)
+            .execute(&pool)
+            .await
+            .expect("corrupt state");
+        assert_eq!(
+            patch_admin_order_response(
+                &auth,
+                Some("secret"),
+                &catalog,
+                &order_id,
+                br#"{"status":"paid"}"#,
+                None,
+            )
+            .await
+            .status(),
+            422
+        );
+    }
+
+    async fn place_seeded_order(catalog: &SqlxCatalogRepository) -> String {
+        use rustashop_domain::{CartLine, Currency};
+
+        const HOODIE_VARIANT: &str = "33333333-3333-3333-3333-333333333331";
+        let currency = Currency::new("EUR").expect("EUR");
+        let cart = catalog.create_cart(&currency).await.expect("create cart");
+        let (variant, product_name) = catalog
+            .find_variant_for_cart(HOODIE_VARIANT)
+            .await
+            .expect("find")
+            .expect("hoodie");
+        let mut loaded = catalog
+            .find_cart_by_id(&cart.id)
+            .await
+            .expect("load")
+            .expect("cart");
+        loaded.lines.push(CartLine {
+            id: String::new(),
+            cart_id: loaded.id.clone(),
+            variant_id: variant.id,
+            quantity: 1,
+            unit_price: variant.price,
+            product_name,
+            variant_sku: variant.sku,
+        });
+        catalog.save_cart(&loaded).await.expect("save");
+        catalog
+            .checkout_cart(&cart.id, None)
+            .await
+            .expect("checkout")
+            .id
+    }
 }

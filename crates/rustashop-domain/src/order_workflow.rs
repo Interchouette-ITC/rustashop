@@ -44,15 +44,14 @@ pub fn assert_order_transition(from: OrderState, to: OrderState) -> Result<(), D
     store.set("order", Marking::single(from.as_str()));
     let workflow = Workflow::new("order", order_definition().clone(), store);
     let target = to.as_str();
-    let Some(transition) = order_definition().transitions().iter().find(|candidate| {
+    let allowed = order_definition().transitions().iter().any(|candidate| {
         workflow.can("order", candidate.name())
             && candidate.to().iter().any(|place| place == target)
-    }) else {
-        return Err(illegal(from, to));
-    };
-    match workflow.apply("order", transition.name()) {
-        Ok(_) => Ok(()),
-        Err(_) => Err(illegal(from, to)),
+    });
+    if allowed {
+        Ok(())
+    } else {
+        Err(illegal(from, to))
     }
 }
 
@@ -94,5 +93,12 @@ mod tests {
             assert_order_transition(OrderState::Shipped, OrderState::Cancelled),
             Err(DomainError::IllegalOrderTransition { .. })
         ));
+    }
+
+    #[test]
+    fn order_definition_exposes_places() {
+        let places = order_definition().places();
+        assert!(places.iter().any(|place| place == "placed"));
+        assert!(places.iter().any(|place| place == "shipped"));
     }
 }
