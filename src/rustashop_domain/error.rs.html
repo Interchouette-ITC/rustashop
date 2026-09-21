@@ -35,5 +35,13 @@
 <a href=#35 id=35 data-nosnippet>35</a>    <span class="doccomment">/// Stored or requested order state is not a known fulfillment value.
 <a href=#36 id=36 data-nosnippet>36</a>    </span><span class="attr">#[error(<span class="string">"invalid order state `{0}` (expected `placed`, `paid`, `shipped`, or `cancelled`)"</span>)]
 <a href=#37 id=37 data-nosnippet>37</a>    </span>InvalidOrderState(String),
-<a href=#38 id=38 data-nosnippet>38</a>}
+<a href=#38 id=38 data-nosnippet>38</a>    <span class="doccomment">/// Requested order status jump is not allowed by the fulfillment workflow.
+<a href=#39 id=39 data-nosnippet>39</a>    </span><span class="attr">#[error(<span class="string">"illegal order transition from `{from}` to `{to}`"</span>)]
+<a href=#40 id=40 data-nosnippet>40</a>    </span>IllegalOrderTransition {
+<a href=#41 id=41 data-nosnippet>41</a>        <span class="doccomment">/// Current fulfillment place.
+<a href=#42 id=42 data-nosnippet>42</a>        </span>from: String,
+<a href=#43 id=43 data-nosnippet>43</a>        <span class="doccomment">/// Requested fulfillment place.
+<a href=#44 id=44 data-nosnippet>44</a>        </span>to: String,
+<a href=#45 id=45 data-nosnippet>45</a>    },
+<a href=#46 id=46 data-nosnippet>46</a>}
 </code></pre></div></section></main></body></html>
