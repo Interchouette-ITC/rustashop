@@ -77,7 +77,7 @@ impl OrderMailer {
         Self::with_transport(Arc::new(FailingTransport), DEFAULT_FROM)
     }
 
-    /// Sends a plain-text order confirmation to `to`.
+    /// Sends a multipart (text + HTML) order confirmation to `to`.
     ///
     /// # Errors
     ///
@@ -92,11 +92,22 @@ impl OrderMailer {
             "Thank you for your order.\n\nOrder: {}\nId: {}\nTotal: {} {}\n",
             order.number, order.id, order.total.amount_minor, order.total.currency
         );
+        let html = format!(
+            "<p>Thank you for your order.</p>\
+             <p><strong>Order:</strong> {number}<br>\
+             <strong>Id:</strong> {id}<br>\
+             <strong>Total:</strong> {amount} {currency}</p>",
+            number = order.number,
+            id = order.id,
+            amount = order.total.amount_minor,
+            currency = order.total.currency,
+        );
         let email = Email::new()
             .from(self.from.as_str())?
             .to(to)?
             .subject(subject)
-            .text(text);
+            .text(text)
+            .html(html);
         self.transport.send(&email)
     }
 }
@@ -175,6 +186,24 @@ mod tests {
         };
         assert_eq!(len, 1);
         assert!(subject.contains("RS-1"));
+        let mime = {
+            let sent = outbox.lock().expect("lock");
+            sent[0].mime_tree().multipart_subtype()
+        };
+        assert_eq!(mime, Some("alternative"));
+        let parts = {
+            let sent = outbox.lock().expect("lock");
+            (
+                sent[0].text_part().map(str::to_owned),
+                sent[0].html_part().map(str::to_owned),
+            )
+        };
+        assert!(parts.0.is_some_and(|text| text.contains("RS-1")));
+        assert!(
+            parts
+                .1
+                .is_some_and(|html| html.contains("<strong>Order:</strong>"))
+        );
     }
 
     #[test]
