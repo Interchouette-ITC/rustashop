@@ -1,6 +1,6 @@
 //! `SeaORM` catalog repositories.
 
-use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository};
+use rustashop_domain::{Category, CategoryRepository, Product, ProductRepository, product_slug};
 use sea_orm::entity::prelude::*;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QueryOrder,
@@ -157,6 +157,9 @@ impl ProductRepository for SeaOrmCatalogRepository {
     }
 
     async fn find_by_slug(&self, slug: &str) -> Result<Option<Self::Product>, Self::Error> {
+        let Ok(slug) = product_slug(slug) else {
+            return Ok(None);
+        };
         let row = product::Entity::find()
             .filter(product::Column::Slug.eq(slug))
             .one(&self.db)
