@@ -868,7 +868,7 @@
             }
           },
           "422": {
-            "description": "Invalid status",
+            "description": "Invalid status or illegal transition",
             "content": {
               "application/json": {
                 "schema": {

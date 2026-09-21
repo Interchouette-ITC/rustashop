@@ -74,6 +74,24 @@ async fn admin_orders_require_bearer_and_can_mark_shipped() {
     let page: OrderListResponse = test::read_body_json(list_resp).await;
     assert!(page.items.iter().any(|order| order.id == placed.id));
 
+    let illegal = test::TestRequest::patch()
+        .uri(&format!("/v1/admin/orders/{}", placed.id))
+        .insert_header(("Authorization", format!("Bearer {ADMIN_TOKEN}")))
+        .set_json(json!({ "status": "shipped" }))
+        .to_request();
+    let illegal_resp = test::call_service(&app, illegal).await;
+    assert_eq!(illegal_resp.status(), 422);
+
+    let pay = test::TestRequest::patch()
+        .uri(&format!("/v1/admin/orders/{}", placed.id))
+        .insert_header(("Authorization", format!("Bearer {ADMIN_TOKEN}")))
+        .set_json(json!({ "status": "paid" }))
+        .to_request();
+    let pay_resp = test::call_service(&app, pay).await;
+    assert!(pay_resp.status().is_success());
+    let paid: OrderResponse = test::read_body_json(pay_resp).await;
+    assert_eq!(paid.state, "paid");
+
     let patch = test::TestRequest::patch()
         .uri(&format!("/v1/admin/orders/{}", placed.id))
         .insert_header(("Authorization", format!("Bearer {ADMIN_TOKEN}")))

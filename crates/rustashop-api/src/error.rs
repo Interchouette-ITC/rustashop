@@ -65,7 +65,8 @@ impl ApiError {
             | DomainError::Overflow
             | DomainError::EmptyCart
             | DomainError::InvalidCartStatus(_)
-            | DomainError::InvalidOrderState(_) => Self::Unprocessable(error.to_string()),
+            | DomainError::InvalidOrderState(_)
+            | DomainError::IllegalOrderTransition { .. } => Self::Unprocessable(error.to_string()),
             DomainError::CartAlreadyCheckedOut => Self::Conflict,
             DomainError::LineNotFound(_) => Self::NotFound,
         }
