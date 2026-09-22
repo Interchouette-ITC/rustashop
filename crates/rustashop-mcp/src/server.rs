@@ -10,7 +10,7 @@ use axum::http::{HeaderName, HeaderValue, Request as HttpRequest};
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::wrapper::Parameters,
-    model::{CallToolResult, ContentBlock, ServerCapabilities, ServerInfo},
+    model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig},
     tool, tool_handler, tool_router,
 };
 use serenade_http::{AsyncHttpKernel, HttpError, Method, Request, Response, box_future};
@@ -350,8 +350,8 @@ pub async fn run_http(addr: &str) -> std::io::Result<()> {
 
 #[tool_handler]
 impl ServerHandler for RustashopMcp {
-    fn get_info(&self) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    fn get_info(&self) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(rmcp::model::Implementation::new(
                 MCP_CRATE,
                 env!("CARGO_PKG_VERSION"),
