@@ -10,7 +10,7 @@
 <a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>rmcp::{
 <a href=#11 id=11 data-nosnippet>11</a>    ErrorData <span class="kw">as </span>McpError, ServerHandler,
 <a href=#12 id=12 data-nosnippet>12</a>    handler::server::wrapper::Parameters,
-<a href=#13 id=13 data-nosnippet>13</a>    model::{CallToolResult, ContentBlock, ServerCapabilities, ServerInfo},
+<a href=#13 id=13 data-nosnippet>13</a>    model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig},
 <a href=#14 id=14 data-nosnippet>14</a>    tool, tool_handler, tool_router,
 <a href=#15 id=15 data-nosnippet>15</a>};
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span>serenade_http::{AsyncHttpKernel, HttpError, Method, Request, Response, box_future};
@@ -350,8 +350,8 @@
 <a href=#350 id=350 data-nosnippet>350</a>
 <a href=#351 id=351 data-nosnippet>351</a><span class="attr">#[tool_handler]
 <a href=#352 id=352 data-nosnippet>352</a></span><span class="kw">impl </span>ServerHandler <span class="kw">for </span>RustashopMcp {
-<a href=#353 id=353 data-nosnippet>353</a>    <span class="kw">fn </span>get_info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ServerInfo {
-<a href=#354 id=354 data-nosnippet>354</a>        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+<a href=#353 id=353 data-nosnippet>353</a>    <span class="kw">fn </span>get_info(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ServerConfig {
+<a href=#354 id=354 data-nosnippet>354</a>        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
 <a href=#355 id=355 data-nosnippet>355</a>            .with_server_info(rmcp::model::Implementation::new(
 <a href=#356 id=356 data-nosnippet>356</a>                MCP_CRATE,
 <a href=#357 id=357 data-nosnippet>357</a>                <span class="macro">env!</span>(<span class="string">"CARGO_PKG_VERSION"</span>),
