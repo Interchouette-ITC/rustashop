@@ -10,13 +10,13 @@ pub fn ProductCardPanel(
     name: String,
     slug: String,
     description: Option<String>,
-    detail_href: String,
+    href: String,
 ) -> impl IntoView {
     product_card_view(HostCell::new(ProductCardHost {
         name,
         slug,
         description,
-        detail_href,
+        detail_href: href,
     }))
 }
 
