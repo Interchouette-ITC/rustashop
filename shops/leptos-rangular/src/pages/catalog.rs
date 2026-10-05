@@ -65,7 +65,7 @@ fn catalog_body(error: Option<String>, loading: bool, products: Vec<Product>) ->
                             name=product.name
                             slug=product.slug
                             description=product.description
-                            detail_href=href
+                            href=href
                         />
                     }
                 }
