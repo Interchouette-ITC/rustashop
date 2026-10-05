@@ -54,8 +54,7 @@ pub fn use_token() -> TokenCtx {
 fn read_stored_token() -> String {
     window_storage()
         .and_then(|s| s.get_item(STORAGE_KEY).ok().flatten())
-        .map(|s| s.trim().to_owned())
-        .unwrap_or_default()
+        .map_or_default(|s| s.trim().to_owned())
 }
 
 fn window_storage() -> Option<web_sys::Storage> {
