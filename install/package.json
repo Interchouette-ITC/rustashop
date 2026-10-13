@@ -11,6 +11,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "source-map-js": "1.2.2",
     "vue": "^3.5.43"
   },
   "devDependencies": {
