@@ -13,6 +13,7 @@ ignore = [
     { id = "RUSTSEC-2024-0436", reason = "paste unmaintained; pulled by wasmer-compiler via linker-utils" },
     { id = "RUSTSEC-2026-0173", reason = "proc-macro-error2 unmaintained; pulled by wasmer-derive" },
     { id = "RUSTSEC-2025-0141", reason = "bincode unmaintained; pulled by wasmer-wasix stack" },
+    { id = "RUSTSEC-2024-0449", reason = "unsafe-libyaml unmaintained; pulled by serde_yaml via serenade-config" },
 ]
 
 [licenses]
