@@ -325,8 +325,13 @@ lint: format-check check-sql-safety lint-shop-angular lint-admin-angular lint-sh
 
 ## Requires `cargo install cargo-audit`.
 ## RUSTSEC-2026-0258: actix-http 3.x pins h2 0.3; fix is only on h2 >= 0.4.16.
+## zip 3.x is a build-dep of utoipa-swagger-ui 9; no release yet accepts zip >=9.
 audit:
-	cd $(ROOT) && $(CARGO) audit --ignore RUSTSEC-2026-0258
+	cd $(ROOT) && $(CARGO) audit \
+		--ignore RUSTSEC-2026-0258 \
+		--ignore RUSTSEC-2026-0367 \
+		--ignore RUSTSEC-2026-0368 \
+		--ignore RUSTSEC-2026-0369
 
 ## Requires `cargo install cargo-deny`.
 deny:
