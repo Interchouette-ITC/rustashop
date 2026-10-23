@@ -11,12 +11,12 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "vue": "^3.5.43",
+    "vue": "^3.5.44",
     "source-map-js": "1.2.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.10",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/coverage-v8": "^4.1.12",
     "vite": "^8.3.4",
     "vitest": "^4.1.11"
   }
