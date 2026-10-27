@@ -2262,11 +2262,11 @@
           "proposal": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/SandboxProposalResponse",
                 "description": "Validated proposal when awaiting commit / after commit."
+              },
+              {
+                "type": "null"
               }
             ]
           },

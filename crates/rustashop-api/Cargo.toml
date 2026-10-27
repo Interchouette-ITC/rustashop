@@ -44,7 +44,7 @@ persist-seaorm = [
 actix-web = { workspace = true }
 actix-files = { workspace = true }
 actix-ws = { workspace = true }
-getrandom = "0.3"
+getrandom = "0.4.3"
 rustashop = { workspace = true }
 rustashop-domain = { workspace = true }
 rustashop-jobs = { workspace = true }
@@ -78,10 +78,7 @@ utoipa = { workspace = true }
 actix-web = { workspace = true }
 futures-util = "0.3"
 insta = { workspace = true }
-reqwest = { version = "0.12", default-features = false, features = [
-    "json",
-    "rustls-tls",
-] }
+reqwest = { workspace = true }
 rstest = { workspace = true }
 serde_json = { workspace = true }
 tokio-tungstenite = { workspace = true }

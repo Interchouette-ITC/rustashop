@@ -27,10 +27,10 @@ pub fn invoke_pricing_adjust(
     let linker: Linker<()> = empty_linker(&engine);
     let mut store = store_with_data(&engine, ());
     let instance = PricingAdjust::instantiate(&mut store, &component, &linker)
-        .context("instantiate pricing-adjust")?;
+        .map_err(|e| anyhow::anyhow!("instantiate pricing-adjust: {e}"))?;
     instance
         .call_adjust(&mut store, cart)
-        .context("call adjust")
+        .map_err(|e| anyhow::anyhow!("call adjust: {e}"))
 }
 
 #[cfg(test)]

@@ -28,7 +28,7 @@ license = "OSL-3.0"
 version = "0.1.0"
 authors = ["Interchouette"]
 repository = "https://github.com/Interchouette-ITC/rustashop"
-rust-version = "1.95"
+rust-version = "1.99.0"
 
 [workspace.dependencies]
 rustashop = { path = "crates/rustashop", version = "0.1.0" }
@@ -60,7 +60,7 @@ serenade-workflow = { git = "https://github.com/Interchouette-ITC/Serenade.git",
 serenade-component-host = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 serenade-sandbox = { git = "https://github.com/Interchouette-ITC/Serenade.git", branch = "dev" }
 actix-web = "4"
-actix-files = "0.6"
+actix-files = "0.7"
 actix-ws = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -85,15 +85,20 @@ sea-orm-migration = { version = "2.0.2", default-features = false, features = [
     "with-uuid",
 ] }
 thiserror = "2"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
-tokio-tungstenite = { version = "0.26", default-features = false, features = [
+tokio = { version = "1", features = [
+    "macros",
+    "rt-multi-thread",
+    "sync",
+    "time",
+] }
+tokio-tungstenite = { version = "0.30.0", default-features = false, features = [
     "connect",
 ] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "ansi"] }
-utoipa = { version = "5", features = ["actix_extras"] }
-rstest = "0.26"
-mockall = "0.13"
+utoipa = { version = "6", features = ["actix_extras"] }
+rstest = "0.28"
+mockall = "0.15"
 insta = { version = "1", features = ["json"] }
 wiremock = "0.6"
 anyhow = "1"
@@ -103,7 +108,7 @@ axum = { version = "0.8", default-features = false, features = [
     "json",
 ] }
 clap = { version = "4", features = ["derive", "env"] }
-reqwest = { version = "0.13", default-features = false, features = [
+reqwest = { version = "0.13.5", default-features = false, features = [
     "json",
     "rustls",
 ] }
