@@ -27,10 +27,10 @@
 <a href=#27 id=27 data-nosnippet>27</a>    <span class="kw">let </span>linker: Linker&lt;()&gt; = empty_linker(<span class="kw-2">&amp;</span>engine);
 <a href=#28 id=28 data-nosnippet>28</a>    <span class="kw">let </span><span class="kw-2">mut </span>store = store_with_data(<span class="kw-2">&amp;</span>engine, ());
 <a href=#29 id=29 data-nosnippet>29</a>    <span class="kw">let </span>instance = PricingAdjust::instantiate(<span class="kw-2">&amp;mut </span>store, <span class="kw-2">&amp;</span>component, <span class="kw-2">&amp;</span>linker)
-<a href=#30 id=30 data-nosnippet>30</a>        .context(<span class="string">"instantiate pricing-adjust"</span>)<span class="question-mark">?</span>;
+<a href=#30 id=30 data-nosnippet>30</a>        .map_err(|e| <span class="macro">anyhow::anyhow!</span>(<span class="string">"instantiate pricing-adjust: {e}"</span>))<span class="question-mark">?</span>;
 <a href=#31 id=31 data-nosnippet>31</a>    instance
 <a href=#32 id=32 data-nosnippet>32</a>        .call_adjust(<span class="kw-2">&amp;mut </span>store, cart)
-<a href=#33 id=33 data-nosnippet>33</a>        .context(<span class="string">"call adjust"</span>)
+<a href=#33 id=33 data-nosnippet>33</a>        .map_err(|e| <span class="macro">anyhow::anyhow!</span>(<span class="string">"call adjust: {e}"</span>))
 <a href=#34 id=34 data-nosnippet>34</a>}
 <a href=#35 id=35 data-nosnippet>35</a>
 <a href=#36 id=36 data-nosnippet>36</a><span class="attr">#[cfg(test)]
