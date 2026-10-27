@@ -28,7 +28,7 @@ license = "OSL-3.0"
 version = "0.1.0"
 authors = ["Interchouette"]
 repository = "https://github.com/Interchouette-ITC/rustashop"
-rust-version = "1.95"
+rust-version = "1.99.0"
 
 [workspace.dependencies]
 rustashop = { path = "crates/rustashop", version = "0.1.0" }
