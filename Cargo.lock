@@ -21,9 +21,9 @@ dependencies = [
 
 [[package]]
 name = "actix-files"
-version = "0.7.3"
+version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4eb203ca8ec2fd8261d7ab0b46b0d33ac80abfc780bfdd021009decc61df62f"
+checksum = "c6f3a6769c3bc1c7d8e04b5c15f0c87489924c93455d9820296c219475a9051a"
 dependencies = [
  "actix-http",
  "actix-service",
@@ -45,16 +45,17 @@ dependencies = [
 
 [[package]]
 name = "actix-http"
-version = "3.20.0"
+version = "3.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d20a22850ea7fecad12c5f8cd97d246c3af1f04ef400033977c2f13425c45816"
+checksum = "b90352ea64d82226a82060c41dc5fe3925696076f55998ec1bd44ae54611e593"
 dependencies = [
  "actix-codec",
  "actix-service",
  "actix-utils",
- "base64 0.22.1",
+ "base64 0.23.1",
  "bitflags 2.13.2",
  "brotli",
+ "brotli-decompressor",
  "bytes",
  "bytestring",
  "derive_more",
@@ -155,9 +156,9 @@ dependencies = [
 
 [[package]]
 name = "actix-web"
-version = "4.18.1"
+version = "4.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81f8da0d2ae4200dde8773d72ba47a65c220b251ba7b9248db5bd263c247e959"
+checksum = "acd6966acfcc7b66b37bdeea7d11665d5accac89333767e1784d2cecd33984e7"
 dependencies = [
  "actix-codec",
  "actix-http",
@@ -211,9 +212,9 @@ dependencies = [
 
 [[package]]
 name = "actix-ws"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "decf53c3cdd63dd6f289980b430238f9a2f6d19f8bce8e418272e08d3da43f0f"
+checksum = "4a3f616b2d7a52399b2156ab97024d5543e80ac70621f010e256c0de5277a600"
 dependencies = [
  "actix-codec",
  "actix-http",
@@ -5614,9 +5615,9 @@ dependencies = [
 
 [[package]]
 name = "rmcp"
-version = "3.8.0"
+version = "3.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8be15815186873ea063bf005011d16c356804973489e40c39116ae3a2878d1f"
+checksum = "b5949e504d5ab9944a168259afc0c39ac0230627b6ec5367ace194c59bcbe163"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -5635,6 +5636,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
  "sse-stream",
  "thiserror 2.0.21",
  "tokio",
@@ -5647,9 +5649,9 @@ dependencies = [
 
 [[package]]
 name = "rmcp-macros"
-version = "3.8.0"
+version = "3.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b0748e054a5f5598b3213cf72099ae6b2745ba4d996c59ccf455150a7dbb839"
+checksum = "b98a686693ee91b665c6f89f182fca6e141c8a63dc113b11b38c1bf3491606b7"
 dependencies = [
  "darling 0.24.1",
  "proc-macro2",
@@ -8104,9 +8106,9 @@ checksum = "552a64d6a0d251ae28bc021838800943cce60c9ec2e60ff331f54e79f696268f"
 
 [[package]]
 name = "uuid"
-version = "1.29.0"
+version = "1.29.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
+checksum = "bed99139f7dac9b5cfe5f17be4d66dc7079a34dee1d74bcc77217119240e267c"
 dependencies = [
  "atomic",
  "getrandom 0.4.3",
